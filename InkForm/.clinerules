@@ -1,0 +1,59 @@
+# InkForm Project Rules
+
+## Project Overview
+InkForm is a Unity 2D platformer where the player switches between solid and fluid forms, featuring wall/ceiling climbing, spring-damping slime deformation, and more.
+
+## Design Documents Location
+All system design documents are located in `Assets/Perfab/Script/Project_Prompt/`:
+- Player_Controller_Design.md — Player controller
+- Skill_System_Design.md — Skill system
+- Level_Objects_Design.md — Level objects
+- Moving_Platform_Component_Design.md — Moving platform component
+- Game_Event_System_Design.md — Game event system
+- Manager_Systems_Design.md — Manager systems
+- Level_Section_System_Design.md — Level section system
+- CHANGELOG.md — Changelog
+
+## Script Directory Structure
+- `Assets/Perfab/Script/player/` — Player-related (S_Player, S_SkillBase, S_SkillTree, S_Soild_sprint, S_fluid_climb)
+- `Assets/Perfab/Script/Manager/` — Managers (S_GameEvent, S_GameManager, S_UIManager)
+- `Assets/Perfab/Script/LevelCon/` — Level controllers (S_MovingPlatform, S_LevelSection, S_LevelSectionController, S_SectionGoal)
+- `Assets/Perfab/Script/` — Common level objects (S_BreakableBlock, S_CameraMove, S_Checkpoint, S_MoveBlock, S_Pipline)
+- `Assets/Perfab/Script/tools/` — Utility scripts (S_coleve, S_setTrigger)
+- `Assets/Scripts/` — Legacy scripts (SimpleMovement, PlayerTransform, WallWalker2D)
+
+## Context Management Rules
+- At the start of each task, read `memory-bank/activeContext.md` to understand current state
+- Do not read all Project_Prompt documents at once — only load the ones relevant to the current task
+- After completing a module, update `memory-bank/progress.md` and `memory-bank/activeContext.md`
+- Proactively compress when context exceeds 50%
+
+## Code Standards
+- C# naming: PascalCase for classes and methods, camelCase for private fields
+- In MonoBehaviours, use `[Header("Group Name")]` to group Inspector fields
+- Use `AudioSource.PlayOneShot()` for one-shot SFX, `AudioSource.Play()`/`Stop()` for looping audio
+- Physics movement goes in `FixedUpdate()`, input detection goes in `Update()`
+- Moving platforms use delta displacement transfer (not SetParent) — calculate `transform.position` delta per frame and apply to player's Rigidbody2D
+- Before adding a new system, check if a corresponding design document exists in `Assets/Perfab/Script/Project_Prompt/`. If it does, follow it strictly
+
+## Documentation Maintenance Rules
+- **Do not frequently modify design documents in Project_Prompt/ or CHANGELOG.md**
+- Design documents and CHANGELOG should only be updated before major version pushes (e.g., v0.5.0, v0.6.0...)
+- Small changes during daily development do not require design document updates
+
+## Language Rule
+- **All Project_Prompt/ design documents and CHANGELOG.md MUST be written in English**
+- **All memory-bank/ files MUST be written in English**
+- This ensures consistency and accessibility across the team
+
+## Unity Version
+- Unity 6000.1.17f1 (Unity 6)
+- Unity Input System (new)
+- Rigidbody2D (2D Physics)
+- URP 2D Renderer
+
+## Error Handling Rules
+- When a Unity runtime bug is found, log it to `memory-bank/error-log.md` (symptom, root cause, fix, lesson learned)
+- When fixing a logic bug, scan Project_Prompt/ design documents for cross-reference to check if other systems have the same problem
+- After cross-reference fixes, log everything to `error-log.md`
+- See the "Error Handling Rules" section in `.cline/skills/unity-dev/SKILL.md` for detailed workflow
