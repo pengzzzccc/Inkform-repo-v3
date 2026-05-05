@@ -22,3 +22,7 @@ MonoBehaviour:
   sprintSpeed: 100
   cooldown: 1
   SprintLockTime: 0.1
+  stunRadius: 2
+  enemyLayer:
+    serializedVersion: 2
+    m_Bits: 256

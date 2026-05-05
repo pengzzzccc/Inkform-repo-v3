@@ -31,6 +31,7 @@ public class S_GameManager : MonoBehaviour
         S_GameEvent.OnGameStart += HandleGameStart;
         S_GameEvent.OnGameRestart += HandleGameRestart;
         S_GameEvent.OnExit += HandleExit;
+        S_GameEvent.OnArrestTriggered += HandleArrest;
         S_GameEvent.reNewSpwnPoint += newSpwn;
     }
 
@@ -40,6 +41,7 @@ public class S_GameManager : MonoBehaviour
         S_GameEvent.OnGameStart -= HandleGameStart;
         S_GameEvent.OnGameRestart -= HandleGameRestart;
         S_GameEvent.OnExit -= HandleExit;
+        S_GameEvent.OnArrestTriggered -= HandleArrest;
         S_GameEvent.reNewSpwnPoint -= newSpwn;
     }
 
@@ -72,8 +74,23 @@ public class S_GameManager : MonoBehaviour
     void GameReStart()
     {
         Time.timeScale = 1f;
+
+        // Reset PlayerHidden so NPCs can detect the player after restart
+        S_SuspicionSystem.PlayerHidden = false;
+
         if (S_Player.Instance != null && spwnPoint != null)
             S_Player.Instance.GetRigidbody().transform.position = spwnPoint.position;
+    }
+
+    void HandleArrest()
+    {
+        Debug.Log("[GameManager] Player arrested — restarting level");
+        // Reset suspicion
+        if (S_SuspicionSystem.Instance != null)
+            S_SuspicionSystem.Instance.SetSuspicion(0f);
+
+        // Restart
+        GameReStart();
     }
 
     void ExitGame()

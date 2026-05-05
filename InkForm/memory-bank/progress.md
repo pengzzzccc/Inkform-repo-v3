@@ -1,30 +1,34 @@
-# 项目进度
+# Project Progress
 
-## 已完成
-- [x] 玩家控制器（S_Player, S_CameraMove）
-- [x] 技能系统（S_SkillBase, S_SkillTree, S_Soild_sprint, S_fluid_climb）
-- [x] 游戏事件总线（S_GameEvent）
-- [x] 管理系统（S_GameManager, S_UIManager）
-- [x] 关卡物件（S_BreakableBlock, S_Checkpoint, S_Pipline, S_MoveBlock）
-- [x] 工具脚本（S_coleve, S_setTrigger）
-- [x] 移动平台组件（S_MovingPlatform）— 命令式 Reveal/Hide API
-- [x] 关卡分段系统（S_LevelSection, S_LevelSectionController, S_SectionGoal）
-- [x] 移动平台 delta 位移传递修复（替代 SetParent）
-- [x] 移动平台子物体坐标快照（topWorldPos / bottomWorldPos）
-- [x] Section 系统重构（v0.4.0）：整体升降 + 双触发器 + Start/End 事件
-- [x] S_SectionGoal 位置固定（v0.4.1）：World Position Anchor 模式
-- [x] 错误处理机制：error-log.md + 错误联想扫描 + unity-dev skill 更新
-- [x] 所有系统设计文档（Assets/Perfab/Script/Project_Prompt/）
-- [x] 项目上下文管理结构搭建（.clinerules, memory-bank）
+## Completed
+- [x] Player Controller (S_Player, S_CameraMove)
+- [x] Skill System (S_SkillBase, S_SkillTree, S_Soild_sprint, S_fluid_climb)
+- [x] Game Event Bus (S_GameEvent)
+- [x] Manager Systems (S_GameManager, S_UIManager)
+- [x] Level Objects (S_BreakableBlock, S_Checkpoint, S_Pipline, S_MoveBlock)
+- [x] Utility Scripts (S_coleve, S_setTrigger)
+- [x] Moving Platform Component (S_MovingPlatform) — Reveal/Hide API with delta transfer
+- [x] Level Section System (S_LevelSection, S_LevelSectionController, S_SectionGoal) — v0.4.0 dual triggers
+- [x] Section system bug fixes (initialized guard, Y-only movement, World Position Anchor)
+- [x] NPC Guard System (S_NPCbase, S_NPCEnemy, S_EMProjectile) — v0.5.0
+- [x] Suspicion System (S_SuspicionSystem) — v0.5.0
+- [x] Hide Mechanic (S_HideSpot with static bridge) — v0.5.0
+- [x] Sprint Stun (OverlapCircleAll on enemy layer) — v0.5.0
+- [x] Audio System (S_AudioManager + GameEvent SFX events + Player SFX hooks)
+- [x] Error handling infrastructure (error-log.md, cross-reference workflow)
+- [x] All 9 system design documents + CHANGELOG
+- [x] Project context management (.clinerules, memory-bank, .cline/skills)
 
-## 进行中
-- [ ] Unity 测试 Section 系统整体升降效果
-- [ ] Section Prefab 搭建（Unity Editor 中组装）
+## In Progress
+- [ ] Unity Editor: layer setup (Enemy Layer 9, Projectile Layer 10, Collision Matrix)
+- [ ] Unity Editor: Section Prefab assembly with NPC guards and hide spots
 
-## 待做
-- [ ] 关卡实际搭建与调试
-- [ ] 音效系统集成（移动平台 Motor/Claw 音效）
-- [ ] 动画系统（爪片开合动画）
+## TODO
+- [ ] Chapter 2 playtest (guard patrol, suspicion meter, hide, arrest flow)
+- [ ] Claw animation system
+- [ ] Dialogue system (S_DialogueUI integration)
+- [ ] Level design and balancing
+- [ ] Audio asset import and assignment
 
 ---
-*最后更新：2026-05-03*
+*Last updated: 2026-05-06 (v0.5.0)*

@@ -1,5 +1,42 @@
 # InkForm — Changelog
 
+## v0.5.0 — NPC Guard System & Suspicion Meter (2026-05-06)
+
+### New Features
+- **NPC Guard System**: 5-state state machine (Patrol / Chase / Attack / Arrest / Stunned)
+  - `S_NPCbase` base class with identity, interaction, and component caching
+  - `S_NPCEnemy` guard with patrol waypoints, chase/attack ranges, and EM projectile attack
+  - `S_EMProjectile` fired during Attack state, applies paralyze on contact
+- **Suspicion System**: 0-100 meter tracking player visibility in Chapter 2
+  - `S_SuspicionSystem` singleton with AddSuspicion/SetSuspicion/CompleteMission API
+  - Three suspicion tiers (Normal 0-33 / Elevated 34-66 / Critical 67-99) + Arrest at 100
+  - Arrest also triggers on all 3 story missions complete
+  - Passive decay, safe zone decay, and hidden decay rates
+- **Hide Mechanic**: Player can hide in cabinets/pillars via `S_HideSpot`
+  - Static `PlayerHidden` bridge property connecting S_HideSpot ↔ S_NPCEnemy
+  - Press E to toggle hide; resets gravity, hides sprite and collider
+- **Sprint Stun**: `S_Soild_sprint` now uses `Physics2D.OverlapCircleAll` on enemy layer
+  - Stuns all guards within `stunRadius` on sprint activation
+
+### Bug Fixes
+- Fix `S_NPCEnemy.ValidatePlayerReference()` referencing root GameObject instead of body Transform
+  - Guards now correctly chase the player's moving body, not the static root
+- Fix `S_NPCbase.DistanceToPlayer()` using `S_Player.Instance.transform` (root) instead of `GetBodyTransform()`
+- Fix `S_SuspicionSystem.HandleGameRestart()` not resetting `PlayerHidden` static field
+  - Guards now correctly detect player after scene restart
+- Fix `S_Soild_sprint` OverlapCircle using player root transform position instead of body position
+
+### Layer & Physics Configuration
+- Added Enemy layer (User Layer 9) for NPC guards
+- Added Projectile layer (User Layer 10) for EM projectile collision
+- Configured Physics2D Layer Collision Matrix for Enemy↔Player and Projectile↔Player
+
+### Documentation
+- Added NPC System design document (architecture, state machine, layer setup, common errors)
+- Added Suspicion System design document (static bridge pattern, thresholds, API, restart safety)
+
+---
+
 ## v0.4.1 — Trigger World Position Anchor & Error Handling (2026-05-03)
 
 ### Bug Fixes

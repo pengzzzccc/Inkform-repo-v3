@@ -4,6 +4,46 @@ Known bugs and their fixes. Updated whenever a runtime or logic bug is discovere
 
 ---
 
+## 2026-05-06 | S_NPCEnemy chases root instead of body
+- **Symptom**: Guards chase the player's root GameObject (which doesn't move) instead of the actual moving body, so guards never reach the player.
+- **Root Cause**: `ValidatePlayerReference()` used `S_Player.Instance.transform` (root) instead of `GetBodyTransform()`. The root stays at y=0 while the body is the actual Rigidbody2D-tagged child that moves.
+- **Fix**: Changed `S_Player.Instance.transform` → `S_Player.Instance.GetBodyTransform()` in `ValidatePlayerReference()`.
+- **Related Scripts**: `S_NPCEnemy.cs`
+- **Lesson**: When the player uses root + body separation pattern, all Transform references must go through `GetBodyTransform()`. The root Transform is an anchor — no movement, no physics. Any script that calls `S_Player.Instance.transform` for distance/position is likely wrong.
+
+### Cross-Reference Scan Results
+- **S_NPCbase.DistanceToPlayer()**: Same bug — uses `S_Player.Instance.transform`. Fixed to use `GetBodyTransform()`.
+- **S_Soild_sprint OverlapCircle**: Uses player root transform as search center. Fixed to use body position.
+- **S_SuspicionSystem**: Does not reference Transform directly — safe.
+
+---
+
+## 2026-05-06 | S_SuspicionSystem.HandleGameRestart() leaves PlayerHidden stale
+- **Symptom**: After game restart, guards do not detect the player even when the player is visible, because `PlayerHidden` static field remains `true` from previous session.
+- **Root Cause**: `HandleGameRestart()` resets `currentSuspicion` and `missionsCompleted` but did not reset the static bridge field `PlayerHidden`.
+- **Fix**: Added `S_HideSpot.PlayerHidden = false;` to `HandleGameRestart()`.
+- **Related Scripts**: `S_SuspicionSystem.cs`, `S_HideSpot.cs`
+- **Lesson**: Static bridge fields used for cross-system communication must be included in all reset paths (game restart, scene load, checkpoint reload). Any static field not reset will carry state across scene loads.
+
+### Cross-Reference Scan Results
+- **Other static fields in project**: `S_Player.Instance` (rebuilt on scene load), `S_AudioManager.Instance` (rebuilt on scene load), `S_GameEvent` events (cleared by C# event losing subscribers on scene reload). All safe.
+- **S_SkillTree initialized flag**: Already has reset guard. Safe.
+
+---
+
+## 2026-05-06 | S_Soild_sprint OverlapCircle uses wrong search center
+- **Symptom**: Sprint stun never hits guards because OverlapCircle searches around root Transform (y=0), not the player's actual position.
+- **Root Cause**: `Physics2D.OverlapCircleAll(transform.position, ...)` uses root Transform. Root is at y=0, player body could be at y=10+.
+- **Fix**: Changed to `playerBodyTransform.position` (body Transform reference). Added diagnostic `Debug.Log` showing hits count and center position.
+- **Related Scripts**: `S_Soild_sprint.cs`
+- **Lesson**: Any Physics2D query (OverlapCircle, OverlapBox, Raycast) that uses the player's position must use body Transform, not root Transform.
+
+### Cross-Reference Scan Results
+- **S_fluid_climb**: Uses `transform.position` for climbing checks. But fluid climb is on the body child component — safe (not root).
+- **S_NPCEnemy chase**: Fixed above in entry #9. Safe now.
+
+---
+
 ## 2026-05-03 | S_LevelSection starts moving on game start without trigger
 - **Symptom**: Sections spontaneously move and disappear on game start. They reappear when the previous section's EndTrigger fires.
 - **Root Cause**: `S_LevelSectionController.Start()` calls `HideSection()` on all sections, but `S_LevelSection.Start()` may not have executed yet (execution order is not guaranteed). When `HideSection()` runs before `S_LevelSection.Start()`, `topWorldPos` is `Vector3.zero` (default), so `moveTarget = Vector3.zero` — sections move toward world origin and disappear.

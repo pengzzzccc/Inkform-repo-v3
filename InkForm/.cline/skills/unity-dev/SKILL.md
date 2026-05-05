@@ -110,6 +110,32 @@ void LateUpdate()
 }
 ```
 
+### OverlapCircle Stun (LayerMask Physics Query)
+```csharp
+// Use for area-of-effect stun/sense checks against specific layers
+// Requires enemyLayer field serialized in Inspector (e.g., User Layer 9 "Enemy")
+[Header("Stun Settings")]
+[SerializeField] private float stunRadius = 2f;
+[SerializeField] private LayerMask enemyLayer;
+
+void ApplyStun()
+{
+    Vector2 center = player.GetBodyTransform().position; // Body transform, NOT root
+    Collider2D[] hits = Physics2D.OverlapCircleAll(center, stunRadius, enemyLayer);
+    Debug.Log($"[Stun] OverlapCircle hits = {hits.Length}, center = {center}, layer = {enemyLayer.value}");
+
+    foreach (Collider2D hit in hits)
+    {
+        S_NPCEnemy enemy = hit.GetComponent<S_NPCEnemy>();
+        if (enemy != null) enemy.Stun();
+    }
+}
+```
+Key points:
+- Use **LayerMask** (not `CompareTag`) — faster, zero GC allocation
+- Use **body Transform.position** (not root Transform) as search center
+- Add **diagnostic log** showing hits count and center position for debugging
+
 ## Error Handling Rules
 
 ### Error Logging
@@ -145,6 +171,7 @@ Scan results:
 ```
 
 ## Important Notes
+- **GameObject Root vs Body Transform**: When a player GameObject has a root parent (fixed y=0) and a body child (Rigidbody2D), always use the body Transform for position/distance calculations. Use `S_Player.Instance.GetBodyTransform()` or expose a `GetBodyTransform()` method — never rely on `transform.position` of the root
 - Physics movement goes in `FixedUpdate()`, input detection goes in `Update()`
 - Use `Rigidbody2D.linearVelocity` instead of `velocity` (Unity 6 API)
 - Enable `Rigidbody2D` interpolation = `RigidbodyInterpolation2D.Interpolate` to avoid visual stuttering

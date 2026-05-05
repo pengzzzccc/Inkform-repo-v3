@@ -15,10 +15,27 @@ using UnityEngine;
 /// </summary>
 public class S_SuspicionSystem : MonoBehaviour
 {
+    public static S_SuspicionSystem Instance { get; private set; }
+
+    /// <summary>True while player is hiding. Set by S_HideSpot, read by S_NPCEnemy.</summary>
+    private static bool playerHidden;
+    public static bool PlayerHidden
+    {
+        get => playerHidden;
+        set
+        {
+            if (playerHidden == value) return;
+            playerHidden = value;
+            Debug.Log($"[S_SuspicionSystem] PlayerHidden → {value}");
+        }
+    }
+
     [Header("Suspicion Settings")]
     [SerializeField] private float maxSuspicion = 100f;
     [SerializeField] private float decayRate = 0f; // No decay by default; set > 0 for timed drain
     [SerializeField] private bool decayOnlyInSafeZone = true;
+    [SerializeField] private float increasePerAlert = 20f;
+    [SerializeField] private float hiddenDecayRate = 5f;
 
     [Header("Mission Completion")]
     [SerializeField] private int missionsToTriggerArrest = 3;
@@ -29,15 +46,24 @@ public class S_SuspicionSystem : MonoBehaviour
 
     public float CurrentSuspicion => currentSuspicion;
     public float SuspicionPercent => currentSuspicion / maxSuspicion;
+    public float MaxSuspicion => maxSuspicion;
+
+    void Awake()
+    {
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
+    }
 
     private void OnEnable()
     {
         S_GameEvent.OnGameRestart += HandleGameRestart;
+        S_GameEvent.OnAlertTriggered += HandleAlert;
     }
 
     private void OnDisable()
     {
         S_GameEvent.OnGameRestart -= HandleGameRestart;
+        S_GameEvent.OnAlertTriggered -= HandleAlert;
     }
 
     private void Update()
@@ -64,6 +90,20 @@ public class S_SuspicionSystem : MonoBehaviour
         }
     }
 
+    /// <summary>Set suspicion to an exact value (0 to maxSuspicion). Clamped.</summary>
+    public void SetSuspicion(float value)
+    {
+        if (arrestTriggered) return;
+
+        currentSuspicion = Mathf.Clamp(value, 0f, maxSuspicion);
+        S_GameEvent.SuspicionChanged(currentSuspicion);
+
+        if (currentSuspicion >= maxSuspicion)
+        {
+            TriggerArrest("suspicion_set_to_max");
+        }
+    }
+
     /// <summary>Call when a story mission is completed.</summary>
     public void CompleteMission()
     {
@@ -83,6 +123,18 @@ public class S_SuspicionSystem : MonoBehaviour
         AddSuspicion(-decayRate * Time.deltaTime);
     }
 
+    /// <summary>Called by S_HideSpot each frame while player is hidden.</summary>
+    public void HideDecay()
+    {
+        if (arrestTriggered || hiddenDecayRate <= 0f) return;
+        AddSuspicion(-hiddenDecayRate * Time.deltaTime);
+    }
+
+    private void HandleAlert(Transform npc)
+    {
+        AddSuspicion(increasePerAlert);
+    }
+
     private void TriggerArrest(string reason)
     {
         if (arrestTriggered) return;
@@ -96,6 +148,7 @@ public class S_SuspicionSystem : MonoBehaviour
         currentSuspicion = 0f;
         completedMissions = 0;
         arrestTriggered = false;
+        PlayerHidden = false;
         S_GameEvent.SuspicionChanged(0f);
     }
 

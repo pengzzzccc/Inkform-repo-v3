@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: -7655182772182811701}
   - component: {fileID: 7185668272029566861}
   - component: {fileID: 4200383022092285922}
+  - component: {fileID: 2262371285160420937}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -76,3 +77,21 @@ MonoBehaviour:
   bgmClip: {fileID: 8300000, guid: 98b755b11828cf24fa307d6110c274fc, type: 3}
   bgmVolume: 0.313
   sfxVolume: 0.851
+--- !u!114 &2262371285160420937
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1515654825031196278}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03c1145ce61aa324896f364448400950, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxSuspicion: 100
+  decayRate: 0
+  decayOnlyInSafeZone: 1
+  increasePerAlert: 20
+  hiddenDecayRate: 5
+  missionsToTriggerArrest: 3

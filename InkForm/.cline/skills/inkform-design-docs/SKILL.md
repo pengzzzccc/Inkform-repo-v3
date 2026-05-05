@@ -20,6 +20,8 @@ Load only the document(s) relevant to the current task:
 | Event, event system, GameEvent, broadcast | Game_Event_System_Design.md |
 | Manager, singleton, global state | Manager_Systems_Design.md |
 | Level section, Section, platform rise/fall, level flow | Level_Section_System_Design.md |
+| NPC, guard, patrol, chase, projectile, enemy | NPC_System_Design.md |
+| Suspicion, hide, arrest, alert, suspicion meter | Suspicion_System_Design.md |
 | Changelog, history, updates | CHANGELOG.md |
 
 ## Usage Rules

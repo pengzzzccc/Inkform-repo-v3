@@ -12,12 +12,15 @@ All system design documents are located in `Assets/Perfab/Script/Project_Prompt/
 - Game_Event_System_Design.md — Game event system
 - Manager_Systems_Design.md — Manager systems
 - Level_Section_System_Design.md — Level section system
+- NPC_System_Design.md — NPC guard system
+- Suspicion_System_Design.md — Suspicion meter & hide mechanics
 - CHANGELOG.md — Changelog
 
 ## Script Directory Structure
 - `Assets/Perfab/Script/player/` — Player-related (S_Player, S_SkillBase, S_SkillTree, S_Soild_sprint, S_fluid_climb)
-- `Assets/Perfab/Script/Manager/` — Managers (S_GameEvent, S_GameManager, S_UIManager)
-- `Assets/Perfab/Script/LevelCon/` — Level controllers (S_MovingPlatform, S_LevelSection, S_LevelSectionController, S_SectionGoal)
+- `Assets/Perfab/Script/Manager/` — Managers (S_GameEvent, S_GameManager, S_UIManager, S_SuspicionSystem)
+- `Assets/Perfab/Script/LevelCon/` — Level controllers (S_MovingPlatform, S_LevelSection, S_LevelSectionController, S_SectionGoal, S_HideSpot)
+- `Assets/Perfab/Script/Npcs/` — NPC system (S_NPCbase, S_NPCEnemy, S_EMProjectile)
 - `Assets/Perfab/Script/` — Common level objects (S_BreakableBlock, S_CameraMove, S_Checkpoint, S_MoveBlock, S_Pipline)
 - `Assets/Perfab/Script/tools/` — Utility scripts (S_coleve, S_setTrigger)
 - `Assets/Scripts/` — Legacy scripts (SimpleMovement, PlayerTransform, WallWalker2D)

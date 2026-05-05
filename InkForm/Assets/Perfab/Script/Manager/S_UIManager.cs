@@ -10,6 +10,9 @@ public class S_UIManager : MonoBehaviour
     [SerializeField] private Button StartButton;
     [SerializeField] private Button ReStartButton;
     [SerializeField] private Button ExitButton;
+    [Header("Suspicion UI")]
+    [SerializeField] private Slider suspicionSlider;
+    [SerializeField] private GameObject suspicionUI;
 
     private InputSystem_Actions m_ui;
     private InputAction openMemu;
@@ -54,6 +57,7 @@ public class S_UIManager : MonoBehaviour
         S_GameEvent.OnGameStart += HideUI;
         S_GameEvent.OnGameRestart += HideUI;
         S_GameEvent.OnPlayerDied += ShowUI;
+        S_GameEvent.OnSuspicionChanged += UpdateSuspicionBar;
         m_ui.Enable();
     }
 
@@ -62,9 +66,22 @@ public class S_UIManager : MonoBehaviour
         S_GameEvent.OnGameStart -= HideUI;
         S_GameEvent.OnGameRestart -= HideUI;
         S_GameEvent.OnPlayerDied -= ShowUI;
+        S_GameEvent.OnSuspicionChanged -= UpdateSuspicionBar;
         m_ui?.Disable();
     }
 
     void ShowUI() => background.SetActive(true);
     void HideUI() => background.SetActive(false);
+
+    private void UpdateSuspicionBar(float value)
+    {
+        if (suspicionUI != null)
+            suspicionUI.SetActive(value > 0f);
+
+        if (suspicionSlider != null)
+        {
+            float max = S_SuspicionSystem.Instance != null ? S_SuspicionSystem.Instance.MaxSuspicion : 100f;
+            suspicionSlider.value = value / max;
+        }
+    }
 }

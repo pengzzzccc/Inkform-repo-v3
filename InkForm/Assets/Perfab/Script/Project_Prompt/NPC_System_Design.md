@@ -1,245 +1,145 @@
-# NPC System Design — InkForm
+# NPC System Design
 
 ## Overview
-The NPC system provides all non-player characters across InkForm's three chapters. It is built on a common base class (`S_NPCbase`) with four specialized subclasses, plus a standalone `S_SuspicionSystem` manager for Chapter 2's core mechanic.
+The NPC system provides guard patrol/chase/attack behavior for Chapter 2 (The Nurserie). Guards detect the player, transition through a 5-state state machine, fire EM projectiles to paralyze the player, and arrest on contact. Guards lose their target when the player hides (via `S_SuspicionSystem.PlayerHidden`).
 
-## File Structure
-```
-Assets/Perfab/Script/Npcs/
-  ├── S_NPCbase.cs          — Base class (identity, interaction, lifecycle)
-  ├── S_NPCEnemy.cs         — Guard NPC (patrol + chase + arrest state machine)
-  ├── S_NPCDialogue.cs      — Dialogue NPC (linear and branching modes)
-  ├── S_NPCStory.cs         — K-01 labourer NPC (fixed patrol, mimic target)
-  └── S_NPCCamera.cs       — Surveillance drone (detection cone + alerts)
+## Architecture
 
-Assets/Perfab/Script/Manager/
-  └── S_SuspicionSystem.cs  — Suspicion meter (Ch2 core mechanic)
-```
-
-## Class Hierarchy
+### Class Hierarchy
 ```
 MonoBehaviour
-  └── S_NPCbase
-        ├── S_NPCEnemy   (guard patrol/chase/arrest)
-        ├── S_NPCDialogue (Ruth, Arthur, story NPCs)
-        ├── S_NPCStory   (K-01 workers, fixed routes)
-        └── S_NPCCamera  (surveillance drones)
+ └── S_NPCbase          (base: identity, interaction, sprite/Rigidbody2D refs)
+      └── S_NPCEnemy    (guard: full state machine, projectile attack)
 ```
 
-## S_NPCbase — Common Functionality
+### State Machine (S_NPCEnemy)
+```
+          ┌────────────────────────────────────────────┐
+          │                                            ▼
+Patrol ──► Chase ──► Attack ──► Arrest
+  ▲          │          │
+  │          ▼          ▼
+  └──── Disabled    Stunned ──► Patrol
+```
+- **Patrol**: Walk between `waypoints[]`, wait `waypointWaitTime` at each
+- **Chase**: Move toward player at `chaseSpeed`, activated when player enters `chaseRange`
+- **Attack**: Fire `projectilePrefab` at `fireRate` when player within `attackRange`
+- **Arrest**: Trigger arrest when player within `arrestRange`
+- **Stunned**: S_Soild_sprint sets this; duration `stunDuration`, then returns to Patrol
+- **Disabled**: All behavior suspended; guards do not see/react to player
 
-### Inspector Fields
+### Player Reference Cache
+`S_NPCEnemy` stores `playerTransform` as a cached reference—NOT serialized, NOT assigned in Inspector. It is resolved at runtime via `ValidatePlayerReference()`:
+```csharp
+private void ValidatePlayerReference()
+{
+    if (playerTransform != null) return;
+    if (S_Player.Instance != null)
+        playerTransform = S_Player.Instance.GetBodyTransform();
+}
+```
+This is called at the top of `Update()` every frame to handle scene reload safely.
+
+### GameObject Root vs Body Transform
+The player GameObject has a **root Transform** (the parent object, which remains at `y=0` or fixed position) and a **body Transform** (the child with Rigidbody2D, which actually moves). All NPC distance checks, chase targets, and detection queries MUST use `S_Player.Instance.GetBodyTransform()` — never `S_Player.Instance.transform` or `GameObject.Find("Player").transform`.
+
+## Inspector Configuration
+
+### S_NPCEnemy Fields
 | Group | Field | Type | Description |
 |-------|-------|------|-------------|
-| Identity | `npcName` | string | Display name |
-| Identity | `npcID` | string | Unique identifier |
-| Interaction | `canInteract` | bool | Player can interact |
-| Interaction | `interactRange` | float | Detection distance |
-| Dialogue (Optional) | `dialogueAsset` | TextAsset | Dialogue data |
+| State Machine | chaseRange | float | Distance to start chasing (default 8) |
+| | loseRange | float | Distance to lose target (default 12) |
+| | attackRange | float | Distance to start shooting (default 5) |
+| | arrestRange | float | Distance to arrest (default 1.5) |
+| | stunDuration | float | How long stunned state lasts (default 3) |
+| Attack | fireRate | float | Seconds between shots (default 1.5) |
+| | projectilePrefab | GameObject | S_EMProjectile prefab |
+| | projectileSpeed | float | Projectile travel speed (default 8) |
+| | firePoint | Transform | Spawn point for projectiles |
+| Patrol | waypoints | Transform[] | Patrol path points |
+| | patrolSpeed | float | Patrol movement speed (default 2) |
+| | waypointWaitTime | float | Wait time at each waypoint (default 1) |
+| Movement Speed | chaseSpeed | float | Chase movement speed (default 5) |
 
-### Core References
-Cached in `Awake()`:
-- `SpriteRenderer npcSprite`
-- `Rigidbody2D npcRig`
-- `Collider2D npcCol`
-
-### Lifecycle
-- `OnEnable()` subscribes to `OnGameStart`, `OnGameRestart`
-- `OnDisable()` unsubscribes
-- Subclasses MUST call `base.OnEnable()` / `base.OnDisable()`
-
-### Public API
-| Method | Description |
-|--------|-------------|
-| `OnInteract()` | Called when player interacts; fires `NPCInteract(npcID)` |
-| `SetActive(bool)` | Toggle NPC visibility and collision |
-| `FlipSprite(dirX)` | Flip sprite to face movement direction |
-
-## S_NPCEnemy — Guard NPC
-
-### State Machine
-```
-Idle → Patrol → Chase → Arrest → Disabled
-         ↑        ↓
-         └────────┘ (lose player)
-```
-
-### States
-| State | Behaviour |
-|-------|-----------|
-| **Idle** | Stand still (TODO) |
-| **Patrol** | Follow waypoint sequence at `patrolSpeed` |
-| **Chase** | Pursue player at `chaseSpeed` when within `chaseRange`, stop at `loseRange` |
-| **Arrest** | Rush to player at `arrestSpeed`; triggered by `OnArrestTriggered` |
-| **Disabled** | Inactive |
-
-### Suspicion Integration
-- Listens to `OnSuspicionChanged(value)` to adjust patrol speed and aggression
-- Transitions to Arrest state on `OnArrestTriggered()`
-
-### Inspector Fields
-| Group | Field | Type | Default |
-|-------|-------|------|---------|
-| Patrol | `waypoints` | Transform[] | — |
-| Patrol | `patrolSpeed` | float | 3 |
-| Patrol | `waypointWaitTime` | float | 1 |
-| Chase | `chaseSpeed` | float | 6 |
-| Chase | `chaseRange` | float | 8 |
-| Chase | `loseRange` | float | 12 |
-| Arrest | `arrestSpeed` | float | 9 |
-
-## S_NPCDialogue — Dialogue NPC
-
-### Modes
-| Mode | Use Case |
-|------|----------|
-| **Linear** | Ruth (Ch1 Branch1), simple NPCs |
-| **Branching** | Arthur (Ch3) — dialogue changes based on collected documents and branch history |
-
-### Dialogue Flow
-1. `OnInteract()` → `StartDialogue()` → fires `StoryTrigger("Dialogue_Start_{npcID}")`
-2. Player advances → `AdvanceDialogue()` → next line
-3. Last line → `EndDialogue()` → fires `StoryTrigger("Dialogue_End_{npcID}"`
-
-### Inspector Fields
+### S_EMProjectile Fields
 | Group | Field | Type | Description |
 |-------|-------|------|-------------|
-| Dialogue Mode | `mode` | enum | Linear or Branching |
-| Linear | `linearLines` | string[] | Dialogue array |
-| Branching | `branchA_Lines` | string[] | Dialogue for branch A |
-| Branching | `branchB_Lines` | string[] | Dialogue for branch B |
-| Dialogue UI | `textSpeed` | float | Characters per second |
+| Paralyze Effect | paralyzeDuration | float | How long player is paralyzed (default 3) |
+| | moveSpeedReduction | float | Player speed multiplier while paralyzed (default 0.5) |
+| Movement | speed | float | Projectile travel speed (default 8) |
+| | maxLifetime | float | Auto-destroy after this many seconds (default 5) |
 
-### Future: TextAsset Parser
-`dialogueAsset` field is inherited from `S_NPCbase`. When implemented, the parser will load dialogue from structured text files instead of inspector arrays.
+## Layer & Physics Setup
 
-## S_NPCStory — K-01 Labourer NPC
+### Required Layers (TagManager.asset)
+Create custom layers in Edit → Project Settings → Tags and Layers:
+- **Player** layer (User Layer 8) — assigned to player's body child
+- **Enemy** layer (User Layer 9) — assigned to NPC guard GameObjects
+- **Projectile** layer (User Layer 10) — assigned to EM projectile prefab
 
-### Purpose
-Fixed-route NPCs with no chase behaviour. Used for:
-- **Chapter 1 Branch 2**: K-01 workers on the factory floor (player mimics their movement)
-- **Chapter 2**: Nurserie K-01 workers (suspicion increases when player separates from groups)
+### Enemy Layer Mask (S_Soild_sprint)
+```
+enemyLayer = Enemy (layer 9)
+```
+Set this in the Sprint Skill ScriptableObject's Inspector.
 
-### Movement
-- Follows `waypoints[]` sequence at `moveSpeed`
-- Waits `waypointWaitTime` at each waypoint
-- Loops if `loopRoute = true`
+### Physics2D Collision Matrix (Physics2DSettings.asset)
+Ensure the Layer Collision Matrix has:
+- **Enemy × Player**: CHECKED (so guards detect player for chase/arrest)
+- **Enemy × Enemy**: UNCHECKED (so guards don't block each other's projectiles)
+- **Proj. × Player**: CHECKED (so projectiles hit the player)
+- **Proj. × Ground**: CHECKED (so projectiles die on walls)
 
-### Mimicry System (Future)
-- `isMimicTarget`: Flag for K-01 units the player can mimic
-- `mimicDetectionRange`: Range at which player must match movement patterns
+### Camera Culling Mask
+If guards are invisible in Game View:
+1. Select the Main Camera
+2. In the Camera component, find **Culling Mask**
+3. Ensure the **Enemy** layer is CHECKED
+4. Also check **Projectile** layer if projectiles are invisible
 
-## S_NPCCamera — Surveillance Drone
+## S_Soild_sprint Stun Mechanic
+When Sprint is activated, `Physics2D.OverlapCircleAll()` searches for all colliders on the `enemyLayer` within `stunRadius`:
+```csharp
+Vector2 center = player.GetBodyTransform().position;
+Collider2D[] hits = Physics2D.OverlapCircleAll(center, stunRadius, enemyLayer);
+foreach (Collider2D hit in hits)
+{
+    S_NPCEnemy enemy = hit.GetComponent<S_NPCEnemy>();
+    if (enemy != null) enemy.Stun();
+}
+```
+- Uses **body Transform position** (NOT root transform) as center
+- Uses **LayerMask** (NOT tag comparison) for efficiency
+- Only affects `S_NPCEnemy` components (ignores other NPC types)
 
-### Detection System
-- Cone-shaped detection zone (range + angle)
-- Cooldown between detections prevents spam
-- On detection: fires `SuspicionChanged(+30)` and `AlertTriggered(transform)`
+## Common Errors
 
-### Visual Feedback (TODO)
-- `idleLight` (green) → normal state
-- `alertLight` (red) → during detection cooldown
+### 1. Guards not visible in Game View
+- **Symptom**: Guards exist in Hierarchy but don't render
+- **Cause**: Camera Culling Mask doesn't include the Enemy layer
+- **Fix**: Select Main Camera → Culling Mask → check Enemy layer
 
-### Inspector Fields
-| Group | Field | Type | Default |
-|-------|-------|------|---------|
-| Patrol | `waypoints` | Transform[] | — |
-| Patrol | `patrolSpeed` | float | 2 |
-| Patrol | `waypointWaitTime` | float | 1 |
-| Detection | `detectionRange` | float | 8 |
-| Detection | `detectionAngle` | float | 60° |
-| Detection | `detectionCooldown` | float | 2 |
-| Detection | `suspicionOnDetect` | int | 30 |
-| Visual | `idleLight` | Color | Green |
-| Visual | `alertLight` | Color | Red |
+### 2. OverlapCircleAll returns 0 hits
+- **Symptom**: Sprint stun never hits enemies; debug log shows `hits=0`
+- **Causes** (check all):
+  - `enemyLayer` field not set in the Sprint Skill asset Inspector
+  - Guards are on Default layer, not Enemy layer
+  - Enemy×Player collision unchecked in Physics2D Layer Collision Matrix
+  - Camera Culling Mask issue (guards exist but invisible — separate from collision)
+- **Fix**: Verify all three conditions above
 
-## S_SuspicionSystem — Suspicion Meter
+### 3. Guards don't chase player
+- **Symptom**: Guards stay in Patrol state; player walks through chaseRange
+- **Cause**: `playerTransform` caching bug — references root GameObject (which doesn't move) instead of body
+- **Fix**: Ensure `ValidatePlayerReference()` calls `S_Player.Instance.GetBodyTransform()`
 
-### Location
-`Assets/Perfab/Script/Manager/S_SuspicionSystem.cs`
+### 4. Guards keep chasing after player hides
+- **Symptom**: Player enters S_HideSpot, guards don't lose target
+- **Cause**: Scene reload didn't reset `S_SuspicionSystem.PlayerHidden` (static field retained old value)
+- **Fix**: `S_SuspicionSystem.HandleGameRestart()` must set `PlayerHidden = false`
 
-### Thresholds (from Story_Outline.md)
-| Range | Level | Guard Behaviour |
-|-------|-------|-----------------|
-| 0–33 | Normal | Standard patrols |
-| 34–66 | Elevated | Additional patrols, faster guards |
-| 67–99 | Critical | Active search, alarm pre-warning |
-| 100 | **Arrest** | EMP storm deployed |
-
-### Suspicion Sources (from Story_Outline.md)
-| Trigger | Suspicion |
-|---------|-----------|
-| Separated from K-01 groups (per second) | +10 |
-| Caught on camera in restricted zone | +30 (one-time) |
-| Violating worker protocol | +20 per incident |
-| Entering archive vault | +50 |
-| Entering observation deck | +40 |
-| Accessing communications tower | +60 |
-
-### Public API
-| Method | Description |
-|--------|-------------|
-| `AddSuspicion(amount)` | Modify meter; clamps 0–100; fires `OnSuspicionChanged` |
-| `CompleteMission()` | Increment completed missions; triggers arrest at 3/3 |
-| `SafeZoneDecay()` | Call from safe zone triggers for timed suspicion decay |
-| `CurrentSuspicion` | Read current value |
-| `SuspicionPercent` | 0.0–1.0 normalized |
-
-### Arrest Triggers
-1. Suspicion reaches 100/100
-2. All 3 story missions completed (canon path)
-
-## GameEvent Integration
-
-### New Events (added to S_GameEvent.cs)
-| Event | Signature | Fired By |
-|-------|-----------|----------|
-| `OnNPCInteract` | `Action<string>` (npcID) | `S_NPCbase.OnInteract()` |
-| `OnSuspicionChanged` | `Action<float>` (0–100) | `S_SuspicionSystem.AddSuspicion()` |
-| `OnAlertTriggered` | `Action<Transform>` (npc) | `S_NPCCamera.OnPlayerDetected()` |
-| `OnArrestTriggered` | `Action` | `S_SuspicionSystem.TriggerArrest()` |
-| `OnStoryTrigger` | `Action<string>` (triggerID) | `S_NPCDialogue`, level triggers |
-
-### Event Subscribers
-| Event | Subscribers |
-|-------|-------------|
-| `OnGameStart` | All NPC subclasses (via base) |
-| `OnGameRestart` | All NPC subclasses (via base), `S_SuspicionSystem` |
-| `OnSuspicionChanged` | `S_NPCEnemy` (adjust behaviour) |
-| `OnArrestTriggered` | `S_NPCEnemy` (enter Arrest state) |
-| `OnStoryTrigger` | `S_NPCDialogue` (auto-start dialogue) |
-
-## Story Mapping
-
-| Chapter | NPC Type | File | Notes |
-|---------|----------|------|-------|
-| Ch1 Escape | `S_NPCEnemy` | Guard patrols | Avoid or break through with solid form |
-| Ch1 Escape | `S_NPCCamera` | Drones | Trigger alerts |
-| Ch1 Branch1 | `S_NPCDialogue` | Ruth | Linear dialogue, hidden room |
-| Ch1 Branch2 | `S_NPCStory` | K-01 workers | Mimicry sequence |
-| Ch1 Branch2 | `S_NPCDialogue` | Terminal | K-01 cluster manager terminal |
-| Ch2 Nurserie | `S_NPCEnemy` | Guards | Behaviour changes with suspicion |
-| Ch2 Nurserie | `S_NPCStory` | K-01 workers | Group separation triggers suspicion |
-| Ch2 Nurserie | `S_NPCCamera` | Drones | Restricted zone detection |
-| Ch3 Control | `S_NPCDialogue` | Arthur | Branching dialogue |
-| Ch3 Control | `S_NPCDialogue` | Ruth | Silent presence during final choice |
-
-## Implementation Status
-- [x] `S_NPCbase` — complete base class
-- [x] `S_NPCEnemy` — state machine skeleton
-- [x] `S_NPCDialogue` — dialogue flow skeleton
-- [x] `S_NPCStory` — K-01 patrol complete
-- [x] `S_NPCCamera` — detection + patrol complete
-- [x] `S_SuspicionSystem` — meter + arrest logic complete
-- [ ] `S_NPCEnemy` — full patrol/chase/arrest movement logic
-- [ ] `S_NPCDialogue` — dialogue UI integration
-- [ ] `S_NPCStory` — mimicry system
-- [ ] `S_NPCCamera` — light colour visual feedback
-- [ ] `S_DialogueUI` — dialogue UI manager (separate system)
-- [ ] `S_InventorySystem` — document/key item collection (separate system)
-
-## Dependencies
-- `S_Player` — Player singleton (distance checks)
-- `S_GameEvent` — Event bus (all NPC events)
-- `S_GameManager` — Game restart handling
-- `S_UIManager` — Future: dialogue UI display
+### 5. Projectiles not hitting player
+- **Symptom**: EMProjectile passes through player
+- **Cause**: Projectile layer × Player layer unchecked in Physics2D collision matrix
+- **Fix**: Check the collision matrix entry

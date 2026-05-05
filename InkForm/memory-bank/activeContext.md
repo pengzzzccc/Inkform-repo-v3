@@ -1,37 +1,35 @@
-# Current Focus
+# Active Context
 
 ## Active Work
-- NPC system implemented: S_NPCbase + 4 subclasses + S_SuspicionSystem
-- Audio system integrated: S_AudioManager (BGM + SFX), S_GameEvent audio events, S_Player SFX hooks
-- Section system runtime bug fixes complete
-- Known fixes: initialized guard (Start order), Y-axis movement (horizontal drift), World Position Anchor (trigger fix)
+- NPC Guard System implemented: S_NPCbase, S_NPCEnemy, S_EMProjectile
+- Suspicion System implemented: S_SuspicionSystem singleton with 3-tier thresholds
+- Hide Mechanic implemented: S_HideSpot with static PlayerHidden bridge
+- Sprint Stun: S_Soild_sprint now uses OverlapCircleAll on enemy layer
+- 4 bugs fixed in v0.5.0 (root vs body transform, HandleGameRestart, OverlapCircle center)
 
 ## Recent Decisions
-- NPC system: S_NPCbase base class with OnInteract(), SetActive(), FlipSprite(), DistanceToPlayer()
-- S_NPCEnemy: Patrol/Chase/Arrest state machine (skeleton), listens to SuspicionChanged + ArrestTriggered
-- S_NPCDialogue: Linear + Branching modes, StoryTrigger events for dialogue lifecycle
-- S_NPCStory: K-01 fixed patrol (complete), mimic system placeholder
-- S_NPCCamera: Cone detection + cooldown (complete), triggers SuspicionChanged + AlertTriggered
-- S_SuspicionSystem: 0–100 meter, 3-tier thresholds, 2 arrest triggers (suspicion max / all missions complete)
-- 5 new S_GameEvent events: OnNPCInteract, OnSuspicionChanged, OnAlertTriggered, OnArrestTriggered, OnStoryTrigger
-- Audio: SFX routed through S_GameEvent for decoupling; BGM/SFX volume controlled via Inspector Range sliders
-- Section only moves on Y axis, X/Z keeps section's own position
-- Initialized guard: Reveal/Hide returns early when !initialized
-- Design documents and CHANGELOG only updated before major version pushes
-- Errors logged to memory-bank/error-log.md, not modifying design docs directly
+- NPC system: 5-state state machine (Patrol / Chase / Attack / Arrest / Stunned)
+- S_NPCEnemy: ChaseRange / AttackRange fields, EM projectile attack, waypoint patrol
+- S_EMProjectile: fired during Attack state, applies paralyze on player contact
+- S_SuspicionSystem: 0-100 meter, AddSuspicion/SetSuspicion/CompleteMission API
+- Suspicion tiers: Normal 0-33 / Elevated 34-66 / Critical 67-99 + Arrest at 100
+- Arrest triggers: suspicion=100 OR all 3 missions complete
+- Hide: press E to toggle hide in cabinets/pillars; reset gravity, hide sprite/collider
+- Static bridge pattern: S_HideSpot.PlayerHidden ↔ S_NPCEnemy reads it
+- All position calculations must use body Transform, not root Transform
 
 ## Blocked
 - None
 
 ## Next Steps
-- S_NPCEnemy full patrol/chase/arrest movement logic
-- S_NPCDialogue dialogue UI integration (need S_DialogueUI system)
-- S_NPCStory mimicry system
-- S_NPCCamera light colour visual feedback
-- Import audio assets (wav/mp3/ogg) and assign to Player (jumpClip, formSwitchClip) and AudioManager (bgmClip)
-- Unity test audio playback
-- Build Section Prefab (Unity Editor assembly)
+- Unity Editor: assign NPC prefabs to Enemy layer (User Layer 9)
+- Unity Editor: assign EMProjectile to Projectile layer (User Layer 10)
+- Unity Editor: configure Physics2D Layer Collision Matrix
+- Unity Editor: build Section Prefabs with NPC guards and hide spots
+- Unity Editor: assign audio clips to Inspector fields
+- Playtest Chapter 2 with full guard + suspicion + hide mechanics
 - Claw animation system
+- Dialogue system integration
 
 ---
 
@@ -53,20 +51,22 @@ S_Player (SFX trigger points):
 ---
 
 ## Completed (Previous Sessions)
-- [x] NPC system implemented (S_NPCbase + 4 subclasses + S_SuspicionSystem + GameEvent extensions)
+- [x] NPC Guard System (S_NPCbase + S_NPCEnemy + S_EMProjectile)
+- [x] Suspicion System (S_SuspicionSystem singleton)
+- [x] Hide Mechanic (S_HideSpot with static bridge)
+- [x] Sprint Stun (OverlapCircleAll on enemy layer)
+- [x] 4 root-vs-body-transform bugs fixed
 - [x] NPC_System_Design.md created
+- [x] Suspicion_System_Design.md created
+- [x] CHANGELOG updated to v0.5.0
 - [x] Audio system integration (S_AudioManager + S_GameEvent events + S_Player hooks)
-- [x] Code review and bug fixes (5 critical + quality improvements)
-- [x] Documentation comments added and removed
-- [x] Moving platform component created
-- [x] Level section system implemented
 - [x] Section system overhaul (v0.4.0): dual triggers, section-level movement
 - [x] World Position Anchor for S_SectionGoal triggers (v0.4.1)
 - [x] Error handling infrastructure (error-log.md, cross-reference workflow)
-- [x] S_LevelSection horizontal drift fix (Y-axis only movement)
+- [x] S_LevelSection horizontal drift fix
 - [x] S_LevelSection initialized guard fix
-- [x] .clinerules → English conversion
-- [x] Skill docs → English conversion
-- [x] Unity-dev skill → English conversion
-- [x] Project_Prompt design documents enhanced with detail
-- [x] Language rule: all communication in English
+- [x] All design documents created (8 docs + CHANGELOG)
+- [x] Code review and bug fixes (5 critical + quality improvements)
+- [x] Moving platform component with delta transfer
+- [x] Player controller, skill system, game event bus
+- [x] Manager systems, level objects, utility scripts

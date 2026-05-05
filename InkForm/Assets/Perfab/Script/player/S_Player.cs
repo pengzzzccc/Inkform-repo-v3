@@ -21,6 +21,9 @@ public class S_Player : MonoBehaviour
     [Header("SFX")]
     [SerializeField] private AudioClip jumpClip;
     [SerializeField] private AudioClip formSwitchClip;
+    [Header("Paralyze")]
+    [SerializeField] private float paralyzeSlowMultiplier = 0.5f;
+    [SerializeField] private float defaultParalyzeDuration = 3f;
 
 
     private float moveSpeed;
@@ -32,6 +35,10 @@ public class S_Player : MonoBehaviour
     private Rigidbody2D b_Rig;
     private SpriteRenderer b_Sprite;
     private Collider2D b_Col;
+    private int baseMaxJump;
+    private float baseMoveSpeed;
+    private Coroutine paralyzeCoroutine;
+    private bool isParalyzed = false;
 
     private InputSystem_Actions m_Actions;
     private InputAction m_PlayerMove;
@@ -46,7 +53,13 @@ public class S_Player : MonoBehaviour
 
     private bool isSprinting = false;
 
-    public void SetSprinting(bool value) => isSprinting = value;
+    public void SetSprinting(bool value)
+    {
+        if (value && isParalyzed) return;
+        isSprinting = value;
+    }
+
+    public bool IsParalyzed => isParalyzed;
 
     private bool sprintMomentum = false;
 
@@ -74,6 +87,8 @@ public class S_Player : MonoBehaviour
         jumpSpeed = JumpSpeed;
         maxJump = MaxJump;
         jumpCoolDownTime = JumpCoolDownTime;
+        baseMaxJump = MaxJump;
+        baseMoveSpeed = MoveSpeed;
 
         b_Rig = body.GetComponent<Rigidbody2D>();
         b_Sprite = body.GetComponent<SpriteRenderer>();
@@ -120,7 +135,7 @@ public class S_Player : MonoBehaviour
         {
             if (jumpCoolDownTimer > 0) jumpCoolDownTimer -= Time.deltaTime;
 
-            if (m_PlayerJump.WasPerformedThisFrame() && jumpCount < maxJump && jumpCoolDownTimer <= 0)
+            if (m_PlayerJump.WasPerformedThisFrame() && jumpCount < maxJump && jumpCoolDownTimer <= 0 && !isParalyzed)
             {
                 S_GameEvent.PlaySFX(jumpClip);
                 b_Rig.linearVelocity = new Vector2(b_Rig.linearVelocity.x, 0);
@@ -151,7 +166,7 @@ public class S_Player : MonoBehaviour
 
     void FluidMovement()
     {
-        if (fluidClimbSkill != null && gripping)
+        if (fluidClimbSkill != null && gripping && !isParalyzed)
         {
             fluidClimbSkill.FluidMovementTick(this);
             return;
@@ -174,8 +189,8 @@ public class S_Player : MonoBehaviour
         if (!isSprinting)
         {
             moveV = m_PlayerMove.ReadValue<Vector2>().x;
-
-            b_Rig.linearVelocity = new Vector2(moveV * moveSpeed, b_Rig.linearVelocity.y);
+            float speed = isParalyzed ? moveSpeed * paralyzeSlowMultiplier : moveSpeed;
+            b_Rig.linearVelocity = new Vector2(moveV * speed, b_Rig.linearVelocity.y);
         }
 
         if (moveV > 0 && !facingRight)
@@ -266,6 +281,34 @@ public class S_Player : MonoBehaviour
 
 
 
+
+    public void ApplyParalyze(float duration, float slowMultiplier)
+    {
+        // Use provided values or defaults
+        float dur = duration > 0f ? duration : defaultParalyzeDuration;
+        float mult = slowMultiplier > 0f ? slowMultiplier : paralyzeSlowMultiplier;
+
+        if (paralyzeCoroutine != null)
+            StopCoroutine(paralyzeCoroutine);
+
+        paralyzeCoroutine = StartCoroutine(ParalyzeRoutine(dur, mult));
+    }
+
+    private System.Collections.IEnumerator ParalyzeRoutine(float duration, float slowMultiplier)
+    {
+        isParalyzed = true;
+        maxJump = 1;
+        moveSpeed = baseMoveSpeed * slowMultiplier;
+        SetSprinting(false);
+
+        yield return new WaitForSeconds(duration);
+
+        isParalyzed = false;
+        maxJump = baseMaxJump;
+        moveSpeed = baseMoveSpeed;
+
+        paralyzeCoroutine = null;
+    }
 
     void OnEnable()
     {

@@ -12,8 +12,14 @@ public class S_Soild_sprint : S_SkillBase
 
     [System.NonSerialized] private float lastUsedTime = -999f;
 
+    [Header("Stun on Contact")]
+    [SerializeField] private float stunRadius = 2f;
+    [SerializeField] private LayerMask enemyLayer;
+
     public override void Activate(S_Player player)
     {
+        if (player.IsParalyzed) return;
+
         if (Time.time - lastUsedTime < cooldown)
         {
             Debug.Log($"[Sprint] cooling down, {cooldown - (Time.time - lastUsedTime):F1}s remaining");
@@ -29,6 +35,19 @@ public class S_Soild_sprint : S_SkillBase
         player.GetRigidbody().AddForce(new Vector2(dir * sprintSpeed, 0), ForceMode2D.Impulse);
         player.SetSprintMomentum(true);
         player.StartCoroutine(SprintLock(player));
+
+        // Stun nearby guards
+        Vector2 center = player.GetBodyTransform().position;
+        Collider2D[] hits = Physics2D.OverlapCircleAll(center, stunRadius, enemyLayer);
+        foreach (Collider2D hit in hits)
+        {
+            S_NPCEnemy enemy = hit.GetComponent<S_NPCEnemy>();
+            if (enemy != null)
+            {
+                Debug.Log($"[Sprint] Hit enemy: {enemy.NPCName}");
+                enemy.Stun();
+            }
+        }
     }
 
     private IEnumerator SprintLock(S_Player player)

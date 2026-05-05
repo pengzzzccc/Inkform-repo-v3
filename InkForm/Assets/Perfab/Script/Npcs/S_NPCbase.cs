@@ -78,11 +78,11 @@ public class S_NPCbase : MonoBehaviour
         if (npcCol != null) npcCol.enabled = active;
     }
 
-    /// <summary>Distance from this NPC to the player, if player exists.</summary>
+    /// <summary>Distance from this NPC to the player's body (Rigidbody2D), if player exists.</summary>
     protected float DistanceToPlayer()
     {
         if (S_Player.Instance == null) return float.MaxValue;
-        return Vector2.Distance(transform.position, S_Player.Instance.transform.position);
+        return Vector2.Distance(transform.position, S_Player.Instance.GetBodyTransform().position);
     }
 
     /// <summary>Is the player within interactRange?</summary>
