@@ -50,7 +50,7 @@ The project name "InkForm" refers to the entity's dual-state physicality. Arthur
 
 The game world consists of ruined Old World structures built atop and around JARL's facilities:
 
-- **Laboratory Complex** (Chapter 1): The experimental facility where InkForm is developed. Contains testing chambers, maintenance corridors, hidden observation rooms, and connects to the factory floor.
+- **Laboratory Complex** (Chapter 1): The experimental facility where InkForm is developed. Contains testing chambers, maintenance corridors, experimental building, hidden observation rooms, and connects to the factory floor.
 - **Nurserie Island** (Chapter 2): A domed greenhouse surrounded by ocean. Inside: children's habitation blocks, observation decks, an archive vault, and a communications tower. Guard patrols and surveillance cameras maintain the isolation protocol.
 - **Control Center** (Chapter 3): The nerve centre of JARL. Contains the Control Hub — the physical interface for the K-02 AGI that will execute the Willard Protocol. Access is restricted to Willard-family personnel.
 
