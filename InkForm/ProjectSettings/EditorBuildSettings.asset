@@ -14,9 +14,12 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/CharacterTest.unity
     guid: 47c5a7c83af6b524cb9ffc3711c08db1
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/CoreToyPrototype_mergeTest.unity
     guid: df1c0c2e10064d446a960fed8bc93765
+  - enabled: 1
+    path: Assets/Scenes/Playtest1.unity
+    guid: d89088fbe1afcb1419d44060683b6aa9
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0
