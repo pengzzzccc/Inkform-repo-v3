@@ -47,29 +47,29 @@ All design documents live in `Assets/Perfab/Script/Project_Prompt/`.
 
 | Document | System |
 |----------|--------|
-| [Player_Controller_Design.md](Assets/Perfab/Script/Project_Prompt/Player_Controller_Design.md) | Player controller — movement, form switching, physics |
-| [Skill_System_Design.md](Assets/Perfab/Script/Project_Prompt/Skill_System_Design.md) | Skill system — abilities, unlock tree |
-| [Level_Objects_Design.md](Assets/Perfab/Script/Project_Prompt/Level_Objects_Design.md) | Level objects — platforms, hazards, interactables |
-| [Moving_Platform_Component_Design.md](Assets/Perfab/Script/Project_Prompt/Moving_Platform_Component_Design.md) | Moving platform component |
-| [Game_Event_System_Design.md](Assets/Perfab/Script/Project_Prompt/Game_Event_System_Design.md) | Game event system — decoupled event bus |
-| [Manager_Systems_Design.md](Assets/Perfab/Script/Project_Prompt/Manager_Systems_Design.md) | Manager systems — Game, UI, Audio managers |
-| [Level_Section_System_Design.md](Assets/Perfab/Script/Project_Prompt/Level_Section_System_Design.md) | Level section system — chunked level loading |
+| [Player_Controller_Design.md](InkForm/Assets/Perfab/Script/Project_Prompt/Player_Controller_Design.md) | Player controller — movement, form switching, physics |
+| [Skill_System_Design.md](InkForm/Assets/Perfab/Script/Project_Prompt/Skill_System_Design.md) | Skill system — abilities, unlock tree |
+| [Level_Objects_Design.md](InkForm/Assets/Perfab/Script/Project_Prompt/Level_Objects_Design.md) | Level objects — platforms, hazards, interactables |
+| [Moving_Platform_Component_Design.md](InkForm/Assets/Perfab/Script/Project_Prompt/Moving_Platform_Component_Design.md) | Moving platform component |
+| [Game_Event_System_Design.md](InkForm/Assets/Perfab/Script/Project_Prompt/Game_Event_System_Design.md) | Game event system — decoupled event bus |
+| [Manager_Systems_Design.md](InkForm/Assets/Perfab/Script/Project_Prompt/Manager_Systems_Design.md) | Manager systems — Game, UI, Audio managers |
+| [Level_Section_System_Design.md](InkForm/Assets/Perfab/Script/Project_Prompt/Level_Section_System_Design.md) | Level section system — chunked level loading |
 
 ### Narrative Design
 
 | Document | Content |
 |----------|---------|
-| [Narrative_Index.md](Assets/Perfab/Script/Project_Prompt/Narrative_Index.md) | Reading guide and document map |
-| [World_Overview.md](Assets/Perfab/Script/Project_Prompt/World_Overview.md) | World history, JARL's three institutions, K-01/K-02 |
-| [Characters.md](Assets/Perfab/Script/Project_Prompt/Characters.md) | Profiles: InkForm, Mary, Arthur, Ruth, K-01, K-02 |
-| [Story_Outline.md](Assets/Perfab/Script/Project_Prompt/Story_Outline.md) | Full Chapter 1–3 plot, branches, endings A & B |
-| [Willard_Protocol.md](Assets/Perfab/Script/Project_Prompt/Willard_Protocol.md) | In-universe protocol document + Ruth's addendum |
+| [Narrative_Index.md](InkForm/Assets/Perfab/Script/Project_Prompt/Narrative_Index.md) | Reading guide and document map |
+| [World_Overview.md](InkForm/Assets/Perfab/Script/Project_Prompt/World_Overview.md) | World history, JARL's three institutions, K-01/K-02 |
+| [Characters.md](InkForm/Assets/Perfab/Script/Project_Prompt/Characters.md) | Profiles: InkForm, Mary, Arthur, Ruth, K-01, K-02 |
+| [Story_Outline.md](InkForm/Assets/Perfab/Script/Project_Prompt/Story_Outline.md) | Full Chapter 1–3 plot, branches, endings A & B |
+| [Willard_Protocol.md](InkForm/Assets/Perfab/Script/Project_Prompt/Willard_Protocol.md) | In-universe protocol document + Ruth's addendum |
 
 ### Changelog
 
 | Document | Content |
 |----------|---------|
-| [CHANGELOG.md](Assets/Perfab/Script/Project_Prompt/CHANGELOG.md) | Version history and major changes |
+| [CHANGELOG.md](InkForm/Assets/Perfab/Script/Project_Prompt/CHANGELOG.md) | Version history and major changes |
 
 ---
 
