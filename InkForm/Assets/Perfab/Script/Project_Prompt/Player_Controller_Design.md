@@ -36,6 +36,7 @@ S_Player (Singleton)
 |-- Physics: Rigidbody2D, CircleCollider2D, PhysicsMaterial2D
 |-- Rendering: SpriteRenderer, Sprite[]
 |-- Skills: S_fluid_climb (wall climbing integration)
+|-- Audio: S_GameEvent.PlaySFX() (jump, form switch SFX)
 `-- Events: S_SkillTree (sprint activation)
 ```
 
@@ -109,11 +110,13 @@ Player (S_Player component)
 | fluidClimbSkill | - | Reference to S_fluid_climb ScriptableObject |
 | solidGravityScale | 4f | Gravity scale in solid form |
 | kickForceMultiplier | 10f | Force multiplier for KickOut() |
+| jumpClip | - | SFX played on jump |
+| formSwitchClip | - | SFX played when form changes |
 
 **Public Methods**:
 | Method | Parameters | Description |
 |--------|------------|-------------|
-| `SetForm(form)` | bool (false=solid, true=fluid) | Switch between forms, swap physics material |
+| `SetForm(form)` | bool (false=solid, true=fluid) | Switch between forms, swap physics material. Fires `S_GameEvent.PlaySFX(formSwitchClip)` only when form actually changes |
 | `getForm()` | none → bool | Returns false=solid, true=fluid |
 | `SetSprinting(bool)` | bool | Lock/unlock movement during sprint |
 | `SetSprintMomentum(bool)` | bool | Track sprint momentum state |
@@ -134,7 +137,7 @@ Player (S_Player component)
 | `SolidMovement()` | Horizontal movement + vertical input + surface classification |
 | `FluidMovement()` | Checks grip → delegates to S_fluid_climb or falls back to SolidMovement |
 | `UpdateSprite()` | Flips sprite based on facing direction |
-| `Jump()` | Applies jump impulse with cooldown and max jump count |
+| `Jump()` | Applies jump impulse with cooldown and max jump count. Fires `S_GameEvent.PlaySFX(jumpClip)` |
 
 ### 3.2 S_CameraMove.cs
 

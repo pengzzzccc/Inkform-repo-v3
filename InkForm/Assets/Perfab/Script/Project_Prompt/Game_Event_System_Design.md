@@ -38,6 +38,8 @@ Producer (invokes event)          Consumer (subscribes to event)
 | reNewSpwnPoint | Transform | S_Checkpoint | S_GameManager |
 | OnSectionStart | int index | S_SectionGoal (Start trigger) | S_LevelSectionController |
 | OnSectionEnd | int index | S_SectionGoal (End trigger) | S_LevelSectionController |
+| OnPlaySFX | AudioClip clip | S_Player, any system | S_AudioManager |
+| OnBGMChange | AudioClip clip | Any system | S_AudioManager |
 
 ### 2.3 Event Flow Diagrams
 
@@ -93,6 +95,10 @@ public static event Action<Transform> reNewSpwnPoint;
 // Section events
 public static event Action<int> OnSectionStart;
 public static event Action<int> OnSectionEnd;
+
+// Audio events
+public static event Action<AudioClip> OnPlaySFX;
+public static event Action<AudioClip> OnBGMChange;
 ```
 
 **Invocation Methods**:
@@ -107,6 +113,8 @@ public static event Action<int> OnSectionEnd;
 | `SkillUsed(string)` | string | `OnSkillUsed` | Skill activated (future) |
 | `SectionStart(int)` | int sectionIndex | `OnSectionStart` | Player entered section Start trigger |
 | `SectionEnd(int)` | int sectionIndex | `OnSectionEnd` | Player entered section End trigger |
+| `PlaySFX(AudioClip)` | AudioClip clip | `OnPlaySFX` | Play a one-shot sound effect |
+| `BGMChange(AudioClip)` | AudioClip clip | `OnBGMChange` | Switch background music clip |
 
 All methods use null-conditional invocation (`?.Invoke()`) for safety — no null reference exceptions if no subscribers.
 
@@ -196,7 +204,17 @@ These events carry data (score, skill name, transform). They are consumed by UI 
 | Skill activated | `S_GameEvent.SkillUsed(skillName)` |
 | New checkpoint reached | `S_GameEvent.ReNewSpwnPoint(checkpointTransform)` |
 
-### 5.3 Section Events
+### 5.3 Audio Events
+These events manage sound effects and background music. They are consumed by `S_AudioManager`.
+
+| When to use | Event to fire |
+|-------------|---------------|
+| Player jumps | `S_GameEvent.PlaySFX(jumpClip)` |
+| Player switches form | `S_GameEvent.PlaySFX(formSwitchClip)` |
+| Any one-shot SFX needed | `S_GameEvent.PlaySFX(clip)` |
+| Change background music | `S_GameEvent.BGMChange(newBGMClip)` |
+
+### 5.4 Section Events
 These events manage level section progression. They are consumed by `S_LevelSectionController`.
 
 | When to use | Event to fire |

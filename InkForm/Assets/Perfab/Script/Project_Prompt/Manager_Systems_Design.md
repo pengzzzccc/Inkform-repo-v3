@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-The manager systems handle game flow, UI management, and global state. They consist of `S_GameManager` (game flow control) and `S_UIManager` (menu UI). Both systems communicate through `S_GameEvent` — they never reference each other directly.
+The manager systems handle game flow, UI management, audio playback, and global state. They consist of `S_GameManager` (game flow control), `S_UIManager` (menu UI), and `S_AudioManager` (BGM + SFX). All systems communicate through `S_GameEvent` — they never reference each other directly.
 
 ---
 
@@ -22,6 +22,12 @@ S_GameManager (per-scene)
 |-- Scene loading
 |-- Listens: OnPlayerDied, OnGameStart, OnGameRestart, OnExit, reNewSpwnPoint
 `-- Spawn point tracking
+
+S_AudioManager (per-scene)
+|-- BGM playback (loop)
+|-- SFX playback (one-shot)
+|-- Listens: OnPlaySFX, OnBGMChange
+`-- Volume control via Inspector Range sliders
 ```
 
 ### 2.2 Lifecycle
@@ -30,6 +36,7 @@ S_GameManager (per-scene)
 |--------|-------------|---------------|
 | S_UIManager | DontDestroyOnLoad (survives scene loads) | Create once in initial scene |
 | S_GameManager | Per-scene (destroyed on scene load) | Create in each gameplay scene |
+| S_AudioManager | Per-scene (destroyed on scene load) | Create in each gameplay scene |
 
 ### 2.3 Game Flow Diagram
 
@@ -168,14 +175,23 @@ OpenMenu input pressed:
 4. Assign all UI references in Inspector
 5. Set up button OnClick events to call `OnStartButton()`, `OnReStartButton()`, `OnExitButton()`
 
+### S_AudioManager (per-scene)
+1. Create an AudioManager GameObject in each gameplay scene
+2. Add `S_AudioManager` component
+3. Assign `bgmClip` in Inspector (optional — auto-plays on Start)
+4. Adjust `bgmVolume` and `sfxVolume` sliders (0-1)
+5. AudioSources are created programmatically — no manual setup needed
+
 ### Scene Setup Checklist
 ```
 [ ] S_UIManager exists in initial scene (DontDestroyOnLoad)
 [ ] S_GameManager exists in each gameplay scene
+[ ] S_AudioManager exists in each gameplay scene (with bgmClip assigned)
 [ ] S_GameManager.scene is set to the correct scene name
 [ ] Player is tagged "Player"
 [ ] S_coleve is on the player body for death detection
 [ ] S_Checkpoint exists in the level for spawn point updates
+[ ] Player has jumpClip / formSwitchClip assigned for SFX
 ```
 
 ---
@@ -203,6 +219,10 @@ S_Checkpoint ──(ReNewSpwnPoint)──> S_GameEvent ──> S_GameManager.new
 S_SectionGoal ──(SectionStart)──> S_GameEvent ──> S_LevelSectionController
 
 S_SectionGoal ──(SectionEnd)──> S_GameEvent ──> S_LevelSectionController
+
+S_Player ──(PlaySFX)──> S_GameEvent ──> S_AudioManager.PlaySFX()
+
+Any System ──(BGMChange)──> S_GameEvent ──> S_AudioManager.PlayBGM()
 ```
 
 ---

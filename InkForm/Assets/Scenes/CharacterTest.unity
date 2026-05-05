@@ -606,6 +606,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: GameManager
       objectReference: {fileID: 0}
+    - target: {fileID: 4200383022092285922, guid: 6c5659b1c25e6c24ba4e229cf6bcffad, type: 3}
+      propertyPath: bgmVolume
+      value: 0.154
+      objectReference: {fileID: 0}
+    - target: {fileID: 4200383022092285922, guid: 6c5659b1c25e6c24ba4e229cf6bcffad, type: 3}
+      propertyPath: sfxVolume
+      value: 0.177
+      objectReference: {fileID: 0}
     - target: {fileID: 7185668272029566861, guid: 6c5659b1c25e6c24ba4e229cf6bcffad, type: 3}
       propertyPath: scene
       value: CharacterTest
@@ -3196,6 +3204,10 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5791043499970776652, guid: 1dfb6e88f68c86a4cac7f03ce5961be8, type: 3}
+      propertyPath: jumpClip
+      value: 
+      objectReference: {fileID: 8300000, guid: b84d0e303798b0241a1a88dd5536fa8f, type: 3}
+    - target: {fileID: 5791043499970776652, guid: 1dfb6e88f68c86a4cac7f03ce5961be8, type: 3}
       propertyPath: JumpSpeed
       value: 20
       objectReference: {fileID: 0}
@@ -3214,19 +3226,19 @@ PrefabInstance:
     - target: {fileID: 5791043499970776652, guid: 1dfb6e88f68c86a4cac7f03ce5961be8, type: 3}
       propertyPath: 'sprites.Array.data[0]'
       value: 
-      objectReference: {fileID: 600787656912180804, guid: ae6b76cb4cfddff458ba412da34e7eff, type: 3}
+      objectReference: {fileID: -6573777416417220690, guid: ae6b76cb4cfddff458ba412da34e7eff, type: 3}
     - target: {fileID: 5791043499970776652, guid: 1dfb6e88f68c86a4cac7f03ce5961be8, type: 3}
       propertyPath: 'sprites.Array.data[1]'
       value: 
-      objectReference: {fileID: -6573777416417220690, guid: ae6b76cb4cfddff458ba412da34e7eff, type: 3}
+      objectReference: {fileID: 600787656912180804, guid: ae6b76cb4cfddff458ba412da34e7eff, type: 3}
     - target: {fileID: 5791043499970776652, guid: 1dfb6e88f68c86a4cac7f03ce5961be8, type: 3}
       propertyPath: 'sprites.Array.data[2]'
       value: 
-      objectReference: {fileID: 3561037995832689329, guid: ae6b76cb4cfddff458ba412da34e7eff, type: 3}
+      objectReference: {fileID: 5670999935819666744, guid: ae6b76cb4cfddff458ba412da34e7eff, type: 3}
     - target: {fileID: 5791043499970776652, guid: 1dfb6e88f68c86a4cac7f03ce5961be8, type: 3}
       propertyPath: 'sprites.Array.data[3]'
       value: 
-      objectReference: {fileID: 5670999935819666744, guid: ae6b76cb4cfddff458ba412da34e7eff, type: 3}
+      objectReference: {fileID: 3561037995832689329, guid: ae6b76cb4cfddff458ba412da34e7eff, type: 3}
     - target: {fileID: 8106540765840282404, guid: 1dfb6e88f68c86a4cac7f03ce5961be8, type: 3}
       propertyPath: m_LocalPosition.x
       value: 55.08

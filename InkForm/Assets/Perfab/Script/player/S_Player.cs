@@ -18,6 +18,9 @@ public class S_Player : MonoBehaviour
     [SerializeField] private float solidGravityScale = 4f;
     [Header("Kick Force")]
     [SerializeField] private float kickForceMultiplier = 10f;
+    [Header("SFX")]
+    [SerializeField] private AudioClip jumpClip;
+    [SerializeField] private AudioClip formSwitchClip;
 
 
     private float moveSpeed;
@@ -119,7 +122,7 @@ public class S_Player : MonoBehaviour
 
             if (m_PlayerJump.WasPerformedThisFrame() && jumpCount < maxJump && jumpCoolDownTimer <= 0)
             {
-
+                S_GameEvent.PlaySFX(jumpClip);
                 b_Rig.linearVelocity = new Vector2(b_Rig.linearVelocity.x, 0);
                 b_Rig.AddForce(new Vector2(0, jumpSpeed), ForceMode2D.Impulse);
                 jumpCount++;
@@ -187,6 +190,8 @@ public class S_Player : MonoBehaviour
 
     public void SetForm(form newForm)
     {
+        if (inkform != newForm)
+            S_GameEvent.PlaySFX(formSwitchClip);
         inkform = newForm;
         switch (newForm)
         {
