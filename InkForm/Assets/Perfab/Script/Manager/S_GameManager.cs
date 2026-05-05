@@ -80,8 +80,10 @@ public class S_GameManager : MonoBehaviour
     {
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
+#elif UNITY_WEBGL
+        Application.OpenURL(Application.absoluteURL);
 #else
-            Application.Quit();
+        Application.Quit();
 #endif
     }
 }
