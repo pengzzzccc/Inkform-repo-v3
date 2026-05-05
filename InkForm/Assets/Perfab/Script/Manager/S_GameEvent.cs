@@ -15,6 +15,13 @@ public static class S_GameEvent
     public static event Action<AudioClip> OnPlaySFX;
     public static event Action<AudioClip> OnBGMChange;
 
+    // NPC & Story Events
+    public static event Action<string> OnNPCInteract;
+    public static event Action<float> OnSuspicionChanged;
+    public static event Action<Transform> OnAlertTriggered;
+    public static event Action OnArrestTriggered;
+    public static event Action<string> OnStoryTrigger;
+
     public static void PlayerDied() => OnPlayerDied?.Invoke();
     public static void GameStart() => OnGameStart?.Invoke();
     public static void GameReStart() => OnGameRestart?.Invoke();
@@ -26,4 +33,11 @@ public static class S_GameEvent
     public static void SectionEnd(int index) => OnSectionEnd?.Invoke(index);
     public static void PlaySFX(AudioClip clip) => OnPlaySFX?.Invoke(clip);
     public static void BGMChange(AudioClip clip) => OnBGMChange?.Invoke(clip);
+
+    // NPC & Story Invokers
+    public static void NPCInteract(string npcID) => OnNPCInteract?.Invoke(npcID);
+    public static void SuspicionChanged(float value) => OnSuspicionChanged?.Invoke(value);
+    public static void AlertTriggered(Transform npc) => OnAlertTriggered?.Invoke(npc);
+    public static void ArrestTriggered() => OnArrestTriggered?.Invoke();
+    public static void StoryTrigger(string triggerID) => OnStoryTrigger?.Invoke(triggerID);
 }
