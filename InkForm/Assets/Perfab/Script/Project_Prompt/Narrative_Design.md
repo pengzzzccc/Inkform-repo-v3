@@ -1,4 +1,4 @@
-- from share, don't read this goto [Narrative_Index.md](Inkform/Assets/Perfab/Script/Project_Prompt/Narrative_Index.md)
+- from share, don't read this goto [Narrative_Index.md](Inkform/Assets/PerFab/Script/Project_Prompt/Narrative_Index.md)
 # InkForm — 叙事设计文档
 
 > 这是一款 2D 平台跳跃游戏。你扮演一个觉醒的变形实验体，在人类文明仅剩的废墟中寻找答案：为什么要存在？存在本身，够不够？
