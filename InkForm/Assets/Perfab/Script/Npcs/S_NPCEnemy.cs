@@ -530,6 +530,7 @@ public class S_NPCEnemy : S_NPCbase
         arrestTimer = 0f;
         aimCooldownTimer = 0f;
         projectileHitPlayer = false;
+        UpdateStateColor();
     }
 
     protected override void HandleGameRestart()
@@ -544,6 +545,7 @@ public class S_NPCEnemy : S_NPCbase
         arrestTimer = 0f;
         aimCooldownTimer = 0f;
         projectileHitPlayer = false;
+        UpdateStateColor();
     }
 
     private void DiagnosticLog()
