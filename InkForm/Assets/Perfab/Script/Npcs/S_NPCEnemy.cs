@@ -146,6 +146,12 @@ public class S_NPCEnemy : S_NPCbase
 
     private void UpdatePatrolTransitions()
     {
+        if (projectileHitPlayer)
+        {
+            EnterState(State.Arrest);
+            return;
+        }
+
         if (S_SuspicionSystem.PlayerHidden)
         {
             return;
@@ -160,6 +166,13 @@ public class S_NPCEnemy : S_NPCbase
 
     private void UpdateChaseTransitions()
     {
+        // Projectile hit while returning to Chase → Arrest
+        if (projectileHitPlayer)
+        {
+            EnterState(State.Arrest);
+            return;
+        }
+
         if (S_SuspicionSystem.PlayerHidden)
         {
             EnterState(State.Patrol);
@@ -219,6 +232,13 @@ public class S_NPCEnemy : S_NPCbase
 
     private void UpdateAttackTransitions()
     {
+        // Projectile hit while backing off → Arrest
+        if (projectileHitPlayer)
+        {
+            EnterState(State.Arrest);
+            return;
+        }
+
         if (S_SuspicionSystem.PlayerHidden)
         {
             EnterState(State.Patrol);
@@ -238,10 +258,6 @@ public class S_NPCEnemy : S_NPCbase
         {
             EnterState(State.Chase);
         }
-
-        // If player enters attackRange from further away while backing off,
-        // go to Aim if cooldown is clear (but Attack runs first so player
-        // needs to be at 0.6x–0.9x range; below 0.6x stays Attack, above 0.9x goes Chase)
     }
 
     private void UpdateStunnedTransitions()
