@@ -22,6 +22,11 @@ public class S_NPCEnemy : S_NPCbase
     [Header("Arrest (Timed Chase)")]
     [SerializeField] private float arrestDuration = 3f;
 
+    [Header("State Colors")]
+    [SerializeField] private Color aimColor = new Color(1f, 0.65f, 0f, 1f);
+    [SerializeField] private Color arrestColor = Color.red;
+    [SerializeField] private Color defaultColor = Color.white;
+
     [Header("Attack (EM Projectile)")]
     [SerializeField] private float fireRate = 1.5f;
     [SerializeField] private GameObject projectilePrefab;
@@ -306,6 +311,7 @@ public class S_NPCEnemy : S_NPCbase
             return;
 
         currentState = newState;
+        UpdateStateColor();
 
         switch (newState)
         {
@@ -330,6 +336,18 @@ public class S_NPCEnemy : S_NPCbase
                 arrestTimer = arrestDuration;
                 break;
         }
+    }
+
+    private void UpdateStateColor()
+    {
+        if (npcSprite == null) return;
+
+        npcSprite.color = currentState switch
+        {
+            State.Aim => aimColor,
+            State.Arrest => arrestColor,
+            _ => defaultColor,
+        };
     }
 
     private void ExecuteMovement()
