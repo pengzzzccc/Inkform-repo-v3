@@ -16,10 +16,12 @@ public class S_EMProjectile : MonoBehaviour
 
     private Vector2 direction;
     private float lifetime;
+    private S_NPCEnemy shooter;
 
-    public void Launch(Vector2 dir)
+    public void Launch(Vector2 dir, S_NPCEnemy shooterRef)
     {
         direction = dir.normalized;
+        shooter = shooterRef;
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
         transform.rotation = Quaternion.Euler(0, 0, angle);
         lifetime = 0f;
@@ -37,11 +39,9 @@ public class S_EMProjectile : MonoBehaviour
     {
         if (other.CompareTag("Player"))
         {
-            S_Player player = other.GetComponent<S_Player>();
-            if (player != null)
-            {
-                player.ApplyParalyze(paralyzeDuration, moveSpeedReduction);
-            }
+            S_Player.Instance.ApplyParalyze(paralyzeDuration, moveSpeedReduction);
+            if (shooter != null)
+                shooter.OnProjectileHitPlayer();
             Destroy(gameObject);
         }
         else if (!other.isTrigger)

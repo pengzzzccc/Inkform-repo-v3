@@ -1,9 +1,10 @@
 using UnityEngine;
 
 /// <summary>
-/// Enemy guard with full state machine: Patrol, Chase, Attack, Arrest, Stunned.
-/// Shoots EM projectiles to paralyze the player before attempting arrest.
-/// Loses target when player is hidden (S_HideSpot.PlayerHidden).
+/// Enemy guard with full state machine: Patrol, Chase, Aim, Attack, Arrest, Stunned.
+/// Aim: stop → wait → fire one shot → return to Chase immediately.
+/// Attack: keep distance only (no firing). Firing happens only in Aim.
+/// Arrest: timed chase (arrestDuration seconds), game over if player paralyzed within arrestRange.
 /// </summary>
 public class S_NPCEnemy : S_NPCbase
 {
@@ -13,6 +14,13 @@ public class S_NPCEnemy : S_NPCbase
     [SerializeField] private float attackRange = 5f;
     [SerializeField] private float arrestRange = 1.5f;
     [SerializeField] private float stunDuration = 3f;
+
+    [Header("Aim (Sniper Shot)")]
+    [SerializeField] private float attackWindupTime = 0.5f;
+    [SerializeField] private float aimCooldownTime = 2f;
+
+    [Header("Arrest (Timed Chase)")]
+    [SerializeField] private float arrestDuration = 3f;
 
     [Header("Attack (EM Projectile)")]
     [SerializeField] private float fireRate = 1.5f;
@@ -32,6 +40,7 @@ public class S_NPCEnemy : S_NPCbase
     {
         Patrol,
         Chase,
+        Aim,
         Attack,
         Arrest,
         Stunned,
@@ -43,6 +52,8 @@ public class S_NPCEnemy : S_NPCbase
     private int currentWaypointIndex = 0;
     private float fireTimer = 0f;
     private float stunTimer = 0f;
+    private float arrestTimer = 0f;
+    private float aimCooldownTimer = 0f;
 
     private float waypointWaitTimer = 0f;
 
@@ -50,6 +61,8 @@ public class S_NPCEnemy : S_NPCbase
 
     private float diagnosticLogTimer = 0f;
     private const float DIAG_LOG_INTERVAL = 2f;
+
+    private bool projectileHitPlayer = false;
 
     public bool IsStunned => currentState == State.Stunned;
 
@@ -68,7 +81,6 @@ public class S_NPCEnemy : S_NPCbase
 
     private void Update()
     {
-        Debug.Log("state: " + currentState);
         if (!isActive || currentState == State.Disabled)
             return;
 
@@ -82,6 +94,10 @@ public class S_NPCEnemy : S_NPCbase
             diagnosticLogTimer = DIAG_LOG_INTERVAL;
             DiagnosticLog();
         }
+
+        // Tick cooldowns everywhere
+        if (aimCooldownTimer > 0f)
+            aimCooldownTimer -= Time.deltaTime;
 
         UpdateStateMachine();
         ExecuteMovement();
@@ -113,6 +129,9 @@ public class S_NPCEnemy : S_NPCbase
             case State.Chase:
                 UpdateChaseTransitions();
                 break;
+            case State.Aim:
+                UpdateAimTransitions();
+                break;
             case State.Attack:
                 UpdateAttackTransitions();
                 break;
@@ -129,14 +148,12 @@ public class S_NPCEnemy : S_NPCbase
     {
         if (S_SuspicionSystem.PlayerHidden)
         {
-            // Debug.Log($"[S_NPCEnemy] {npcName}: Patrol — PlayerHidden=true, staying in Patrol");
             return;
         }
 
         float dist = DistanceToPlayer();
         if (dist <= chaseRange)
         {
-            // Debug.Log($"[S_NPCEnemy] {npcName}: TRANSITION Patrol→Chase — dist={dist:F1} <= chaseRange={chaseRange}");
             EnterState(State.Chase);
         }
     }
@@ -157,16 +174,47 @@ public class S_NPCEnemy : S_NPCbase
             return;
         }
 
-        if (S_Player.Instance != null && S_Player.Instance.IsParalyzed && dist <= arrestRange)
+        // Aim: stop, wind up 0.5s, fire one shot (only if cooldown elapsed)
+        if (dist <= attackRange && aimCooldownTimer <= 0f)
+        {
+            EnterState(State.Aim);
+            return;
+        }
+
+        // Attack: player too close — back off (no firing)
+        if (dist < attackRange * 0.6f)
+        {
+            EnterState(State.Attack);
+        }
+    }
+
+    private void UpdateAimTransitions()
+    {
+        if (S_SuspicionSystem.PlayerHidden)
+        {
+            EnterState(State.Patrol);
+            return;
+        }
+
+        float dist = DistanceToPlayer();
+
+        if (dist > loseRange)
+        {
+            EnterState(State.Patrol);
+            return;
+        }
+
+        // If projectile hit player → Arrest
+        if (projectileHitPlayer)
         {
             EnterState(State.Arrest);
             return;
         }
 
-        if (dist <= attackRange)
-        {
-            EnterState(State.Attack);
-        }
+        // After firing (fireTimer elapses → shot fired in ExecuteAim), return to Chase
+        // ExecuteAim sets fireTimer back to fireRate after firing; we detect "has fired" by
+        // checking if we've already fired this Aim cycle.
+        // The transition back to Chase happens inside ExecuteAim after the shot.
     }
 
     private void UpdateAttackTransitions()
@@ -185,16 +233,15 @@ public class S_NPCEnemy : S_NPCbase
             return;
         }
 
-        if (S_Player.Instance != null && S_Player.Instance.IsParalyzed && dist <= arrestRange)
-        {
-            EnterState(State.Arrest);
-            return;
-        }
-
-        if (dist > attackRange)
+        // When distance is safe again, go back to Chase
+        if (dist >= attackRange * 0.9f)
         {
             EnterState(State.Chase);
         }
+
+        // If player enters attackRange from further away while backing off,
+        // go to Aim if cooldown is clear (but Attack runs first so player
+        // needs to be at 0.6x–0.9x range; below 0.6x stays Attack, above 0.9x goes Chase)
     }
 
     private void UpdateStunnedTransitions()
@@ -208,7 +255,33 @@ public class S_NPCEnemy : S_NPCbase
 
     private void UpdateArrestTransitions()
     {
-        // Arrest is terminal for this encounter — handled in EnterState
+        if (S_SuspicionSystem.PlayerHidden)
+        {
+            EnterState(State.Patrol);
+            return;
+        }
+
+        float dist = DistanceToPlayer();
+
+        if (dist > loseRange)
+        {
+            EnterState(State.Patrol);
+            return;
+        }
+
+        // Timer runs in ExecuteArrest
+        if (arrestTimer <= 0f)
+        {
+            // Out of time — go back to Chase
+            EnterState(State.Chase);
+            return;
+        }
+
+        // If player is paralyzed and within arrest range → success
+        if (S_Player.Instance != null && S_Player.Instance.IsParalyzed && dist <= arrestRange)
+        {
+            TriggerArrest();
+        }
     }
 
     private void EnterState(State newState)
@@ -223,6 +296,14 @@ public class S_NPCEnemy : S_NPCbase
             case State.Patrol:
                 fireTimer = 0f;
                 break;
+            case State.Chase:
+                // Start Aim cooldown to prevent immediate re-Aim
+                aimCooldownTimer = aimCooldownTime;
+                break;
+            case State.Aim:
+                fireTimer = attackWindupTime;
+                projectileHitPlayer = false;
+                break;
             case State.Attack:
                 fireTimer = 0f;
                 break;
@@ -230,7 +311,7 @@ public class S_NPCEnemy : S_NPCbase
                 stunTimer = stunDuration;
                 break;
             case State.Arrest:
-                TriggerArrest();
+                arrestTimer = arrestDuration;
                 break;
         }
     }
@@ -244,6 +325,9 @@ public class S_NPCEnemy : S_NPCbase
                 break;
             case State.Chase:
                 ExecuteChase();
+                break;
+            case State.Aim:
+                ExecuteAim();
                 break;
             case State.Attack:
                 ExecuteAttack();
@@ -301,30 +385,39 @@ public class S_NPCEnemy : S_NPCbase
         FlipSprite(moveDir.x);
     }
 
+    private void ExecuteAim()
+    {
+        if (playerTransform == null)
+            return;
+
+        // Face player and stand still
+        Vector2 toPlayer = playerTransform.position - transform.position;
+        FlipSprite(toPlayer.x);
+
+        // Wait for windup, then fire one shot
+        fireTimer -= Time.deltaTime;
+        if (fireTimer <= 0f && !projectileHitPlayer)
+        {
+            FireProjectile(toPlayer.normalized);
+            // After firing, go back to Chase immediately
+            EnterState(State.Chase);
+        }
+    }
+
     private void ExecuteAttack()
     {
         if (playerTransform == null)
             return;
 
-        // Face player and stand ground
+        // Face player and back off — no firing
         Vector2 toPlayer = playerTransform.position - transform.position;
         FlipSprite(toPlayer.x);
 
-        // Keep distance — step back if too close
         float dist = toPlayer.magnitude;
-        if (dist < attackRange * 0.6f)
+        if (dist < attackRange * 0.9f)
         {
             Vector2 backDir = -toPlayer.normalized;
             transform.Translate(backDir * (chaseSpeed * 0.5f * Time.deltaTime));
-        }
-
-        // Fire at rate
-        fireTimer -= Time.deltaTime;
-        if (fireTimer <= 0f)
-        {
-            // Debug.Log($"[S_NPCEnemy] {npcName}: Firing projectile — dir={toPlayer.normalized}, playerPos={playerTransform.position}, npcPos={transform.position}");
-            FireProjectile(toPlayer.normalized);
-            fireTimer = fireRate;
         }
     }
 
@@ -346,13 +439,14 @@ public class S_NPCEnemy : S_NPCbase
         Vector2 moveDir = toPlayer.normalized;
         transform.Translate(moveDir * (chaseSpeed * Time.deltaTime));
         FlipSprite(moveDir.x);
+
+        arrestTimer -= Time.deltaTime;
     }
 
     private void FireProjectile(Vector2 direction)
     {
         if (projectilePrefab == null)
         {
-            // Debug.LogWarning($"[S_NPCEnemy] {npcName}: projectilePrefab is null, cannot fire");
             return;
         }
 
@@ -361,13 +455,21 @@ public class S_NPCEnemy : S_NPCbase
         S_EMProjectile em = proj.GetComponent<S_EMProjectile>();
         if (em != null)
         {
-            em.Launch(direction);
+            em.Launch(direction, this);
         }
+    }
+
+    /// <summary>
+    /// Called by S_EMProjectile when the projectile hits the player.
+    /// Sets flag that drives Aim → Arrest transition.
+    /// </summary>
+    public void OnProjectileHitPlayer()
+    {
+        projectileHitPlayer = true;
     }
 
     private void TriggerArrest()
     {
-        // Debug.Log($"[S_NPCEnemy] {npcName}: Player arrested");
         S_GameEvent.ArrestTriggered();
         currentState = State.Disabled;
     }
@@ -391,6 +493,9 @@ public class S_NPCEnemy : S_NPCbase
         waypointWaitTimer = 0f;
         fireTimer = 0f;
         stunTimer = 0f;
+        arrestTimer = 0f;
+        aimCooldownTimer = 0f;
+        projectileHitPlayer = false;
     }
 
     protected override void HandleGameRestart()
@@ -402,6 +507,9 @@ public class S_NPCEnemy : S_NPCbase
         waypointWaitTimer = 0f;
         fireTimer = 0f;
         stunTimer = 0f;
+        arrestTimer = 0f;
+        aimCooldownTimer = 0f;
+        projectileHitPlayer = false;
     }
 
     private void DiagnosticLog()
@@ -411,7 +519,6 @@ public class S_NPCEnemy : S_NPCbase
         string posStr = playerTransform != null
             ? $"dist={Vector2.Distance(npcPos, playerTransform.position):F1}, npcPos=({npcPos.x:F1},{npcPos.y:F1}), playerPos=({playerPos.x:F1},{playerPos.y:F1})"
             : (S_Player.Instance != null ? "playerTransform null but S_Player.Instance != null" : "playerTransform & Instance both null");
-        // Debug.Log($"[S_NPCEnemy] {npcName}: state={currentState}, isActive={isActive}, playerHidden={S_SuspicionSystem.PlayerHidden}, chaseRange={chaseRange}, attackRange={attackRange}, {posStr}");
     }
 
     private void OnDrawGizmosSelected()

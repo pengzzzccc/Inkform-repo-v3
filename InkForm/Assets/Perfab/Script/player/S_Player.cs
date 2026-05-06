@@ -256,19 +256,10 @@ public class S_Player : MonoBehaviour
         return true;
     }
 
-
-
-
-
     public void KickOut()
     {
         b_Rig.AddForce(b_Rig.linearVelocity * kickForceMultiplier, ForceMode2D.Impulse);
     }
-
-
-
-
-
 
     public void Teleport(Vector2 targetPos)
     {
@@ -276,11 +267,6 @@ public class S_Player : MonoBehaviour
         b_Rig.angularVelocity = 0f;
         b_Rig.position = targetPos;
     }
-
-
-
-
-
 
     public void ApplyParalyze(float duration, float slowMultiplier)
     {
