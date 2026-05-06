@@ -145,3 +145,23 @@ Known bugs and their fixes. Updated whenever a runtime or logic bug is discovere
 - **Fix**: Store the form to restore when the lock actually triggers, not at coroutine creation.
 - **Related Scripts**: `S_Soild_sprint.cs`
 - **Lesson**: Be careful with coroutine state capture. Capture values at the point of use, not at coroutine creation.
+
+---
+
+## 2026-05-07 | NPC arrest stuck red + death UI never shows
+- **Symptom**: After arrest, NPC stays red (Discovered color). Cannot arrest again. Game restart doesn't reset NPC color. Death UI never appears.
+- **Root Cause**: Three bugs stacked:
+  1. `TriggerArrest()` set `currentState = State.Disabled` directly, bypassing `EnterState()` → `UpdateStateColor()` never called → NPC stuck red
+  2. `HandleGameStart()`/`HandleGameRestart()` set `currentState = State.Patrol` directly + manual `UpdateStateColor()` — inconsistent with state machine pattern
+  3. `HandleArrest()` immediately called `GameReStart()` → scene reload fires `HideUI()` → death UI `ShowUI()` overridden one frame later
+- **Fix**:
+  - `TriggerArrest()`: use `EnterState(State.Disabled)` to reset color; add `S_GameEvent.PlayerDied()` to trigger death UI
+  - `HandleGameStart()`/`HandleGameRestart()`: use `EnterState(State.Patrol)` for consistent state reset
+  - `HandleArrest()`: removed `GameReStart()` call; death UI now shown via `PlayerDied → ShowUI()`, player manually clicks Restart
+- **Related Scripts**: `S_NPCEnemy.cs`, `S_GameManager.cs`
+- **Lesson**: All state transitions MUST go through `EnterState()` to keep side effects (color update, timer reset) in one place. Never set `currentState` directly outside `EnterState()`. Event chains that include UI + scene reload must be carefully ordered — `PlayerDied` and `ArrestTriggered` are separate events; `HandleArrest` should not auto-restart as it races with `ShowUI`.
+
+### Cross-Reference Scan Results
+- **S_NPCbase**: `EnterState()` pattern is properly followed after fix. Safe.
+- **S_GameManager.PlayerDied()**: Only resets position, does not reload scene — correct.
+- **S_UIManager**: Subscribed to both `OnPlayerDied → ShowUI` and `OnGameRestart → HideUI` — ordering now correct since `HandleArrest` no longer calls `GameReStart`.

@@ -24,9 +24,11 @@ Patrol ──► Chase ──► Attack ──► Arrest
 - **Patrol**: Walk between `waypoints[]`, wait `waypointWaitTime` at each
 - **Chase**: Move toward player at `chaseSpeed`, activated when player enters `chaseRange`
 - **Attack**: Fire `projectilePrefab` at `fireRate` when player within `attackRange`
-- **Arrest**: Trigger arrest when player within `arrestRange`
+- **Arrest**: Trigger arrest when player within `arrestRange`; on arrest, calls `EnterState(State.Disabled)` + fires `S_GameEvent.PlayerDied()` to show death UI
 - **Stunned**: S_Soild_sprint sets this; duration `stunDuration`, then returns to Patrol
 - **Disabled**: All behavior suspended; guards do not see/react to player
+
+> **Critical Rule**: All state transitions MUST go through `EnterState(State.XXX)` — never set `currentState` directly. `EnterState()` handles sprite color update, timer reset, and state-specific initialization. Setting `currentState` directly bypasses all side effects and causes bugs (e.g. NPC stuck red after arrest).
 
 ### Player Reference Cache
 `S_NPCEnemy` stores `playerTransform` as a cached reference—NOT serialized, NOT assigned in Inspector. It is resolved at runtime via `ValidatePlayerReference()`:
@@ -143,3 +145,12 @@ foreach (Collider2D hit in hits)
 - **Symptom**: EMProjectile passes through player
 - **Cause**: Projectile layer × Player layer unchecked in Physics2D collision matrix
 - **Fix**: Check the collision matrix entry
+
+### 6. NPC stuck red + death UI never shows after arrest
+- **Symptom**: After arrest, NPC stays red (Discovered color). Cannot arrest again. Game restart doesn't reset NPC color. Death UI never appears.
+- **Cause**: Three bugs stacked:
+  1. `TriggerArrest()` set `currentState = State.Disabled` directly, bypassing `EnterState()` — color never reset to white
+  2. `HandleGameStart()`/`HandleGameRestart()` set `currentState = State.Patrol` directly + manual `UpdateStateColor()` — inconsistent with state machine pattern
+  3. `HandleArrest()` immediately called `GameReStart()` → scene reload → `HideUI()` → death UI `ShowUI()` overridden one frame later
+- **Fix**: Use `EnterState()` for all three transitions. Remove auto-restart from `HandleArrest` — let `PlayerDied()` event drive the death UI display. Player manually clicks Restart to reload.
+- **Lesson**: Never bypass the state machine. `EnterState()` is the single authority for all state-transition side effects.

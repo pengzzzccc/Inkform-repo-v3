@@ -16,6 +16,7 @@
 - [x] Sprint Stun (OverlapCircleAll on enemy layer) — v0.5.0
 - [x] Audio System (S_AudioManager + GameEvent SFX events + Player SFX hooks)
 - [x] Error handling infrastructure (error-log.md, cross-reference workflow)
+- [x] Arrest flow bug fix (NPC stuck red + death UI race condition)
 - [x] All 9 system design documents + CHANGELOG
 - [x] Project context management (.clinerules, memory-bank, .cline/skills)
 
@@ -31,4 +32,4 @@
 - [ ] Audio asset import and assignment
 
 ---
-*Last updated: 2026-05-06 (v0.5.0)*
+*Last updated: 2026-05-07 (v0.5.0)*

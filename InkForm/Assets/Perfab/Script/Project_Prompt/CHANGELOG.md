@@ -25,6 +25,11 @@
 - Fix `S_SuspicionSystem.HandleGameRestart()` not resetting `PlayerHidden` static field
   - Guards now correctly detect player after scene restart
 - Fix `S_Soild_sprint` OverlapCircle using player root transform position instead of body position
+- Fix NPC arrest flow: state bypass + death UI race condition (2026-05-07)
+  - `TriggerArrest()` now uses `EnterState(State.Disabled)` instead of directly assigning `currentState`, ensuring color reset
+  - `HandleGameStart()`/`HandleGameRestart()` now use `EnterState(State.Patrol)` for consistent state reset
+  - `HandleArrest()` no longer calls `GameReStart()` immediately — death UI now displays correctly via `PlayerDied → ShowUI()`
+  - **Rule established**: All state transitions MUST go through `EnterState()` — never set `currentState` directly
 
 ### Layer & Physics Configuration
 - Added Enemy layer (User Layer 9) for NPC guards
