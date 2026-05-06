@@ -84,13 +84,13 @@ public class S_GameManager : MonoBehaviour
 
     void HandleArrest()
     {
-        Debug.Log("[GameManager] Player arrested — restarting level");
+        Debug.Log("[GameManager] Player arrested");
         // Reset suspicion
         if (S_SuspicionSystem.Instance != null)
             S_SuspicionSystem.Instance.SetSuspicion(0f);
 
-        // Restart
-        GameReStart();
+        // Death UI is shown via OnPlayerDied → ShowUI()
+        // Player manually clicks Restart to reload the scene
     }
 
     void ExitGame()

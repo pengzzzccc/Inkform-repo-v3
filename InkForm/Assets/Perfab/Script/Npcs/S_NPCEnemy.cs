@@ -505,7 +505,8 @@ public class S_NPCEnemy : S_NPCbase
     private void TriggerArrest()
     {
         S_GameEvent.ArrestTriggered();
-        currentState = State.Disabled;
+        S_GameEvent.PlayerDied();
+        EnterState(State.Disabled);
     }
 
     /// <summary>
@@ -522,30 +523,26 @@ public class S_NPCEnemy : S_NPCbase
     protected override void HandleGameStart()
     {
         base.HandleGameStart();
-        currentState = State.Patrol;
         currentWaypointIndex = 0;
         waypointWaitTimer = 0f;
-        fireTimer = 0f;
         stunTimer = 0f;
         arrestTimer = 0f;
         aimCooldownTimer = 0f;
         projectileHitPlayer = false;
-        UpdateStateColor();
+        EnterState(State.Patrol);
     }
 
     protected override void HandleGameRestart()
     {
         S_SuspicionSystem.PlayerHidden = false;
         base.HandleGameRestart();
-        currentState = State.Patrol;
         currentWaypointIndex = 0;
         waypointWaitTimer = 0f;
-        fireTimer = 0f;
         stunTimer = 0f;
         arrestTimer = 0f;
         aimCooldownTimer = 0f;
         projectileHitPlayer = false;
-        UpdateStateColor();
+        EnterState(State.Patrol);
     }
 
     private void DiagnosticLog()
