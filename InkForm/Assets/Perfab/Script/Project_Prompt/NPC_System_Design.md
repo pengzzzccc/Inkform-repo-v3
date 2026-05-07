@@ -3,13 +3,15 @@
 ## Overview
 The NPC system provides guard patrol/chase/attack behavior for Chapter 2 (The Nurserie). Guards detect the player, transition through a 5-state state machine, fire EM projectiles to paralyze the player, and arrest on contact. Guards lose their target when the player hides (via `S_SuspicionSystem.PlayerHidden`).
 
+Movement is physics-based (Rigidbody2D.velocity), and ground detection uses Collider2D.GetContacts() with normal-angle thresholding (inspired by S_fluid_climb.ClassifySurface).
+
 ## Architecture
 
 ### Class Hierarchy
 ```
 MonoBehaviour
- └── S_NPCbase          (base: identity, interaction, sprite/Rigidbody2D refs)
-      └── S_NPCEnemy    (guard: full state machine, projectile attack)
+ └── S_NPCbase          (base: identity, interaction, sprite/Rigidbody2D refs, Dynamic body setup)
+      └── S_NPCEnemy    (guard: full state machine, projectile attack, ground check, idle wandering)
 ```
 
 ### State Machine (S_NPCEnemy)
@@ -21,7 +23,8 @@ Patrol ──► Chase ──► Attack ──► Arrest
   │          ▼          ▼
   └──── Disabled    Stunned ──► Patrol
 ```
-- **Patrol**: Walk between `waypoints[]`, wait `waypointWaitTime` at each
+- **Patrol**: Walk between `waypoints[]`, wait `waypointWaitTime` at each.
+  - If no waypoints assigned: idle wandering within `wanderRadius` from spawn position.
 - **Chase**: Move toward player at `chaseSpeed`, activated when player enters `chaseRange`
 - **Attack**: Fire `projectilePrefab` at `fireRate` when player within `attackRange`
 - **Arrest**: Trigger arrest when player within `arrestRange`; on arrest, calls `EnterState(State.Disabled)` + fires `S_GameEvent.PlayerDied()` to show death UI
@@ -45,6 +48,40 @@ This is called at the top of `Update()` every frame to handle scene reload safel
 ### GameObject Root vs Body Transform
 The player GameObject has a **root Transform** (the parent object, which remains at `y=0` or fixed position) and a **body Transform** (the child with Rigidbody2D, which actually moves). All NPC distance checks, chase targets, and detection queries MUST use `S_Player.Instance.GetBodyTransform()` — never `S_Player.Instance.transform` or `GameObject.Find("Player").transform`.
 
+## Physics Movement
+
+### Body Configuration (S_NPCbase.Awake)
+- `Rigidbody2D.bodyType = RigidbodyType2D.Dynamic` — gravity and ground collisions apply.
+- `Rigidbody2D.constraints = RigidbodyConstraints2D.FreezeRotation` — NPC stays upright.
+- `gravityScale` is set in `S_NPCEnemy.Awake()` from the serialized `gravityScale` field (default 3).
+
+### Ground Detection
+Ground detection in `S_NPCEnemy.UpdateGroundCheck()`:
+- Uses `npcCol.GetContacts(groundContacts)` to read contact manifold.
+- Filters by `groundLayer` LayerMask (default `~0` = everything).
+- Checks `Vector2.Dot(contact.normal, Vector2.up) > groundNormalThreshold` (default 0.5).
+- This matches the pattern used in `S_fluid_climb.ClassifySurface()` — reliable for slopes, walls, and ceilings.
+
+### Movement Rules
+- **When grounded**: set `npcRig.velocity = new Vector2(moveSpeedX, npcRig.velocity.y)` — horizontal movement with vertical free.
+- **When airborne**: set `npcRig.velocity = new Vector2(0f, npcRig.velocity.y)` — freeze X, let gravity pull them down.
+- `S_NPCEnemy.MoveHorizontally(speedX)` encapsulates this clamped-velocity pattern for all movement states.
+- All movement states (Patrol/Chase/Aim/Attack/Arrest/Stunned) use `MoveHorizontally()` or the same clamped-velocity pattern.
+
+### Airborne Behavior
+- If an NPC is knocked off a platform or in mid-air during state transitions, X velocity is frozen to 0.
+- Gravity pulls them to the nearest surface below.
+- Once grounded again, normal movement resumes.
+- Idle wandering is suppressed while airborne (`ExecuteIdleWandering()` returns early if `!isGrounded`).
+
+### Idle Wandering (no waypoints)
+When `waypoints` is null or empty, the patrol state uses idle wandering:
+- Random direction picked each walk cycle (`Random.Range(0, 360) * Deg2Rad` → unit vector).
+- Walk time randomized between `wanderWalkTimeMin` / `wanderWalkTimeMax`.
+- Pause time randomized between `wanderPauseTimeMin` / `wanderPauseTimeMax`.
+- Boundary constraint: if distance from `spawnPosition` exceeds `wanderRadius`, direction is forced back toward spawn.
+- Wandering only runs while grounded.
+
 ## Inspector Configuration
 
 ### S_NPCEnemy Fields
@@ -55,14 +92,28 @@ The player GameObject has a **root Transform** (the parent object, which remains
 | | attackRange | float | Distance to start shooting (default 5) |
 | | arrestRange | float | Distance to arrest (default 1.5) |
 | | stunDuration | float | How long stunned state lasts (default 3) |
+| Aim | attackWindupTime | float | Windup before firing (default 0.5) |
+| | aimCooldownTime | float | Cooldown after aiming (default 2) |
+| Arrest | arrestDuration | float | Max chase duration for arrest (default 3) |
+| State Colors | aimColor | Color | Sprite tint during Aim (default orange) |
+| | arrestColor | Color | Sprite tint during Arrest (default red) |
+| | defaultColor | Color | Normal sprite tint (default white) |
 | Attack | fireRate | float | Seconds between shots (default 1.5) |
 | | projectilePrefab | GameObject | S_EMProjectile prefab |
 | | projectileSpeed | float | Projectile travel speed (default 8) |
 | | firePoint | Transform | Spawn point for projectiles |
-| Patrol | waypoints | Transform[] | Patrol path points |
+| Patrol | waypoints | Transform[] | Patrol path points (null/empty → idle wandering) |
 | | patrolSpeed | float | Patrol movement speed (default 2) |
 | | waypointWaitTime | float | Wait time at each waypoint (default 1) |
 | Movement Speed | chaseSpeed | float | Chase movement speed (default 5) |
+| Ground Detection | gravityScale | float | Gravity multiplier (default 3) |
+| | groundLayer | LayerMask | Layers considered "ground" (default Everything) |
+| | groundNormalThreshold | float | Min dot(normal, up) to count as ground (default 0.5) |
+| Idle Wandering | wanderRadius | float | Max distance from spawn (default 3) |
+| | wanderWalkTimeMin | float | Min walk duration (default 1) |
+| | wanderWalkTimeMax | float | Max walk duration (default 3) |
+| | wanderPauseTimeMin | float | Min pause between walks (default 0.5) |
+| | wanderPauseTimeMax | float | Max pause between walks (default 2) |
 
 ### S_EMProjectile Fields
 | Group | Field | Type | Description |
@@ -154,3 +205,8 @@ foreach (Collider2D hit in hits)
   3. `HandleArrest()` immediately called `GameReStart()` → scene reload → `HideUI()` → death UI `ShowUI()` overridden one frame later
 - **Fix**: Use `EnterState()` for all three transitions. Remove auto-restart from `HandleArrest` — let `PlayerDied()` event drive the death UI display. Player manually clicks Restart to reload.
 - **Lesson**: Never bypass the state machine. `EnterState()` is the single authority for all state-transition side effects.
+
+### 7. NPC moves off ledge by transform.Translate (pre-physics refactor)
+- **Symptom**: NPC drifts off platforms, doesn't fall with gravity
+- **Cause**: `transform.Translate()` bypassed physics engine — no gravity, no ground collision
+- **Fix**: Use Rigidbody2D.velocity with ground detection (this refactor)

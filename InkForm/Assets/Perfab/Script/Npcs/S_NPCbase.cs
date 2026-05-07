@@ -34,6 +34,10 @@ public class S_NPCbase : MonoBehaviour
         npcSprite = GetComponent<SpriteRenderer>();
         npcRig = GetComponent<Rigidbody2D>();
         npcCol = GetComponent<Collider2D>();
+
+        // Ensure Rigidbody2D is Dynamic so physics (gravity, ground collision) work
+        npcRig.bodyType = RigidbodyType2D.Dynamic;
+        npcRig.constraints = RigidbodyConstraints2D.FreezeRotation;
     }
 
     protected virtual void OnEnable()

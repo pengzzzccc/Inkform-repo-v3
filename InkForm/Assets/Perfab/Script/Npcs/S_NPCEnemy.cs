@@ -41,6 +41,18 @@ public class S_NPCEnemy : S_NPCbase
     [Header("Movement Speed")]
     [SerializeField] private float chaseSpeed = 5f;
 
+    [Header("Ground Detection")]
+    [SerializeField] private float gravityScale = 3f;
+    [SerializeField] private LayerMask groundLayer = ~0;
+    [SerializeField] private float groundNormalThreshold = 0.5f;
+
+    [Header("Idle Wandering")]
+    [SerializeField] private float wanderRadius = 3f;
+    [SerializeField] private float wanderWalkTimeMin = 1f;
+    [SerializeField] private float wanderWalkTimeMax = 3f;
+    [SerializeField] private float wanderPauseTimeMin = 0.5f;
+    [SerializeField] private float wanderPauseTimeMax = 2f;
+
     private enum State
     {
         Patrol,
@@ -69,19 +81,26 @@ public class S_NPCEnemy : S_NPCbase
 
     private bool projectileHitPlayer = false;
 
+    // Ground detection & idle wandering
+    private Vector2 spawnPosition;
+    private bool isGrounded;
+    private ContactPoint2D[] groundContacts;
+
+    // Idle wandering timers
+    private float wanderWalkTimer;
+    private float wanderPauseTimer;
+    private Vector2 wanderDirection;
+
     public bool IsStunned => currentState == State.Stunned;
 
     protected override void Awake()
     {
         base.Awake();
-        if (waypoints == null || waypoints.Length == 0)
-        {
-            waypoints = new Transform[] { transform };
-        }
 
-        // Init cached references
+        spawnPosition = transform.position;
+        npcRig.gravityScale = gravityScale;
+
         ValidatePlayerReference();
-
     }
 
     private void Update()
@@ -105,6 +124,7 @@ public class S_NPCEnemy : S_NPCbase
             aimCooldownTimer -= Time.deltaTime;
 
         UpdateStateMachine();
+        UpdateGroundCheck();
         ExecuteMovement();
     }
 
@@ -350,6 +370,32 @@ public class S_NPCEnemy : S_NPCbase
         };
     }
 
+    /// <summary>Set horizontal velocity if grounded; freeze X otherwise (let gravity drop).</summary>
+    private void MoveHorizontally(float speedX)
+    {
+        if (isGrounded)
+            npcRig.velocity = new Vector2(speedX, npcRig.velocity.y);
+        else
+            npcRig.velocity = new Vector2(0f, npcRig.velocity.y);
+    }
+
+    private void UpdateGroundCheck()
+    {
+        groundContacts ??= new ContactPoint2D[3];
+        int count = npcCol.GetContacts(groundContacts);
+        isGrounded = false;
+        for (int i = 0; i < count; i++)
+        {
+            if ((groundLayer.value & (1 << groundContacts[i].collider.gameObject.layer)) == 0)
+                continue;
+            if (Vector2.Dot(groundContacts[i].normal, Vector2.up) > groundNormalThreshold)
+            {
+                isGrounded = true;
+                break;
+            }
+        }
+    }
+
     private void ExecuteMovement()
     {
         switch (currentState)
@@ -370,16 +416,26 @@ public class S_NPCEnemy : S_NPCbase
                 ExecuteArrest();
                 break;
             case State.Stunned:
-                // No movement, just stay still
+                // No movement, just stay still (still affected by gravity)
+                if (!isGrounded)
+                    npcRig.velocity = new Vector2(0f, npcRig.velocity.y);
                 break;
         }
     }
 
     private void ExecutePatrol()
     {
-        if (waypoints == null || waypoints.Length == 0)
+        if (waypoints != null && waypoints.Length > 0)
+        {
+            ExecuteWaypointPatrol();
             return;
+        }
 
+        ExecuteIdleWandering();
+    }
+
+    private void ExecuteWaypointPatrol()
+    {
         Transform target = waypoints[currentWaypointIndex];
 
         if (waypointWaitTimer > 0f)
@@ -399,8 +455,45 @@ public class S_NPCEnemy : S_NPCbase
         }
 
         Vector2 moveDir = toTarget.normalized;
-        transform.Translate(moveDir * (patrolSpeed * Time.deltaTime));
+        MoveHorizontally(moveDir.x * patrolSpeed);
         FlipSprite(moveDir.x);
+    }
+
+    private void ExecuteIdleWandering()
+    {
+        // Don't wander in the air — wait for ground
+        if (!isGrounded)
+            return;
+
+        if (wanderPauseTimer > 0f)
+        {
+            wanderPauseTimer -= Time.deltaTime;
+            return;
+        }
+
+        if (wanderWalkTimer > 0f)
+        {
+            wanderWalkTimer -= Time.deltaTime;
+
+            // Check boundary — if too far from spawn, turn around
+            Vector2 toSpawn = spawnPosition - (Vector2)transform.position;
+            if (toSpawn.magnitude > wanderRadius)
+                wanderDirection = toSpawn.normalized;
+
+            MoveHorizontally(wanderDirection.x * patrolSpeed);
+            FlipSprite(wanderDirection.x);
+
+            if (wanderWalkTimer <= 0f)
+            {
+                wanderPauseTimer = Random.Range(wanderPauseTimeMin, wanderPauseTimeMax);
+            }
+            return;
+        }
+
+        // Start new walk cycle — pick random direction
+        float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+        wanderDirection = new Vector2(Mathf.Cos(angle), 0f).normalized;
+        wanderWalkTimer = Random.Range(wanderWalkTimeMin, wanderWalkTimeMax);
     }
 
     private void ExecuteChase()
@@ -414,7 +507,7 @@ public class S_NPCEnemy : S_NPCbase
         // Stop just outside attackRange
         if (toPlayer.magnitude > attackRange * 0.9f)
         {
-            transform.Translate(moveDir * (chaseSpeed * Time.deltaTime));
+            MoveHorizontally(moveDir.x * chaseSpeed);
         }
         FlipSprite(moveDir.x);
     }
@@ -451,7 +544,7 @@ public class S_NPCEnemy : S_NPCbase
         if (dist < attackRange * 0.9f)
         {
             Vector2 backDir = -toPlayer.normalized;
-            transform.Translate(backDir * (chaseSpeed * 0.5f * Time.deltaTime));
+            MoveHorizontally(backDir.x * chaseSpeed * 0.5f);
         }
     }
 
@@ -471,7 +564,7 @@ public class S_NPCEnemy : S_NPCbase
         }
 
         Vector2 moveDir = toPlayer.normalized;
-        transform.Translate(moveDir * (chaseSpeed * Time.deltaTime));
+        MoveHorizontally(moveDir.x * chaseSpeed);
         FlipSprite(moveDir.x);
 
         arrestTimer -= Time.deltaTime;
@@ -548,10 +641,13 @@ public class S_NPCEnemy : S_NPCbase
     private void DiagnosticLog()
     {
         Vector3 npcPos = transform.position;
-        Vector3 playerPos = playerTransform != null ? playerTransform.position : Vector3.zero;
+        bool hasWaypoints = waypoints != null && waypoints.Length > 0;
+        string pathStr = hasWaypoints ? $"wp=[{currentWaypointIndex}/{waypoints.Length}]" : "wander";
         string posStr = playerTransform != null
-            ? $"dist={Vector2.Distance(npcPos, playerTransform.position):F1}, npcPos=({npcPos.x:F1},{npcPos.y:F1}), playerPos=({playerPos.x:F1},{playerPos.y:F1})"
+            ? $"dist={Vector2.Distance(npcPos, playerTransform.position):F1}, npcPos=({npcPos.x:F1},{npcPos.y:F1}), playerPos=({playerTransform.position.x:F1},{playerTransform.position.y:F1})"
             : (S_Player.Instance != null ? "playerTransform null but S_Player.Instance != null" : "playerTransform & Instance both null");
+
+        Debug.Log($"[{npcName}] state={currentState} ground={isGrounded} {pathStr} {posStr}");
     }
 
     private void OnDrawGizmosSelected()
