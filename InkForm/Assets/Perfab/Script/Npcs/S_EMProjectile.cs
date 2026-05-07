@@ -44,7 +44,7 @@ public class S_EMProjectile : MonoBehaviour
                 shooter.OnProjectileHitPlayer();
             Destroy(gameObject);
         }
-        else if (!other.isTrigger)
+        else if (!other.isTrigger && !other.CompareTag("NPC"))
         {
             Destroy(gameObject);
         }

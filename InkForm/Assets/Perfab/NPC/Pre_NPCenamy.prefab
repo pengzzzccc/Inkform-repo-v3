@@ -12,9 +12,10 @@ GameObject:
   - component: {fileID: 5239406737785329747}
   - component: {fileID: 2947035534327346136}
   - component: {fileID: 5277778185635999326}
+  - component: {fileID: 4332579454971827828}
   m_Layer: 8
   m_Name: Pre_NPCenamy
-  m_TagString: Untagged
+  m_TagString: NPC
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -111,6 +112,12 @@ MonoBehaviour:
   attackRange: 5
   arrestRange: 1.5
   stunDuration: 3
+  attackWindupTime: 0.5
+  aimCooldownTime: 2
+  arrestDuration: 3
+  aimColor: {r: 1, g: 0.65, b: 0, a: 1}
+  arrestColor: {r: 1, g: 0, b: 0, a: 1}
+  defaultColor: {r: 1, g: 1, b: 1, a: 1}
   fireRate: 1.5
   projectilePrefab: {fileID: 9061237790333962518, guid: 065ca17e0cd375442a607e4c7d594e3b, type: 3}
   projectileSpeed: 8
@@ -119,6 +126,16 @@ MonoBehaviour:
   patrolSpeed: 2
   waypointWaitTime: 1
   chaseSpeed: 5
+  gravityScale: 3
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  groundNormalThreshold: 0.5
+  wanderRadius: 3
+  wanderWalkTimeMin: 1
+  wanderWalkTimeMax: 3
+  wanderPauseTimeMin: 0.5
+  wanderPauseTimeMax: 2
 --- !u!70 &5277778185635999326
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -156,3 +173,30 @@ CapsuleCollider2D:
   m_Offset: {x: 0, y: 0}
   m_Size: {x: 1, y: 2}
   m_Direction: 0
+--- !u!50 &4332579454971827828
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1402308546462605305}
+  m_BodyType: 1
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0

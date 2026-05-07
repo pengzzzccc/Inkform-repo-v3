@@ -374,9 +374,9 @@ public class S_NPCEnemy : S_NPCbase
     private void MoveHorizontally(float speedX)
     {
         if (isGrounded)
-            npcRig.velocity = new Vector2(speedX, npcRig.velocity.y);
+            npcRig.linearVelocity = new Vector2(speedX, npcRig.linearVelocity.y);
         else
-            npcRig.velocity = new Vector2(0f, npcRig.velocity.y);
+            npcRig.linearVelocity = new Vector2(0f, npcRig.linearVelocity.y);
     }
 
     private void UpdateGroundCheck()
@@ -418,7 +418,7 @@ public class S_NPCEnemy : S_NPCbase
             case State.Stunned:
                 // No movement, just stay still (still affected by gravity)
                 if (!isGrounded)
-                    npcRig.velocity = new Vector2(0f, npcRig.velocity.y);
+                    npcRig.linearVelocity = new Vector2(0f, npcRig.linearVelocity.y);
                 break;
         }
     }
