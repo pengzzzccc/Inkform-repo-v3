@@ -7,6 +7,7 @@ TagManager:
   - ground
   - block
   - lava
+  - NPC
   layers:
   - Default
   - TransparentFX
