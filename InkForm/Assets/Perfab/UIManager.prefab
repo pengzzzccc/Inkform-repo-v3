@@ -866,6 +866,8 @@ MonoBehaviour:
   StartButton: {fileID: 8932646041493936902}
   ReStartButton: {fileID: 768197469746092137}
   ExitButton: {fileID: 2102045108564647505}
+  suspicionSlider: {fileID: 0}
+  suspicionUI: {fileID: 0}
 --- !u!1 &7091170442762869114
 GameObject:
   m_ObjectHideFlags: 0
@@ -1150,7 +1152,7 @@ GameObject:
   - component: {fileID: 5434866804156676661}
   - component: {fileID: 8905916050707661785}
   m_Layer: 0
-  m_Name: Panel
+  m_Name: Main
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

@@ -11,8 +11,8 @@ GameObject:
   - component: {fileID: 2968948865893592686}
   - component: {fileID: 5239406737785329747}
   - component: {fileID: 2947035534327346136}
-  - component: {fileID: 5277778185635999326}
-  - component: {fileID: 4332579454971827828}
+  - component: {fileID: 5797758674906934611}
+  - component: {fileID: -2995233613076562054}
   m_Layer: 8
   m_Name: Pre_NPCenamy
   m_TagString: NPC
@@ -126,17 +126,30 @@ MonoBehaviour:
   patrolSpeed: 2
   waypointWaitTime: 1
   chaseSpeed: 5
+  useRigidbodyMovement: 1
+  requireGroundForTransformMovement: 1
+  transformGroundProbeDistance: 0.15
+  transformGravity: 25
+  transformMaxFallSpeed: 12
+  transformCollisionSkin: 0.02
   gravityScale: 3
   groundLayer:
     serializedVersion: 2
     m_Bits: 4294967295
   groundNormalThreshold: 0.5
+  sprintKnockbackSpeed: 8
+  sprintKnockbackDuration: 0.25
+  sprintKnockbackDamping: 24
+  knockbackObstacleLayer:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  knockbackObstacleSkin: 0.02
   wanderRadius: 3
   wanderWalkTimeMin: 1
   wanderWalkTimeMax: 3
   wanderPauseTimeMin: 0.5
   wanderPauseTimeMax: 2
---- !u!70 &5277778185635999326
+--- !u!70 &5797758674906934611
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -173,7 +186,7 @@ CapsuleCollider2D:
   m_Offset: {x: 0, y: 0}
   m_Size: {x: 1, y: 2}
   m_Direction: 0
---- !u!50 &4332579454971827828
+--- !u!50 &-2995233613076562054
 Rigidbody2D:
   serializedVersion: 5
   m_ObjectHideFlags: 0
@@ -181,7 +194,7 @@ Rigidbody2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1402308546462605305}
-  m_BodyType: 1
+  m_BodyType: 0
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
