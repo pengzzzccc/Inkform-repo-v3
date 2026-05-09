@@ -41,10 +41,25 @@ public class S_NPCEnemy : S_NPCbase
     [Header("Movement Speed")]
     [SerializeField] private float chaseSpeed = 5f;
 
+    [Header("Movement Mode")]
+    [SerializeField] private bool useRigidbodyMovement = true;
+    [SerializeField] private bool requireGroundForTransformMovement = true;
+    [SerializeField] private float transformGroundProbeDistance = 0.15f;
+    [SerializeField] private float transformGravity = 25f;
+    [SerializeField] private float transformMaxFallSpeed = 12f;
+    [SerializeField] private float transformCollisionSkin = 0.02f;
+
     [Header("Ground Detection")]
     [SerializeField] private float gravityScale = 3f;
     [SerializeField] private LayerMask groundLayer = ~0;
     [SerializeField] private float groundNormalThreshold = 0.5f;
+
+    [Header("Sprint Knockback")]
+    [SerializeField] private float sprintKnockbackSpeed = 8f;
+    [SerializeField] private float sprintKnockbackDuration = 0.25f;
+    [SerializeField] private float sprintKnockbackDamping = 24f;
+    [SerializeField] private LayerMask knockbackObstacleLayer = ~0;
+    [SerializeField] private float knockbackObstacleSkin = 0.02f;
 
     [Header("Idle Wandering")]
     [SerializeField] private float wanderRadius = 3f;
@@ -85,6 +100,11 @@ public class S_NPCEnemy : S_NPCbase
     private Vector2 spawnPosition;
     private bool isGrounded;
     private ContactPoint2D[] groundContacts;
+    private RaycastHit2D[] transformGroundHits;
+    private RaycastHit2D[] knockbackHits;
+    private Vector2 knockbackVelocity;
+    private float knockbackTimer = 0f;
+    private float transformVerticalVelocity = 0f;
 
     // Idle wandering timers
     private float wanderWalkTimer;
@@ -92,13 +112,36 @@ public class S_NPCEnemy : S_NPCbase
     private Vector2 wanderDirection;
 
     public bool IsStunned => currentState == State.Stunned;
+    private bool UseRigidbodyMovement => npcRig != null && useRigidbodyMovement;
+    private LayerMask TransformCollisionMask
+    {
+        get
+        {
+            LayerMask mask = default;
+            mask.value = groundLayer.value | knockbackObstacleLayer.value;
+            return mask;
+        }
+    }
 
     protected override void Awake()
     {
         base.Awake();
 
         spawnPosition = transform.position;
-        npcRig.gravityScale = gravityScale;
+
+        if (npcRig != null)
+        {
+            if (useRigidbodyMovement)
+            {
+                npcRig.gravityScale = gravityScale;
+            }
+            else
+            {
+                npcRig.bodyType = RigidbodyType2D.Kinematic;
+                npcRig.gravityScale = 0f;
+                npcRig.linearVelocity = Vector2.zero;
+            }
+        }
 
         ValidatePlayerReference();
     }
@@ -125,7 +168,14 @@ public class S_NPCEnemy : S_NPCbase
 
         UpdateStateMachine();
         UpdateGroundCheck();
+        if (ExecuteKnockback())
+        {
+            UpdateTransformVerticalMovement();
+            return;
+        }
+
         ExecuteMovement();
+        UpdateTransformVerticalMovement();
     }
 
     /// <summary>
@@ -373,14 +423,33 @@ public class S_NPCEnemy : S_NPCbase
     /// <summary>Set horizontal velocity if grounded; freeze X otherwise (let gravity drop).</summary>
     private void MoveHorizontally(float speedX)
     {
-        if (isGrounded)
-            npcRig.linearVelocity = new Vector2(speedX, npcRig.linearVelocity.y);
-        else
-            npcRig.linearVelocity = new Vector2(0f, npcRig.linearVelocity.y);
+        if (UseRigidbodyMovement)
+        {
+            if (isGrounded)
+                npcRig.linearVelocity = new Vector2(speedX, npcRig.linearVelocity.y);
+            else
+                npcRig.linearVelocity = new Vector2(0f, npcRig.linearVelocity.y);
+            return;
+        }
+
+        if (!requireGroundForTransformMovement || isGrounded)
+            MoveTransformWithCollision(new Vector2(speedX * Time.deltaTime, 0f));
     }
 
     private void UpdateGroundCheck()
     {
+        if (npcCol == null)
+        {
+            isGrounded = true;
+            return;
+        }
+
+        if (!UseRigidbodyMovement)
+        {
+            UpdateTransformGroundCheck();
+            return;
+        }
+
         groundContacts ??= new ContactPoint2D[3];
         int count = npcCol.GetContacts(groundContacts);
         isGrounded = false;
@@ -394,6 +463,169 @@ public class S_NPCEnemy : S_NPCbase
                 break;
             }
         }
+    }
+
+    private void UpdateTransformGroundCheck()
+    {
+        transformGroundHits ??= new RaycastHit2D[3];
+
+        ContactFilter2D filter = new ContactFilter2D();
+        filter.useLayerMask = true;
+        filter.layerMask = groundLayer;
+        filter.useTriggers = false;
+
+        int count = npcCol.Cast(Vector2.down, filter, transformGroundHits, transformGroundProbeDistance);
+        isGrounded = false;
+        for (int i = 0; i < count; i++)
+        {
+            if (transformGroundHits[i].collider == null) continue;
+            if (Vector2.Dot(transformGroundHits[i].normal, Vector2.up) <= groundNormalThreshold) continue;
+
+            isGrounded = true;
+            break;
+        }
+    }
+
+    private void StopHorizontalMovement()
+    {
+        if (UseRigidbodyMovement)
+            npcRig.linearVelocity = new Vector2(0f, npcRig.linearVelocity.y);
+    }
+
+    private bool MoveTransformWithCollision(Vector2 delta)
+    {
+        if (delta.sqrMagnitude <= 0f) return true;
+
+        if (npcCol != null)
+        {
+            knockbackHits ??= new RaycastHit2D[4];
+            ContactFilter2D filter = new ContactFilter2D();
+            filter.useLayerMask = true;
+            filter.layerMask = TransformCollisionMask;
+            filter.useTriggers = false;
+
+            int hitCount = npcCol.Cast(delta.normalized, filter, knockbackHits, delta.magnitude + knockbackObstacleSkin);
+            float allowedDistance = delta.magnitude;
+            for (int i = 0; i < hitCount; i++)
+            {
+                if (knockbackHits[i].collider == null) continue;
+                if (Vector2.Dot(knockbackHits[i].normal, -delta.normalized) <= 0.5f) continue;
+
+                allowedDistance = Mathf.Min(allowedDistance, Mathf.Max(0f, knockbackHits[i].distance - transformCollisionSkin));
+            }
+
+            if (allowedDistance <= 0f)
+                return false;
+
+            delta = delta.normalized * allowedDistance;
+        }
+
+        transform.position += (Vector3)delta;
+        return true;
+    }
+
+    private void UpdateTransformVerticalMovement()
+    {
+        if (UseRigidbodyMovement)
+            return;
+
+        if (npcCol == null)
+        {
+            isGrounded = true;
+            transformVerticalVelocity = 0f;
+            return;
+        }
+
+        if (isGrounded && transformVerticalVelocity <= 0f)
+        {
+            transformVerticalVelocity = 0f;
+            SnapTransformToGround();
+            return;
+        }
+
+        transformVerticalVelocity = Mathf.Max(transformVerticalVelocity - transformGravity * Time.deltaTime, -transformMaxFallSpeed);
+        Vector2 delta = Vector2.up * (transformVerticalVelocity * Time.deltaTime);
+
+        bool moved = MoveTransformWithCollision(delta);
+        if (!moved && transformVerticalVelocity < 0f)
+        {
+            transformVerticalVelocity = 0f;
+            isGrounded = true;
+        }
+    }
+
+    private void SnapTransformToGround()
+    {
+        if (npcCol == null) return;
+
+        knockbackHits ??= new RaycastHit2D[4];
+        ContactFilter2D filter = new ContactFilter2D();
+        filter.useLayerMask = true;
+        filter.layerMask = groundLayer;
+        filter.useTriggers = false;
+
+        float castDistance = transformGroundProbeDistance + transformCollisionSkin;
+        int hitCount = npcCol.Cast(Vector2.down, filter, knockbackHits, castDistance);
+        float snapDistance = float.PositiveInfinity;
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            if (knockbackHits[i].collider == null) continue;
+            if (Vector2.Dot(knockbackHits[i].normal, Vector2.up) <= groundNormalThreshold) continue;
+
+            snapDistance = Mathf.Min(snapDistance, Mathf.Max(0f, knockbackHits[i].distance - transformCollisionSkin));
+        }
+
+        if (!float.IsPositiveInfinity(snapDistance) && snapDistance > 0f)
+            transform.position += Vector3.down * snapDistance;
+    }
+
+    private bool ExecuteKnockback()
+    {
+        if (knockbackTimer <= 0f)
+            return false;
+
+        knockbackTimer -= Time.deltaTime;
+
+        if (UseRigidbodyMovement)
+        {
+            if (knockbackTimer <= 0f)
+                StopHorizontalMovement();
+
+            return true;
+        }
+
+        Vector2 delta = knockbackVelocity * Time.deltaTime;
+        bool moved = MoveTransformWithCollision(delta);
+
+        knockbackVelocity = Vector2.MoveTowards(knockbackVelocity, Vector2.zero, sprintKnockbackDamping * Time.deltaTime);
+
+        if (!moved || knockbackTimer <= 0f || knockbackVelocity.sqrMagnitude < 0.01f)
+        {
+            knockbackTimer = 0f;
+            knockbackVelocity = Vector2.zero;
+        }
+
+        return true;
+    }
+
+    private void ApplySprintKnockback(Vector2 direction)
+    {
+        if (direction.sqrMagnitude < 0.0001f)
+            direction = facingRight ? Vector2.right : Vector2.left;
+
+        direction.Normalize();
+        direction.y = 0f;
+
+        knockbackTimer = sprintKnockbackDuration;
+
+        if (UseRigidbodyMovement)
+        {
+            npcRig.linearVelocity = new Vector2(direction.x * sprintKnockbackSpeed, npcRig.linearVelocity.y);
+            return;
+        }
+
+        knockbackVelocity = direction * sprintKnockbackSpeed;
     }
 
     private void ExecuteMovement()
@@ -417,7 +649,7 @@ public class S_NPCEnemy : S_NPCbase
                 break;
             case State.Stunned:
                 // No movement, just stay still (still affected by gravity)
-                if (!isGrounded)
+                if (UseRigidbodyMovement && !isGrounded)
                     npcRig.linearVelocity = new Vector2(0f, npcRig.linearVelocity.y);
                 break;
         }
@@ -610,7 +842,22 @@ public class S_NPCEnemy : S_NPCbase
         if (currentState == State.Disabled || currentState == State.Arrest)
             return;
 
+        knockbackTimer = 0f;
+        knockbackVelocity = Vector2.zero;
+        StopHorizontalMovement();
         EnterState(State.Stunned);
+    }
+
+    /// <summary>
+    /// Called by Sprint when this enemy is hit. Works with or without Rigidbody2D.
+    /// </summary>
+    public void OnSprintHit(Vector2 hitDirection)
+    {
+        if (currentState == State.Disabled || currentState == State.Arrest)
+            return;
+
+        EnterState(State.Stunned);
+        ApplySprintKnockback(hitDirection);
     }
 
     protected override void HandleGameStart()
@@ -621,6 +868,8 @@ public class S_NPCEnemy : S_NPCbase
         stunTimer = 0f;
         arrestTimer = 0f;
         aimCooldownTimer = 0f;
+        knockbackTimer = 0f;
+        knockbackVelocity = Vector2.zero;
         projectileHitPlayer = false;
         EnterState(State.Patrol);
     }
@@ -634,6 +883,8 @@ public class S_NPCEnemy : S_NPCbase
         stunTimer = 0f;
         arrestTimer = 0f;
         aimCooldownTimer = 0f;
+        knockbackTimer = 0f;
+        knockbackVelocity = Vector2.zero;
         projectileHitPlayer = false;
         EnterState(State.Patrol);
     }

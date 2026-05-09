@@ -1,5 +1,28 @@
 # InkForm — Changelog
 
+## v0.6.0 - Input Binding UI & Rigidbody-Free NPC Knockback (2026-05-10)
+
+### New Features
+- Added `S_InputBindingManager` singleton to share `InputSystem_Actions`, save binding overrides, reset bindings, and coordinate interactive rebinding.
+- Expanded `S_UIManager` with runtime-generated controls menu for keyboard, mouse, and gamepad binding changes.
+- Added gamepad menu support in `S_UIManager`, including selected UI state and Cancel/Back behavior.
+- Added `S_NPCSpawnerTool` for inspector-driven NPC spawning, count adjustment, generation, and cleanup.
+
+### NPC Movement & Combat
+- Made `Rigidbody2D` optional for NPC enemies.
+- Added Transform-based NPC movement with collider casts for horizontal movement, falling, ground snapping, and obstacle blocking.
+- Added sprint knockback support for NPC enemies without requiring a `Rigidbody2D`.
+- Updated sprint hit detection to resolve `S_NPCEnemy` from child colliders via `GetComponentInParent`.
+
+### Bug Fixes
+- Fixed no-Rigidbody NPC enemies falling through the ground by adding manual ground collision checks and vertical movement resolution.
+- Kept current `.inputactions` defaults as source of truth and corrected project documentation around Grip binding behavior.
+
+### Documentation
+- Updated Player Controller, Manager Systems, and NPC System design notes for input binding, UI manager behavior, and optional Rigidbody NPC movement.
+
+---
+
 ## v0.5.0 — NPC Guard System & Suspicion Meter (2026-05-06)
 
 ### New Features

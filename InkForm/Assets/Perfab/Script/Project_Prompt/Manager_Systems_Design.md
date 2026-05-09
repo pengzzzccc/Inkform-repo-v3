@@ -4,6 +4,8 @@
 
 The manager systems handle game flow, UI management, audio playback, and global state. They consist of `S_GameManager` (game flow control), `S_UIManager` (menu UI), and `S_AudioManager` (BGM + SFX). All systems communicate through `S_GameEvent` — they never reference each other directly.
 
+`S_InputBindingManager` is also part of the manager layer. It owns the shared `InputSystem_Actions` instance, saves runtime binding overrides with `PlayerPrefs`, and is used by both `S_Player` and `S_UIManager`.
+
 ---
 
 ## 2. Architecture
@@ -28,6 +30,12 @@ S_AudioManager (per-scene)
 |-- SFX playback (one-shot)
 |-- Listens: OnPlaySFX, OnBGMChange
 `-- Volume control via Inspector Range sliders
+
+S_InputBindingManager (DontDestroyOnLoad)
+|-- Owns one shared InputSystem_Actions instance
+|-- Loads/saves binding overrides via PlayerPrefs
+|-- Provides interactive rebinding for keyboard/mouse and gamepad
+`-- Used by S_Player and S_UIManager
 ```
 
 ### 2.2 Lifecycle
@@ -35,6 +43,7 @@ S_AudioManager (per-scene)
 | System | Persistence | Instantiation |
 |--------|-------------|---------------|
 | S_UIManager | DontDestroyOnLoad (survives scene loads) | Create once in initial scene |
+| S_InputBindingManager | DontDestroyOnLoad (survives scene loads) | Auto-created on first access |
 | S_GameManager | Per-scene (destroyed on scene load) | Create in each gameplay scene |
 | S_AudioManager | Per-scene (destroyed on scene load) | Create in each gameplay scene |
 
@@ -122,21 +131,28 @@ Game Exit:
 | StartButton | Button | Start game button |
 | ReStartButton | Button | Restart level button |
 | ExitButton | Button | Exit game button |
+| ControlsButton | Button | Optional controls button; created at runtime if unset |
 
 **Menu Toggle System**:
-- Uses `InputSystem_Actions.UI.OpenMenu` input action
-- Parity counter (`menuCount`) alternates between show/hide
-- Even count (0, 2, 4...): Show menu + pause (`Time.timeScale = 0`)
-- Odd count (1, 3, 5...): Hide menu + resume (`Time.timeScale = 1`)
+- Uses `S_InputBindingManager.Instance.Actions.UI.OpenMenu`
+- `menuOpen` tracks show/hide state
+- Opening the menu pauses (`Time.timeScale = 0`)
+- Hiding the menu resumes (`Time.timeScale = 1`)
+- OpenMenu is ignored while an interactive rebind is waiting for input
 
 ```
 OpenMenu input pressed:
-    menuCount++
-    if (menuCount % 2 == 0)
-        ShowUI() + Time.timeScale = 0   (pause)
-    else
+    if (menuOpen)
         HideUI() + Time.timeScale = 1   (resume)
+    else
+        ShowUI() + Time.timeScale = 0   (pause)
 ```
+
+**Controls Binding UI**:
+- Built at runtime under `background`
+- Supports keyboard/mouse and gamepad bindings for Move, Jump, Sprint, Grip, and OpenMenu
+- Saves binding overrides through `S_InputBindingManager`
+- Provides reset-all and cancel-rebind controls
 
 **Event Subscriptions**:
 | Event | Handler | Action |
@@ -148,10 +164,10 @@ OpenMenu input pressed:
 **Key Methods**:
 | Method | Description |
 |--------|-------------|
-| `Start()` | Subscribe to events, set up button listeners |
+| `Start()` | Set up button listeners and build controls UI |
 | `Update()` | Check OpenMenu input for toggle |
-| `ShowUI()` | Set background active, fire OnGameStart/OnGameRestart |
-| `HideUI()` | Set background inactive |
+| `ShowUI()` | Set background active and show main menu |
+| `HideUI()` | Set background inactive, cancel rebinding, resume time |
 | `OnStartButton()` | Fire `S_GameEvent.GameStart()` |
 | `OnReStartButton()` | Fire `S_GameEvent.GameReStart()` |
 | `OnExitButton()` | Fire `S_GameEvent.ExitGame()` |

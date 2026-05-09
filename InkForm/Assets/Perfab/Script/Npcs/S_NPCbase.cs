@@ -28,6 +28,7 @@ public class S_NPCbase : MonoBehaviour
     public string NPCName => npcName;
     public string NPCID => npcID;
     public bool CanInteract => canInteract;
+    protected bool HasRigidbody => npcRig != null;
 
     protected virtual void Awake()
     {
@@ -35,7 +36,9 @@ public class S_NPCbase : MonoBehaviour
         npcRig = GetComponent<Rigidbody2D>();
         npcCol = GetComponent<Collider2D>();
 
-        // Ensure Rigidbody2D is Dynamic so physics (gravity, ground collision) work
+        if (npcRig == null) return;
+
+        // Rigidbody2D is optional for performance-sensitive NPCs.
         npcRig.bodyType = RigidbodyType2D.Dynamic;
         npcRig.constraints = RigidbodyConstraints2D.FreezeRotation;
     }

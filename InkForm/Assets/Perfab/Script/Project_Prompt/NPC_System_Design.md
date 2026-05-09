@@ -3,7 +3,7 @@
 ## Overview
 The NPC system provides guard patrol/chase/attack behavior for Chapter 2 (The Nurserie). Guards detect the player, transition through a 5-state state machine, fire EM projectiles to paralyze the player, and arrest on contact. Guards lose their target when the player hides (via `S_SuspicionSystem.PlayerHidden`).
 
-Movement is physics-based (Rigidbody2D.velocity), and ground detection uses Collider2D.GetContacts() with normal-angle thresholding (inspired by S_fluid_climb.ClassifySurface).
+Movement supports two modes. NPCs with Rigidbody2D keep the physics-based `Rigidbody2D.linearVelocity` path. Performance-sensitive NPCs can omit Rigidbody2D and use lightweight Transform movement while keeping Collider2D for sprint detection, projectile hits, and range checks.
 
 ## Architecture
 
@@ -51,11 +51,22 @@ The player GameObject has a **root Transform** (the parent object, which remains
 ## Physics Movement
 
 ### Body Configuration (S_NPCbase.Awake)
+Current implementation:
+- `Rigidbody2D` is optional.
+- If present, `Rigidbody2D.bodyType = Dynamic` and `constraints = FreezeRotation` by default.
+- If `S_NPCEnemy.useRigidbodyMovement` is false, the Rigidbody2D is changed to Kinematic and movement is driven by Transform.
+- If no Rigidbody2D is present, S_NPCEnemy uses Transform movement and Collider2D casts.
+- `Collider2D` should still be present so sprint hit detection and projectile interaction work.
+
 - `Rigidbody2D.bodyType = RigidbodyType2D.Dynamic` — gravity and ground collisions apply.
 - `Rigidbody2D.constraints = RigidbodyConstraints2D.FreezeRotation` — NPC stays upright.
 - `gravityScale` is set in `S_NPCEnemy.Awake()` from the serialized `gravityScale` field (default 3).
 
 ### Ground Detection
+Current implementation:
+- Rigidbody mode uses `npcCol.GetContacts(groundContacts)` to read contact manifold.
+- Transform mode uses a short downward `Collider2D.Cast` controlled by `transformGroundProbeDistance`.
+
 Ground detection in `S_NPCEnemy.UpdateGroundCheck()`:
 - Uses `npcCol.GetContacts(groundContacts)` to read contact manifold.
 - Filters by `groundLayer` LayerMask (default `~0` = everything).
@@ -63,10 +74,22 @@ Ground detection in `S_NPCEnemy.UpdateGroundCheck()`:
 - This matches the pattern used in `S_fluid_climb.ClassifySurface()` — reliable for slopes, walls, and ceilings.
 
 ### Movement Rules
+Current implementation:
+- **Rigidbody mode, grounded**: set `npcRig.linearVelocity = new Vector2(moveSpeedX, npcRig.linearVelocity.y)` for horizontal movement.
+- **Rigidbody mode, airborne**: set X velocity to 0 and let gravity pull the NPC down.
+- **Transform mode**: move with `transform.position += Vector3.right * speedX * Time.deltaTime`.
+
 - **When grounded**: set `npcRig.velocity = new Vector2(moveSpeedX, npcRig.velocity.y)` — horizontal movement with vertical free.
 - **When airborne**: set `npcRig.velocity = new Vector2(0f, npcRig.velocity.y)` — freeze X, let gravity pull them down.
 - `S_NPCEnemy.MoveHorizontally(speedX)` encapsulates this clamped-velocity pattern for all movement states.
 - All movement states (Patrol/Chase/Aim/Attack/Arrest/Stunned) use `MoveHorizontally()` or the same clamped-velocity pattern.
+
+### Sprint Knockback
+Sprint hits call `S_NPCEnemy.OnSprintHit(Vector2 hitDirection)`.
+- Always enters Stunned state through `EnterState(State.Stunned)`.
+- Rigidbody mode applies horizontal knockback through `linearVelocity`.
+- Transform mode stores a short-lived knockback velocity and moves manually.
+- Transform knockback uses `Collider2D.Cast` against `knockbackObstacleLayer` to avoid passing through walls.
 
 ### Airborne Behavior
 - If an NPC is knocked off a platform or in mid-air during state transitions, X velocity is frozen to 0.
@@ -106,9 +129,17 @@ When `waypoints` is null or empty, the patrol state uses idle wandering:
 | | patrolSpeed | float | Patrol movement speed (default 2) |
 | | waypointWaitTime | float | Wait time at each waypoint (default 1) |
 | Movement Speed | chaseSpeed | float | Chase movement speed (default 5) |
+| Movement Mode | useRigidbodyMovement | bool | Use Rigidbody2D movement when a Rigidbody2D is present |
+| | requireGroundForTransformMovement | bool | Transform-mode NPCs only patrol/chase while grounded |
+| | transformGroundProbeDistance | float | Downward cast distance for Transform-mode ground checks |
 | Ground Detection | gravityScale | float | Gravity multiplier (default 3) |
 | | groundLayer | LayerMask | Layers considered "ground" (default Everything) |
 | | groundNormalThreshold | float | Min dot(normal, up) to count as ground (default 0.5) |
+| Sprint Knockback | sprintKnockbackSpeed | float | Horizontal knockback speed from player sprint |
+| | sprintKnockbackDuration | float | How long sprint knockback lasts |
+| | sprintKnockbackDamping | float | How quickly Transform knockback velocity fades |
+| | knockbackObstacleLayer | LayerMask | Layers that stop Transform knockback |
+| | knockbackObstacleSkin | float | Extra cast distance used to stop before obstacles |
 | Idle Wandering | wanderRadius | float | Max distance from spawn (default 3) |
 | | wanderWalkTimeMin | float | Min walk duration (default 1) |
 | | wanderWalkTimeMax | float | Max walk duration (default 3) |
@@ -155,16 +186,19 @@ If guards are invisible in Game View:
 When Sprint is activated, `Physics2D.OverlapCircleAll()` searches for all colliders on the `enemyLayer` within `stunRadius`:
 ```csharp
 Vector2 center = player.GetBodyTransform().position;
+float dir = player.GetFaceRight() ? 1f : -1f;
 Collider2D[] hits = Physics2D.OverlapCircleAll(center, stunRadius, enemyLayer);
 foreach (Collider2D hit in hits)
 {
     S_NPCEnemy enemy = hit.GetComponent<S_NPCEnemy>();
-    if (enemy != null) enemy.Stun();
+    if (enemy == null) enemy = hit.GetComponentInParent<S_NPCEnemy>();
+    if (enemy != null) enemy.OnSprintHit(new Vector2(dir, 0f));
 }
 ```
 - Uses **body Transform position** (NOT root transform) as center
 - Uses **LayerMask** (NOT tag comparison) for efficiency
 - Only affects `S_NPCEnemy` components (ignores other NPC types)
+- `OnSprintHit()` stuns and applies knockback even when the enemy has no Rigidbody2D
 
 ## Common Errors
 

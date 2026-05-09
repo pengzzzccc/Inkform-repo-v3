@@ -40,7 +40,6 @@ public class S_Player : MonoBehaviour
     private Coroutine paralyzeCoroutine;
     private bool isParalyzed = false;
 
-    private InputSystem_Actions m_Actions;
     private InputAction m_PlayerMove;
     private InputAction m_PlayerJump;
     private InputAction m_PlayerSprint;
@@ -94,11 +93,11 @@ public class S_Player : MonoBehaviour
         b_Sprite = body.GetComponent<SpriteRenderer>();
         b_Col = body.GetComponent<CircleCollider2D>();
 
-        m_Actions = new InputSystem_Actions();
-        m_PlayerMove = m_Actions.Player.Move;
-        m_PlayerJump = m_Actions.Player.Jump;
-        m_PlayerSprint = m_Actions.Player.Sprint;
-        m_PlayerGrep = m_Actions.Player.grep;
+        InputSystem_Actions actions = S_InputBindingManager.Instance.Actions;
+        m_PlayerMove = actions.Player.Move;
+        m_PlayerJump = actions.Player.Jump;
+        m_PlayerSprint = actions.Player.Sprint;
+        m_PlayerGrep = actions.Player.grep;
 
         b_Sprite.sprite = sprites[0];
         b_Rig.gravityScale = solidGravityScale;
@@ -294,16 +293,5 @@ public class S_Player : MonoBehaviour
         moveSpeed = baseMoveSpeed;
 
         paralyzeCoroutine = null;
-    }
-
-    void OnEnable()
-    {
-        m_Actions.Enable();
-    }
-
-
-    void OnDisable()
-    {
-        m_Actions.Disable();
     }
 }

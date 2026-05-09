@@ -32,7 +32,7 @@ Player switches to FLUID form
 
 ```
 S_Player (Singleton)
-|-- Input System: InputSystem_Actions (Move, Jump, Sprint, Grip)
+|-- Input System: S_InputBindingManager shared InputSystem_Actions (Move, Jump, Sprint, Grip)
 |-- Physics: Rigidbody2D, CircleCollider2D, PhysicsMaterial2D
 |-- Rendering: SpriteRenderer, Sprite[]
 |-- Skills: S_fluid_climb (wall climbing integration)
@@ -157,12 +157,14 @@ Player (S_Player component)
 
 ## 4. Input System
 
+`S_Player` reads input actions through `S_InputBindingManager.Instance.Actions` so runtime UI rebinding and saved binding overrides apply immediately to gameplay input.
+
 | Action | Binding | Usage |
 |--------|---------|-------|
 | Move | WASD / Left Stick | Horizontal movement, vertical climb input |
 | Jump | Space / South Button | Jump with cooldown |
 | Sprint | Left Shift / East Button | Activate sprint skill |
-| Grip | Left Ctrl / West Button | Wall climbing in fluid form |
+| Grip | G / West Button | Wall climbing in fluid form |
 
 ### Input Flow
 
@@ -171,7 +173,7 @@ Update()
     |-- Read Move input (WASD/Left Stick)
     |-- Read Jump input (Space) -> Call Jump()
     |-- Read Sprint input (Left Shift) -> S_SkillTree.ActivateSkill("Sprint")
-    `-- Read Grip input (Left Ctrl) -> Set gripping flag for S_fluid_climb
+    `-- Read Grip input (G) -> Set gripping flag for S_fluid_climb
 
 FixedUpdate()
     |-- Apply movement based on form
@@ -259,7 +261,7 @@ Surface Types:
 
 | Issue | Solution |
 |-------|----------|
-| Player not moving | Check InputSystem_Actions is enabled in OnEnable() |
+| Player not moving | Check S_InputBindingManager exists and its shared InputSystem_Actions is enabled |
 | Jumping feels floaty | Increase solidGravityScale |
 | Player sliding on walls | Check SolidMat friction value |
 | Camera jitter | Ensure Rigidbody2D has interpolation enabled |

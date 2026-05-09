@@ -42,10 +42,13 @@ public class S_Soild_sprint : S_SkillBase
         foreach (Collider2D hit in hits)
         {
             S_NPCEnemy enemy = hit.GetComponent<S_NPCEnemy>();
+            if (enemy == null)
+                enemy = hit.GetComponentInParent<S_NPCEnemy>();
+
             if (enemy != null)
             {
                 Debug.Log($"[Sprint] Hit enemy: {enemy.NPCName}");
-                enemy.Stun();
+                enemy.OnSprintHit(new Vector2(dir, 0f));
             }
         }
     }

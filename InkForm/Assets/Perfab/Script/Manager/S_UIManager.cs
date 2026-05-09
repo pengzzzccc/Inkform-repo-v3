@@ -1,6 +1,10 @@
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 public class S_UIManager : MonoBehaviour
 {
@@ -10,13 +14,23 @@ public class S_UIManager : MonoBehaviour
     [SerializeField] private Button StartButton;
     [SerializeField] private Button ReStartButton;
     [SerializeField] private Button ExitButton;
+    [SerializeField] private Button ControlsButton;
     [Header("Suspicion UI")]
     [SerializeField] private Slider suspicionSlider;
     [SerializeField] private GameObject suspicionUI;
 
-    private InputSystem_Actions m_ui;
     private InputAction openMemu;
-    private int menuCount = 1;
+    private InputAction cancelAction;
+    private bool menuOpen = false;
+    private GameObject controlsPanel;
+    private TMP_Text rebindStatusText;
+    private Button cancelRebindButton;
+    private Coroutine rebindStartCoroutine;
+    private BindingButtonView activeRebind;
+
+    private readonly List<GameObject> mainMenuObjects = new List<GameObject>();
+    private readonly List<Button> controlsPanelButtons = new List<Button>();
+    private readonly List<BindingButtonView> bindingButtons = new List<BindingButtonView>();
 
     void Awake()
     {
@@ -24,31 +38,61 @@ public class S_UIManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        m_ui = new InputSystem_Actions();
-        openMemu = m_ui.UI.OpenMenu;
+        InputSystem_Actions actions = S_InputBindingManager.Instance.Actions;
+        openMemu = actions.UI.OpenMenu;
+        cancelAction = actions.UI.Cancel;
     }
 
     void Start()
     {
-        background.SetActive(false);
-        StartButton.onClick.AddListener(() => S_GameEvent.GameStart());
-        ReStartButton.onClick.AddListener(() => S_GameEvent.GameReStart());
-        ExitButton.onClick.AddListener(() => S_GameEvent.ExitGame());
+        if (StartButton != null)
+            StartButton.onClick.AddListener(() => S_GameEvent.GameStart());
+
+        if (ReStartButton != null)
+            ReStartButton.onClick.AddListener(() => S_GameEvent.GameReStart());
+
+        if (ExitButton != null)
+            ExitButton.onClick.AddListener(() => S_GameEvent.ExitGame());
+
+        ApplyAutomaticNavigation(StartButton);
+        ApplyAutomaticNavigation(ReStartButton);
+        ApplyAutomaticNavigation(ExitButton);
+
+        BuildControlsUI();
+        HideUI();
     }
 
     void Update()
     {
-        if (openMemu.WasPressedThisFrame() && menuCount % 2 == 0)
+        bool toggledMenu = false;
+
+        if (openMemu != null && openMemu.WasPressedThisFrame() && !S_InputBindingManager.Instance.IsRebinding)
         {
-            ShowUI();
-            Time.timeScale = 0f;
-            menuCount++;
+            if (menuOpen)
+                HideUI();
+            else
+            {
+                ShowUI();
+                Time.timeScale = 0f;
+            }
+
+            toggledMenu = true;
         }
-        else if (openMemu.WasPressedThisFrame() && menuCount % 2 != 0)
+
+        if (!toggledMenu && menuOpen && cancelAction != null && cancelAction.WasPressedThisFrame() && !S_InputBindingManager.Instance.IsRebinding)
         {
-            HideUI();
-            Time.timeScale = 1f;
-            menuCount++;
+            if (IsControlsPanelVisible())
+                CloseControlsPanel();
+            else
+                HideUI();
+        }
+
+        if (menuOpen && !S_InputBindingManager.Instance.IsRebinding && EventSystem.current != null && EventSystem.current.currentSelectedGameObject == null)
+        {
+            if (IsControlsPanelVisible())
+                SelectControlsDefault();
+            else
+                SelectMainMenuDefault();
         }
     }
 
@@ -58,7 +102,9 @@ public class S_UIManager : MonoBehaviour
         S_GameEvent.OnGameRestart += HideUI;
         S_GameEvent.OnPlayerDied += ShowUI;
         S_GameEvent.OnSuspicionChanged += UpdateSuspicionBar;
-        m_ui.Enable();
+
+        if (S_InputBindingManager.HasInstance)
+            S_InputBindingManager.Instance.BindingsChanged += RefreshBindingLabels;
     }
 
     void OnDisable()
@@ -67,11 +113,35 @@ public class S_UIManager : MonoBehaviour
         S_GameEvent.OnGameRestart -= HideUI;
         S_GameEvent.OnPlayerDied -= ShowUI;
         S_GameEvent.OnSuspicionChanged -= UpdateSuspicionBar;
-        m_ui?.Disable();
+
+        if (S_InputBindingManager.HasInstance)
+            S_InputBindingManager.Instance.BindingsChanged -= RefreshBindingLabels;
     }
 
-    void ShowUI() => background.SetActive(true);
-    void HideUI() => background.SetActive(false);
+    void ShowUI()
+    {
+        if (background == null) return;
+
+        background.SetActive(true);
+        menuOpen = true;
+        SetControlsPanelVisible(false);
+        Canvas.ForceUpdateCanvases();
+        SelectMainMenuDefault();
+    }
+
+    void HideUI()
+    {
+        if (background == null) return;
+
+        if (S_InputBindingManager.HasInstance)
+            S_InputBindingManager.Instance.CancelRebind();
+
+        background.SetActive(false);
+        menuOpen = false;
+        SetControlsPanelVisible(false);
+        ClearSelection();
+        Time.timeScale = 1f;
+    }
 
     private void UpdateSuspicionBar(float value)
     {
@@ -82,6 +152,545 @@ public class S_UIManager : MonoBehaviour
         {
             float max = S_SuspicionSystem.Instance != null ? S_SuspicionSystem.Instance.MaxSuspicion : 100f;
             suspicionSlider.value = value / max;
+        }
+    }
+
+    private void BuildControlsUI()
+    {
+        if (background == null || controlsPanel != null) return;
+
+        mainMenuObjects.Clear();
+        for (int i = 0; i < background.transform.childCount; i++)
+            mainMenuObjects.Add(background.transform.GetChild(i).gameObject);
+
+        CreateControlsButton();
+        controlsPanel = CreateControlsPanel(background.transform);
+        controlsPanel.SetActive(false);
+
+        CreateTitle("controls", controlsPanel.transform);
+        CreateHeaderRow(controlsPanel.transform);
+
+        AddBindingRow(
+            "Move Up",
+            BindingTarget.Keyboard("Move", "up", "Button"),
+            null);
+        AddBindingRow(
+            "Move Down",
+            BindingTarget.Keyboard("Move", "down", "Button"),
+            null);
+        AddBindingRow(
+            "Move Left",
+            BindingTarget.Keyboard("Move", "left", "Button"),
+            null);
+        AddBindingRow(
+            "Move Right",
+            BindingTarget.Keyboard("Move", "right", "Button"),
+            null);
+        AddBindingRow(
+            "Move Stick",
+            null,
+            BindingTarget.Gamepad("Move", null, "Vector2"));
+        AddBindingRow(
+            "Jump",
+            BindingTarget.Keyboard("Jump", null, "Button"),
+            BindingTarget.Gamepad("Jump", null, "Button"));
+        AddBindingRow(
+            "Sprint",
+            BindingTarget.Keyboard("Sprint", null, "Button"),
+            BindingTarget.Gamepad("Sprint", null, "Button"));
+        AddBindingRow(
+            "Grip",
+            BindingTarget.Keyboard("grep", null, "Button"),
+            BindingTarget.Gamepad("grep", null, "Button"));
+        AddBindingRow(
+            "Open Menu",
+            BindingTarget.Keyboard("OpenMenu", null, "Button", "<Keyboard>"),
+            BindingTarget.Gamepad("OpenMenu", null, "Button"));
+
+        CreateFooterRow(controlsPanel.transform);
+        RefreshBindingLabels();
+    }
+
+    private void CreateControlsButton()
+    {
+        if (ControlsButton == null && ExitButton != null)
+        {
+            ControlsButton = Instantiate(ExitButton, ExitButton.transform.parent);
+            ControlsButton.name = "Button_controls";
+            SetButtonText(ControlsButton, "controls");
+
+            RectTransform controlsRect = ControlsButton.GetComponent<RectTransform>();
+            RectTransform exitRect = ExitButton.GetComponent<RectTransform>();
+            if (controlsRect != null && exitRect != null)
+                controlsRect.anchoredPosition = exitRect.anchoredPosition + new Vector2(0f, -60f);
+        }
+
+        if (ControlsButton == null) return;
+
+        ControlsButton.onClick.RemoveAllListeners();
+        ControlsButton.onClick.AddListener(OpenControlsPanel);
+        ApplyAutomaticNavigation(ControlsButton);
+
+        if (!mainMenuObjects.Contains(ControlsButton.gameObject))
+            mainMenuObjects.Add(ControlsButton.gameObject);
+    }
+
+    private GameObject CreateControlsPanel(Transform parent)
+    {
+        GameObject panel = new GameObject("ControlsPanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(VerticalLayoutGroup));
+        panel.transform.SetParent(parent, false);
+
+        RectTransform rect = panel.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(700f, 520f);
+
+        Image image = panel.GetComponent<Image>();
+        image.color = new Color(0.04f, 0.06f, 0.08f, 0.92f);
+
+        VerticalLayoutGroup layout = panel.GetComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(18, 18, 12, 12);
+        layout.spacing = 4f;
+        layout.childAlignment = TextAnchor.UpperCenter;
+        layout.childControlWidth = true;
+        layout.childControlHeight = true;
+        layout.childForceExpandWidth = true;
+        layout.childForceExpandHeight = false;
+
+        return panel;
+    }
+
+    private void CreateTitle(string text, Transform parent)
+    {
+        TMP_Text title = CreateText("Title", parent, text, 26f, TextAlignmentOptions.Center);
+        AddLayoutElement(title.gameObject, -1f, 34f);
+    }
+
+    private void CreateHeaderRow(Transform parent)
+    {
+        GameObject row = CreateRow("HeaderRow", parent, 24f);
+        TMP_Text action = CreateText("Action", row.transform, "Action", 16f, TextAlignmentOptions.Left);
+        TMP_Text keyboard = CreateText("KeyboardMouse", row.transform, "Keyboard / Mouse", 16f, TextAlignmentOptions.Center);
+        TMP_Text gamepad = CreateText("Gamepad", row.transform, "Gamepad", 16f, TextAlignmentOptions.Center);
+
+        AddLayoutElement(action.gameObject, 180f, -1f);
+        AddLayoutElement(keyboard.gameObject, 220f, -1f);
+        AddLayoutElement(gamepad.gameObject, 220f, -1f);
+    }
+
+    private void AddBindingRow(string label, BindingTarget keyboardTarget, BindingTarget gamepadTarget)
+    {
+        GameObject row = CreateRow(label.Replace(" ", string.Empty) + "Row", controlsPanel.transform, 32f);
+
+        TMP_Text labelText = CreateText("Label", row.transform, label, 16f, TextAlignmentOptions.Left);
+        AddLayoutElement(labelText.gameObject, 180f, -1f);
+
+        CreateBindingButton(row.transform, keyboardTarget);
+        CreateBindingButton(row.transform, gamepadTarget);
+    }
+
+    private void CreateBindingButton(Transform parent, BindingTarget target)
+    {
+        if (target == null)
+        {
+            TMP_Text placeholder = CreateText("Empty", parent, "-", 16f, TextAlignmentOptions.Center);
+            AddLayoutElement(placeholder.gameObject, 220f, 28f);
+            return;
+        }
+
+        Button button = CreateButton(target.ActionName + "Button", parent, "-");
+        AddLayoutElement(button.gameObject, 220f, 28f);
+
+        TMP_Text text = button.GetComponentInChildren<TMP_Text>();
+        BindingButtonView view = new BindingButtonView(button, text, target);
+        bindingButtons.Add(view);
+        controlsPanelButtons.Add(button);
+
+        button.onClick.AddListener(() => BeginRebind(view));
+    }
+
+    private void CreateFooterRow(Transform parent)
+    {
+        rebindStatusText = CreateText("RebindStatus", parent, string.Empty, 15f, TextAlignmentOptions.Center);
+        AddLayoutElement(rebindStatusText.gameObject, -1f, 22f);
+
+        GameObject row = CreateRow("FooterRow", parent, 32f);
+        AddFlexibleSpace(row.transform);
+
+        Button resetButton = CreateButton("ResetAllButton", row.transform, "reset all");
+        resetButton.onClick.AddListener(() =>
+        {
+            S_InputBindingManager.Instance.CancelRebind();
+            S_InputBindingManager.Instance.ResetAllBindings();
+            RefreshBindingLabels();
+        });
+        AddLayoutElement(resetButton.gameObject, 150f, 28f);
+        controlsPanelButtons.Add(resetButton);
+
+        cancelRebindButton = CreateButton("CancelRebindButton", row.transform, "cancel");
+        cancelRebindButton.onClick.AddListener(() => S_InputBindingManager.Instance.CancelRebind());
+        AddLayoutElement(cancelRebindButton.gameObject, 150f, 28f);
+        cancelRebindButton.interactable = false;
+
+        Button backButton = CreateButton("BackButton", row.transform, "back");
+        backButton.onClick.AddListener(CloseControlsPanel);
+        AddLayoutElement(backButton.gameObject, 150f, 28f);
+        controlsPanelButtons.Add(backButton);
+    }
+
+    private GameObject CreateRow(string name, Transform parent, float height)
+    {
+        GameObject row = new GameObject(name, typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+        row.transform.SetParent(parent, false);
+
+        HorizontalLayoutGroup layout = row.GetComponent<HorizontalLayoutGroup>();
+        layout.spacing = 10f;
+        layout.childAlignment = TextAnchor.MiddleCenter;
+        layout.childControlWidth = true;
+        layout.childControlHeight = true;
+        layout.childForceExpandWidth = false;
+        layout.childForceExpandHeight = false;
+
+        LayoutElement layoutElement = row.GetComponent<LayoutElement>();
+        layoutElement.preferredHeight = height;
+
+        return row;
+    }
+
+    private TMP_Text CreateText(string name, Transform parent, string text, float fontSize, TextAlignmentOptions alignment)
+    {
+        GameObject textObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        textObject.transform.SetParent(parent, false);
+
+        TextMeshProUGUI tmp = textObject.GetComponent<TextMeshProUGUI>();
+        tmp.text = text;
+        tmp.fontSize = fontSize;
+        tmp.fontSizeMax = fontSize;
+        tmp.fontSizeMin = 10f;
+        tmp.enableAutoSizing = true;
+        tmp.alignment = alignment;
+        tmp.color = Color.white;
+        tmp.raycastTarget = false;
+        tmp.overflowMode = TextOverflowModes.Ellipsis;
+
+        return tmp;
+    }
+
+    private Button CreateButton(string name, Transform parent, string text)
+    {
+        GameObject buttonObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+        buttonObject.transform.SetParent(parent, false);
+
+        Image image = buttonObject.GetComponent<Image>();
+        image.color = new Color(0.86f, 0.92f, 0.94f, 1f);
+
+        Button button = buttonObject.GetComponent<Button>();
+        ApplyAutomaticNavigation(button);
+
+        ColorBlock colors = button.colors;
+        colors.normalColor = new Color(0.86f, 0.92f, 0.94f, 1f);
+        colors.highlightedColor = new Color(0.62f, 1f, 0.96f, 1f);
+        colors.pressedColor = new Color(0.35f, 0.58f, 0.62f, 1f);
+        colors.selectedColor = new Color(0.62f, 1f, 0.96f, 1f);
+        colors.disabledColor = new Color(0.32f, 0.36f, 0.38f, 0.65f);
+        button.colors = colors;
+        button.targetGraphic = image;
+
+        TMP_Text buttonText = CreateText("Text (TMP)", buttonObject.transform, text, 15f, TextAlignmentOptions.Center);
+        RectTransform textRect = buttonText.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = new Vector2(8f, 2f);
+        textRect.offsetMax = new Vector2(-8f, -2f);
+
+        return button;
+    }
+
+    private void AddFlexibleSpace(Transform parent)
+    {
+        GameObject space = new GameObject("Space", typeof(RectTransform), typeof(LayoutElement));
+        space.transform.SetParent(parent, false);
+        space.GetComponent<LayoutElement>().flexibleWidth = 1f;
+    }
+
+    private void AddLayoutElement(GameObject target, float preferredWidth, float preferredHeight)
+    {
+        LayoutElement layoutElement = target.GetComponent<LayoutElement>();
+        if (layoutElement == null)
+            layoutElement = target.AddComponent<LayoutElement>();
+
+        if (preferredWidth >= 0f)
+            layoutElement.preferredWidth = preferredWidth;
+
+        if (preferredHeight >= 0f)
+            layoutElement.preferredHeight = preferredHeight;
+    }
+
+    private void OpenControlsPanel()
+    {
+        SetControlsPanelVisible(true);
+        Canvas.ForceUpdateCanvases();
+        SelectControlsDefault();
+    }
+
+    private void CloseControlsPanel()
+    {
+        if (S_InputBindingManager.HasInstance)
+            S_InputBindingManager.Instance.CancelRebind();
+
+        SetControlsPanelVisible(false);
+        Canvas.ForceUpdateCanvases();
+        SelectButton(ControlsButton != null ? ControlsButton : StartButton);
+    }
+
+    private void SetControlsPanelVisible(bool visible)
+    {
+        if (controlsPanel != null)
+            controlsPanel.SetActive(visible);
+
+        foreach (GameObject menuObject in mainMenuObjects)
+        {
+            if (menuObject != null)
+                menuObject.SetActive(!visible);
+        }
+
+        if (!visible)
+        {
+            activeRebind = null;
+            SetControlsInteractable(true);
+            if (rebindStatusText != null)
+                rebindStatusText.text = string.Empty;
+        }
+        else
+        {
+            RefreshBindingLabels();
+        }
+    }
+
+    private void BeginRebind(BindingButtonView view)
+    {
+        if (rebindStartCoroutine != null)
+            StopCoroutine(rebindStartCoroutine);
+
+        rebindStartCoroutine = StartCoroutine(StartRebindAfterFrame(view));
+    }
+
+    private IEnumerator StartRebindAfterFrame(BindingButtonView view)
+    {
+        yield return null;
+        rebindStartCoroutine = null;
+        StartRebind(view);
+    }
+
+    private void StartRebind(BindingButtonView view)
+    {
+        activeRebind = view;
+        SetControlsInteractable(false);
+        view.Label.text = "press input...";
+        SelectButton(cancelRebindButton);
+
+        if (rebindStatusText != null)
+            rebindStatusText.text = "waiting for input";
+
+        bool started = S_InputBindingManager.Instance.StartInteractiveRebind(
+            view.Target.ActionName,
+            view.Target.BindingGroup,
+            view.Target.PartName,
+            view.Target.DevicePath,
+            view.Target.ExpectedControlType,
+            CompleteRebind,
+            CancelRebind);
+
+        if (started) return;
+
+        activeRebind = null;
+        SetControlsInteractable(true);
+        RefreshBindingLabels();
+
+        if (rebindStatusText != null)
+            rebindStatusText.text = "binding unavailable";
+    }
+
+    private void CompleteRebind()
+    {
+        BindingButtonView completedRebind = activeRebind;
+        activeRebind = null;
+        SetControlsInteractable(true);
+        RefreshBindingLabels();
+        SelectButton(completedRebind != null ? completedRebind.Button : null);
+
+        if (rebindStatusText != null)
+            rebindStatusText.text = "saved";
+    }
+
+    private void CancelRebind()
+    {
+        BindingButtonView cancelledRebind = activeRebind;
+        activeRebind = null;
+        SetControlsInteractable(true);
+        RefreshBindingLabels();
+        SelectButton(cancelledRebind != null ? cancelledRebind.Button : null);
+
+        if (rebindStatusText != null)
+            rebindStatusText.text = "cancelled";
+    }
+
+    private void SetControlsInteractable(bool interactable)
+    {
+        foreach (Button button in controlsPanelButtons)
+        {
+            if (button != null)
+                button.interactable = interactable;
+        }
+
+        if (cancelRebindButton != null)
+            cancelRebindButton.interactable = !interactable;
+    }
+
+    private void RefreshBindingLabels()
+    {
+        foreach (BindingButtonView bindingButton in bindingButtons)
+        {
+            if (bindingButton == null || bindingButton.Label == null) continue;
+            if (activeRebind == bindingButton) continue;
+
+            BindingTarget target = bindingButton.Target;
+            bindingButton.Label.text = S_InputBindingManager.Instance.GetBindingDisplayString(
+                target.ActionName,
+                target.BindingGroup,
+                target.PartName,
+                target.DevicePath);
+        }
+    }
+
+    private void SetButtonText(Button button, string text)
+    {
+        TMP_Text tmpText = button.GetComponentInChildren<TMP_Text>(true);
+        if (tmpText != null)
+        {
+            tmpText.text = text;
+            return;
+        }
+
+        Text uiText = button.GetComponentInChildren<Text>(true);
+        if (uiText != null)
+            uiText.text = text;
+    }
+
+    private bool IsControlsPanelVisible()
+    {
+        return controlsPanel != null && controlsPanel.activeSelf;
+    }
+
+    private void SelectMainMenuDefault()
+    {
+        Button buttonToSelect = FirstInteractableButton(StartButton, ReStartButton, ControlsButton, ExitButton);
+        SelectButton(buttonToSelect);
+    }
+
+    private void SelectControlsDefault()
+    {
+        foreach (BindingButtonView bindingButton in bindingButtons)
+        {
+            if (IsSelectable(bindingButton.Button))
+            {
+                SelectButton(bindingButton.Button);
+                return;
+            }
+        }
+
+        Button buttonToSelect = FirstInteractableButton(cancelRebindButton);
+        if (buttonToSelect == null)
+            buttonToSelect = FirstInteractableButton(controlsPanelButtons.ToArray());
+
+        SelectButton(buttonToSelect);
+    }
+
+    private void SelectButton(Button button)
+    {
+        if (!IsSelectable(button) || EventSystem.current == null) return;
+
+        EventSystem.current.SetSelectedGameObject(null);
+        EventSystem.current.SetSelectedGameObject(button.gameObject);
+    }
+
+    private void ClearSelection()
+    {
+        if (EventSystem.current != null)
+            EventSystem.current.SetSelectedGameObject(null);
+    }
+
+    private Button FirstInteractableButton(params Button[] buttons)
+    {
+        foreach (Button button in buttons)
+        {
+            if (IsSelectable(button))
+                return button;
+        }
+
+        return null;
+    }
+
+    private bool IsSelectable(Button button)
+    {
+        return button != null && button.interactable && button.gameObject.activeInHierarchy;
+    }
+
+    private void ApplyAutomaticNavigation(Selectable selectable)
+    {
+        if (selectable == null) return;
+
+        Navigation navigation = selectable.navigation;
+        navigation.mode = Navigation.Mode.Automatic;
+        selectable.navigation = navigation;
+    }
+
+    private class BindingTarget
+    {
+        public string ActionName { get; private set; }
+        public string BindingGroup { get; private set; }
+        public string PartName { get; private set; }
+        public string DevicePath { get; private set; }
+        public string ExpectedControlType { get; private set; }
+
+        public static BindingTarget Keyboard(string actionName, string partName, string expectedControlType, string devicePath = null)
+        {
+            return new BindingTarget
+            {
+                ActionName = actionName,
+                BindingGroup = "Keyboard&Mouse",
+                PartName = partName,
+                DevicePath = devicePath,
+                ExpectedControlType = expectedControlType
+            };
+        }
+
+        public static BindingTarget Gamepad(string actionName, string partName, string expectedControlType)
+        {
+            return new BindingTarget
+            {
+                ActionName = actionName,
+                BindingGroup = "Gamepad",
+                PartName = partName,
+                DevicePath = "<Gamepad>",
+                ExpectedControlType = expectedControlType
+            };
+        }
+    }
+
+    private class BindingButtonView
+    {
+        public Button Button { get; private set; }
+        public TMP_Text Label { get; private set; }
+        public BindingTarget Target { get; private set; }
+
+        public BindingButtonView(Button button, TMP_Text label, BindingTarget target)
+        {
+            Button = button;
+            Label = label;
+            Target = target;
         }
     }
 }
