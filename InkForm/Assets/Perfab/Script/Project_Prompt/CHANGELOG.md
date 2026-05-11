@@ -1,5 +1,28 @@
 # InkForm — Changelog
 
+## v0.6.2 - Dynamic Capsule Collider Phase (2026-05-12)
+
+### New Features
+- Added dynamic `CapsuleCollider2D` support to the player slime collider.
+- Normal movement remains on `CircleCollider2D`.
+- Crouch/slick uses a horizontal capsule.
+- Wall climb uses a vertical capsule offset toward the wall.
+- Ceiling climb uses a flattened horizontal capsule.
+
+### Integration
+- `S_Player.GetCollider()` now returns the active dynamic collider.
+- Grip buffer casts, surface classification, and procedural contact fitting now follow the active collider.
+- `Pre_MainChar.prefab` now includes the disabled capsule component and serialized capsule tuning defaults.
+
+### Tuning
+- Capsule shape switches smooth size and offset instead of snapping directly.
+- Renderer adds `colliderShapeFollow` so the procedural body can partially follow active capsule proportions.
+- Renderer adds tail ground sticking so motion lag stays close to the floor contact plane.
+- Crouch capsule now anchors from the bottom edge and uses input/contact smoothing to avoid walking bounce and tail flicker.
+- Renderer adds a contact-fill mesh under the slime body to cover tiny visible gaps caused by contact-plane skin.
+
+---
+
 ## v0.6.1 - Slime Rendering Baseline & Interaction Polish (2026-05-12)
 
 ### New Features

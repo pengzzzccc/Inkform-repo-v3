@@ -5,7 +5,7 @@
 The player body can render as a procedural slime instead of relying only on the fallback `SpriteRenderer`. The first production-ready pass is split across two components on the player body:
 
 - `S_PlayerProceduralRenderer`: generates runtime meshes for the slime body, outline, highlight, eyes, and eye glow.
-- `S_PlayerDynamicCollider`: adjusts the existing `CircleCollider2D` conservatively so the physics shape follows the visual squash/slick behavior.
+- `S_PlayerDynamicCollider`: switches between the normal `CircleCollider2D` and a dynamic `CapsuleCollider2D` so the physics shape follows the visual squash/slick behavior.
 
 The system is intentionally independent from movement. It reads player state, velocity, and fluid climb surface state, then updates visuals and collider shape without owning gameplay decisions.
 
@@ -18,6 +18,7 @@ Pre_MainChar
 `-- body
     |-- Rigidbody2D
     |-- CircleCollider2D
+    |-- CapsuleCollider2D
     |-- SpriteRenderer fallback
     |-- S_coleve
     |-- S_PlayerProceduralRenderer
@@ -76,11 +77,11 @@ This keeps the slime from visually sinking into floors and helps it read as havi
 
 ---
 
-## 5. Dynamic Circle Collider
+## 5. Dynamic Circle And Capsule Collider
 
-`S_PlayerDynamicCollider` is the current physical middle ground before the capsule phase.
+`S_PlayerDynamicCollider` keeps the normal state as a circle, then switches to a smoothed `CapsuleCollider2D` for slime-specific poses.
 
-It adjusts the existing `CircleCollider2D`:
+Circle fallback behavior:
 
 - Crouch/slick input shrinks the radius and shifts the offset down.
 - Wall/ceiling attach shrinks the radius and offsets toward the contact surface.
@@ -88,28 +89,22 @@ It adjusts the existing `CircleCollider2D`:
 - Impacts briefly shrink then recover.
 - `keepSurfaceContact` nudges the Rigidbody2D as radius changes so the collider does not visibly detach from contact surfaces.
 
-This is conservative and stable, but still limited because a circle cannot represent wide slick crawling or tall wall adhesion.
-
----
-
-## 6. Planned Capsule Phase
-
-The next phase upgrades the physical representation from a dynamic circle to a dynamic `CapsuleCollider2D`.
-
-Target states:
+Capsule states:
 
 | State | Collider Shape |
 |-------|----------------|
-| Normal | Near-round capsule/circle-like proportions |
+| Normal | CircleCollider2D |
 | Crouch / slick | Horizontal capsule |
 | Wall climb | Vertical capsule offset toward wall |
 | Ceiling climb | Horizontal flattened capsule offset upward |
 
-Capsule switching must be smoothed and guarded against wall penetration. The visual mesh should continue using contact-plane fitting while the capsule provides a better physical silhouette.
+Capsule switching is smoothed by size and offset. Entering a capsule starts from a conservative size based on the current circle so growth is gradual instead of instantly expanding through nearby walls.
+
+The procedural renderer now reads `S_Player.GetCollider()` each frame, so contact-plane fitting and visual shape-follow use the currently active circle or capsule.
 
 ---
 
-## 7. Prefab Source Of Truth
+## 6. Prefab Source Of Truth
 
 `Assets/Perfab/Pre_MainChar.prefab` is the source of truth for:
 

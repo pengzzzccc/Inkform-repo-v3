@@ -193,7 +193,7 @@ public class S_Player : MonoBehaviour
         b_Rig.gravityScale = solidGravityScale;
         float input = m_PlayerMove.ReadValue<Vector2>().x;
 
-        if (fluidClimbSkill != null) fluidClimbSkill.ClassifySurface(b_Col, input);
+        if (fluidClimbSkill != null) fluidClimbSkill.ClassifySurface(GetCollider(), input);
 
         float moveV = 0;
 
@@ -238,7 +238,7 @@ public class S_Player : MonoBehaviour
 
         if (fluidClimbSkill != null)
         {
-            Collider2D bodyCollider = b_Col != null ? b_Col : body.GetComponent<Collider2D>();
+            Collider2D bodyCollider = GetCollider() != null ? GetCollider() : body.GetComponent<Collider2D>();
             fluidClimbSkill.DrawGripBufferGizmos(body.transform, bodyCollider, facingRight);
         }
 
@@ -309,7 +309,17 @@ public class S_Player : MonoBehaviour
     }
 
     public Rigidbody2D GetRigidbody() => b_Rig;
-    public Collider2D GetCollider() => b_Col;
+    public Collider2D GetCollider()
+    {
+        if (useDynamicCollider && dynamicCollider != null)
+        {
+            Collider2D activeCollider = dynamicCollider.GetActiveCollider();
+            if (activeCollider != null)
+                return activeCollider;
+        }
+
+        return b_Col;
+    }
 
 
     public float GetMoveInput() => m_PlayerMove.ReadValue<Vector2>().x;

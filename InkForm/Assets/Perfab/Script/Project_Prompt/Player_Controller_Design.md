@@ -280,9 +280,9 @@ The player body can now use procedural slime rendering through `S_PlayerProcedur
 |-------|-------------|
 | useProceduralRenderer | Enables the procedural rendering path in `UpdateSprite()` |
 | proceduralRenderer | Reference to the Body `S_PlayerProceduralRenderer` |
-| useDynamicCollider | Enables the current dynamic circle collider path |
+| useDynamicCollider | Enables the dynamic circle/capsule collider path |
 | dynamicCollider | Reference to the Body `S_PlayerDynamicCollider` |
 
 When enabled, `S_PlayerProceduralRenderer` hides the fallback `SpriteRenderer` and generates mesh children for body, outline, eyes, and eye glow. The fallback `sprites[]` are still kept on `Pre_MainChar.prefab` so the player can fall back to sprite rendering if the procedural path is disabled.
 
-`S_PlayerDynamicCollider` currently adjusts the existing `CircleCollider2D` radius and offset for crouch/slick input, wall attachment, ceiling attachment, speed shrink, and impact compression. The next planned phase is a dynamic `CapsuleCollider2D` that better matches the slime silhouette.
+`S_PlayerDynamicCollider` keeps normal movement on `CircleCollider2D`, then switches to a dynamic `CapsuleCollider2D` for crouch/slick, wall climbing, and ceiling climbing. `S_Player.GetCollider()` returns the active collider, so climb classification, grip buffer casts, and procedural contact rendering all follow the current physical shape.
