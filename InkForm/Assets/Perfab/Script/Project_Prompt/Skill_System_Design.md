@@ -268,3 +268,21 @@ Any --(exhaustion / no contact)--> None
 | Skills reset on scene load | S_SkillTree uses DontDestroyOnLoad + initialized flag |
 | Prerequisites not working | Ensure prerequisite skill names match exactly |
 | Skill asset not found | Check `skillName` string matches what's passed to TryUnlock/ActivateSkill |
+
+---
+
+## 7. Fluid Climb Updates
+
+`S_fluid_climb` now supports a Grip buffer for fluid climbing. When the player is in fluid form and holding Grip, the skill can cast the player's collider horizontally within `gripBufferDistance`. If a valid wall is found, the player is snapped toward the wall and the state machine enters `WallLeft` or `WallRight` without requiring perfect contact first.
+
+Additional serialized fields:
+
+| Field | Description |
+|-------|-------------|
+| gripBufferDistance | Maximum distance from a wall where Grip can still attach |
+| gripSnapSkin | Small safe distance kept when snapping toward the wall |
+| gripInputThreshold | Horizontal input threshold used to choose left/right grip direction |
+| drawGripBufferGizmos | Shows left/right buffer regions when the player is selected |
+| gripBufferGizmoColor | Gizmo color for buffer visualization |
+
+The surface state machine also allows direct `None/Floor -> Ceiling` entry while Grip movement is active. This lets the player attach to ceilings directly instead of requiring a wall-to-ceiling transition first.

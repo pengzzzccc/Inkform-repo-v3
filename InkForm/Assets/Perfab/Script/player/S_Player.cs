@@ -24,6 +24,12 @@ public class S_Player : MonoBehaviour
     [Header("Paralyze")]
     [SerializeField] private float paralyzeSlowMultiplier = 0.5f;
     [SerializeField] private float defaultParalyzeDuration = 3f;
+    [Header("Procedural Rendering")]
+    [SerializeField] private bool useProceduralRenderer = true;
+    [SerializeField] private S_PlayerProceduralRenderer proceduralRenderer;
+    [Header("Dynamic Collider")]
+    [SerializeField] private bool useDynamicCollider = true;
+    [SerializeField] private S_PlayerDynamicCollider dynamicCollider;
 
 
     private float moveSpeed;
@@ -35,6 +41,7 @@ public class S_Player : MonoBehaviour
     private Rigidbody2D b_Rig;
     private SpriteRenderer b_Sprite;
     private Collider2D b_Col;
+    private CircleCollider2D b_CircleCol;
     private int baseMaxJump;
     private float baseMoveSpeed;
     private Coroutine paralyzeCoroutine;
@@ -91,7 +98,8 @@ public class S_Player : MonoBehaviour
 
         b_Rig = body.GetComponent<Rigidbody2D>();
         b_Sprite = body.GetComponent<SpriteRenderer>();
-        b_Col = body.GetComponent<CircleCollider2D>();
+        b_CircleCol = body.GetComponent<CircleCollider2D>();
+        b_Col = b_CircleCol;
 
         InputSystem_Actions actions = S_InputBindingManager.Instance.Actions;
         m_PlayerMove = actions.Player.Move;
@@ -103,6 +111,8 @@ public class S_Player : MonoBehaviour
         b_Rig.gravityScale = solidGravityScale;
 
         b_Rig.interpolation = RigidbodyInterpolation2D.Interpolate;
+        SetupProceduralRenderer();
+        SetupDynamicCollider();
 
         inkform = form.fluid;
         SetForm(inkform);
@@ -161,6 +171,8 @@ public class S_Player : MonoBehaviour
             SolidMovement();
         else
             FluidMovement();
+
+        UpdateDynamicCollider();
     }
 
     void FluidMovement()
@@ -219,12 +231,81 @@ public class S_Player : MonoBehaviour
         }
     }
 
+    private void OnDrawGizmosSelected()
+    {
+        if (body == null)
+            return;
+
+        if (fluidClimbSkill != null)
+        {
+            Collider2D bodyCollider = b_Col != null ? b_Col : body.GetComponent<Collider2D>();
+            fluidClimbSkill.DrawGripBufferGizmos(body.transform, bodyCollider, facingRight);
+        }
+
+        S_PlayerProceduralRenderer renderer = proceduralRenderer != null
+            ? proceduralRenderer
+            : body.GetComponent<S_PlayerProceduralRenderer>();
+        if (renderer != null)
+            renderer.DrawRendererGizmos();
+
+        S_PlayerDynamicCollider colliderRenderer = dynamicCollider != null
+            ? dynamicCollider
+            : body.GetComponent<S_PlayerDynamicCollider>();
+        if (colliderRenderer != null)
+            colliderRenderer.DrawDynamicColliderGizmos();
+    }
+
     void UpdateSprite()
     {
+        if (useProceduralRenderer && proceduralRenderer != null)
+        {
+            proceduralRenderer.RenderTick(this, fluidClimbSkill);
+            return;
+        }
+
+        if (b_Sprite == null) return;
+
+        b_Sprite.enabled = true;
         b_Sprite.color = Color.white;
         int formOffset = (inkform == form.solid) ? 0 : 2;
         int dirOffset = facingRight ? 0 : 1;
         b_Sprite.sprite = sprites[formOffset + dirOffset];
+    }
+
+    private void SetupProceduralRenderer()
+    {
+        if (!useProceduralRenderer || body == null)
+            return;
+
+        if (proceduralRenderer == null)
+            proceduralRenderer = body.GetComponent<S_PlayerProceduralRenderer>();
+
+        if (proceduralRenderer == null)
+            proceduralRenderer = body.AddComponent<S_PlayerProceduralRenderer>();
+
+        proceduralRenderer.Initialize(b_Sprite, b_Rig, b_Col);
+    }
+
+    private void SetupDynamicCollider()
+    {
+        if (!useDynamicCollider || body == null || b_CircleCol == null)
+            return;
+
+        if (dynamicCollider == null)
+            dynamicCollider = body.GetComponent<S_PlayerDynamicCollider>();
+
+        if (dynamicCollider == null)
+            dynamicCollider = body.AddComponent<S_PlayerDynamicCollider>();
+
+        dynamicCollider.Initialize(b_CircleCol, b_Rig);
+    }
+
+    private void UpdateDynamicCollider()
+    {
+        if (!useDynamicCollider || dynamicCollider == null)
+            return;
+
+        dynamicCollider.DynamicColliderTick(this, fluidClimbSkill);
     }
 
     public Rigidbody2D GetRigidbody() => b_Rig;
@@ -235,6 +316,8 @@ public class S_Player : MonoBehaviour
 
 
     public float GetClimbInput() => m_PlayerMove.ReadValue<Vector2>().y;
+
+    public Vector2 GetMoveVector() => m_PlayerMove.ReadValue<Vector2>();
 
     public float GetMoveSpeed() => moveSpeed;
     public Transform GetBodyTransform() => body.transform;

@@ -11,6 +11,12 @@ public class S_fluid_climb : S_SkillBase
     [SerializeField] private LayerMask surfaceLayer = ~0;
     [SerializeField][Range(0.1f, 1.0f)] private float floorDotThreshold = 0.5f;
     [SerializeField][Range(0.1f, 1.0f)] private float ceilingDotThreshold = 0.5f;
+    [Header("Grip Buffer")]
+    [SerializeField][Range(0f, 1.5f)] private float gripBufferDistance = 0.35f;
+    [SerializeField][Range(0f, 0.1f)] private float gripSnapSkin = 0.01f;
+    [SerializeField][Range(0f, 1f)] private float gripInputThreshold = 0.1f;
+    [SerializeField] private bool drawGripBufferGizmos = true;
+    [SerializeField] private Color gripBufferGizmoColor = new Color(0f, 0.8f, 1f, 0.35f);
 
     public enum SurfaceType
     {
@@ -24,6 +30,7 @@ public class S_fluid_climb : S_SkillBase
     [System.NonSerialized] private SurfaceType surface = SurfaceType.None;
     [System.NonSerialized] private Vector2 surfNormal = Vector2.up;
     [System.NonSerialized] private ContactPoint2D[] contacts;
+    [System.NonSerialized] private RaycastHit2D[] gripBufferHits;
     [System.NonSerialized] private int noContactFrames = 0;
     [System.NonSerialized] private float climbTimer = 0f;
     [System.NonSerialized] private bool wasClimbing = false;
@@ -50,7 +57,8 @@ public class S_fluid_climb : S_SkillBase
         Rigidbody2D rig = player.GetRigidbody();
         Collider2D col = player.GetCollider();
 
-        ClassifySurface(col, inputX);
+        ClassifySurface(col, inputX, true);
+        TryGripBuffer(player, col, rig, inputX);
 
         bool isClimbing = surface == SurfaceType.WallLeft || surface == SurfaceType.WallRight || surface == SurfaceType.Ceiling;
         if (isClimbing)
@@ -87,7 +95,7 @@ public class S_fluid_climb : S_SkillBase
         Debug.DrawRay(player.GetBodyTransform().position, surfNormal, Color.yellow);
     }
 
-    public void ClassifySurface(Collider2D col, float input)
+    public void ClassifySurface(Collider2D col, float input, bool allowDirectCeilingEntry = false)
     {
         if (contacts == null) contacts = new ContactPoint2D[3];
 
@@ -133,12 +141,14 @@ public class S_fluid_climb : S_SkillBase
         {
             case SurfaceType.None:
             case SurfaceType.Floor:
-                if (onFloor) surface = SurfaceType.Floor;
                 if (!climbExhausted)
                 {
-                    if (onWallL && input < -0.01f) { surface = SurfaceType.WallLeft; surfNormal = wallNormal; }
+                    if (allowDirectCeilingEntry && onCeill) { surface = SurfaceType.Ceiling; }
+                    else if (onWallL && input < -0.01f) { surface = SurfaceType.WallLeft; surfNormal = wallNormal; }
                     else if (onWallR && input > 0.01f) { surface = SurfaceType.WallRight; surfNormal = wallNormal; }
+                    else if (onFloor) surface = SurfaceType.Floor;
                 }
+                else if (onFloor) surface = SurfaceType.Floor;
                 break;
             case SurfaceType.Ceiling:
                 if (climbExhausted) { surface = onFloor ? SurfaceType.Floor : SurfaceType.None; break; }
@@ -159,6 +169,97 @@ public class S_fluid_climb : S_SkillBase
                 else if (!onWallR && onFloor) { surface = SurfaceType.Floor; }
                 break;
         }
+    }
+
+    private bool TryGripBuffer(S_Player player, Collider2D col, Rigidbody2D rig, float inputX)
+    {
+        if (gripBufferDistance <= 0f || climbExhausted)
+            return false;
+
+        if (surface != SurfaceType.None && surface != SurfaceType.Floor)
+            return false;
+
+        if (col == null || rig == null)
+            return false;
+
+        if (gripBufferHits == null) gripBufferHits = new RaycastHit2D[4];
+
+        float directionX = GetGripDirection(player, inputX);
+        Vector2 direction = new Vector2(directionX, 0f);
+        ContactFilter2D filter = CreateSurfaceFilter();
+        int hitCount = col.Cast(direction, filter, gripBufferHits, gripBufferDistance);
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            RaycastHit2D hit = gripBufferHits[i];
+            if (hit.collider == null)
+                continue;
+
+            if (!IsWallHitForDirection(hit.normal, directionX))
+                continue;
+
+            surface = directionX < 0f ? SurfaceType.WallLeft : SurfaceType.WallRight;
+            surfNormal = hit.normal;
+            noContactFrames = 0;
+
+            float snapDistance = Mathf.Max(hit.distance - gripSnapSkin, 0f);
+            rig.position += direction * snapDistance;
+            rig.linearVelocity = new Vector2(0f, rig.linearVelocity.y);
+            return true;
+        }
+
+        return false;
+    }
+
+    private float GetGripDirection(S_Player player, float inputX)
+    {
+        if (Mathf.Abs(inputX) > gripInputThreshold)
+            return Mathf.Sign(inputX);
+
+        return player.GetFaceRight() ? 1f : -1f;
+    }
+
+    private bool IsWallHitForDirection(Vector2 normal, float directionX)
+    {
+        if (directionX < 0f)
+            return normal.x > 0.1f;
+
+        return normal.x < -0.1f;
+    }
+
+    private ContactFilter2D CreateSurfaceFilter()
+    {
+        ContactFilter2D filter = new ContactFilter2D();
+        filter.SetLayerMask(surfaceLayer);
+        filter.useTriggers = false;
+        return filter;
+    }
+
+    public void DrawGripBufferGizmos(Transform bodyTransform, Collider2D bodyCollider, bool facingRight)
+    {
+        if (!drawGripBufferGizmos || bodyTransform == null || gripBufferDistance <= 0f)
+            return;
+
+        Bounds bounds = bodyCollider != null
+            ? bodyCollider.bounds
+            : new Bounds(bodyTransform.position, Vector3.one);
+
+        Vector3 leftCenter = bounds.center + Vector3.left * (bounds.extents.x + gripBufferDistance * 0.5f);
+        Vector3 rightCenter = bounds.center + Vector3.right * (bounds.extents.x + gripBufferDistance * 0.5f);
+        Vector3 bufferSize = new Vector3(gripBufferDistance, bounds.size.y, 0.05f);
+
+        Color bufferColor = gripBufferGizmoColor;
+        Gizmos.color = bufferColor;
+        Gizmos.DrawWireCube(leftCenter, bufferSize);
+        Gizmos.DrawWireCube(rightCenter, bufferSize);
+
+        Vector3 gripDirection = facingRight ? Vector3.right : Vector3.left;
+        Vector3 origin = bounds.center;
+        Vector3 end = origin + gripDirection * (bounds.extents.x + gripBufferDistance);
+
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawLine(origin, end);
+        Gizmos.DrawWireSphere(end, 0.05f);
     }
 
     private Vector2 ComputeFluidVelocity(Rigidbody2D rig, float inputX, float inputY, float moveSpeed)

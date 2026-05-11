@@ -1,0 +1,831 @@
+using UnityEngine;
+
+[DisallowMultipleComponent]
+public class S_PlayerProceduralRenderer : MonoBehaviour
+{
+    [Header("Setup")]
+    [SerializeField] private bool useProceduralRendering = true;
+    [SerializeField] private bool hideSpriteRenderer = true;
+    [SerializeField] private bool matchCircleColliderRadius = true;
+    [SerializeField][Range(12, 96)] private int meshResolution = 64;
+
+    [Header("Shape")]
+    [SerializeField][Range(0.1f, 2f)] private float bodyRadius = 0.5f;
+    [SerializeField][Range(0f, 0.2f)] private float outlineWidth = 0.055f;
+    [SerializeField][Range(0f, 0.2f)] private float wobbleAmount = 0.025f;
+    [SerializeField][Range(0f, 20f)] private float wobbleSpeed = 7f;
+    [SerializeField][Range(0f, 0.12f)] private float velocityStretch = 0.035f;
+    [SerializeField][Range(0f, 0.5f)] private float maxStretch = 0.28f;
+    [SerializeField][Range(0f, 0.5f)] private float impactSquash = 0.18f;
+    [SerializeField][Range(0f, 0.35f)] private float surfaceStickDeform = 0.12f;
+    [SerializeField][Range(0f, 0.35f)] private float idleSquash = 0.08f;
+    [SerializeField][Range(0f, 0.45f)] private float bottomBulge = 0.22f;
+    [SerializeField][Range(0f, 0.15f)] private float motionLag = 0.012f;
+    [SerializeField][Range(0f, 0.2f)] private float maxTailStretch = 0.08f;
+    [SerializeField][Range(0f, 0.35f)] private float contactFlatten = 0.16f;
+    [SerializeField][Range(0f, 1f)] private float edgeSmoothStrength = 0.35f;
+
+    [Header("Environment Fit")]
+    [SerializeField] private bool fitToContactPlanes = true;
+    [SerializeField][Range(0f, 0.08f)] private float contactPlaneSkin = 0.012f;
+    [SerializeField][Range(0f, 0.45f)] private float contactSpreadStrength = 0.18f;
+    [SerializeField][Range(0f, 0.35f)] private float contactCompressionStrength = 0.14f;
+    [SerializeField][Range(0f, 0.45f)] private float contactTriangleStrength = 0.18f;
+    [SerializeField][Range(0f, 0.45f)] private float contactShoulderBulge = 0.16f;
+    [SerializeField][Range(0f, 0.3f)] private float contactApexTaper = 0.08f;
+    [SerializeField][Range(0.1f, 2f)] private float contactInfluenceRadius = 1f;
+    [SerializeField] private bool drawContactFitGizmos = true;
+    [SerializeField] private Color contactPlaneGizmoColor = new Color(1f, 0.35f, 0.1f, 0.85f);
+
+    [Header("Colors")]
+    [SerializeField] private Color fluidCenterColor = Color.black;
+    [SerializeField] private Color fluidEdgeColor = Color.black;
+    [SerializeField] private Color solidCenterColor = Color.black;
+    [SerializeField] private Color solidEdgeColor = Color.black;
+    [SerializeField] private Color outlineColor = new Color(0f, 0f, 0f, 1f);
+    [SerializeField] private Color highlightColor = new Color(0f, 0f, 0f, 0f);
+    [SerializeField] private Color paralyzedTint = new Color(0.62f, 0.42f, 1f, 1f);
+
+    [Header("Eyes")]
+    [SerializeField] private bool drawEyes = true;
+    [SerializeField][Range(8, 32)] private int eyeResolution = 18;
+    [SerializeField][Range(0f, 1f)] private float eyeSpacing = 0.35f;
+    [SerializeField][Range(-1f, 1f)] private float eyeHorizontalOffset = 0.14f;
+    [SerializeField][Range(-1f, 1f)] private float eyeVerticalOffset = 0.18f;
+    [SerializeField][Range(0.02f, 0.35f)] private float eyeRadius = 0.095f;
+    [SerializeField][Range(0.5f, 2.5f)] private float eyeTallness = 1.35f;
+    [SerializeField][Range(0f, 0.08f)] private float eyeFollowVelocity = 0.02f;
+    [SerializeField] private Color eyeColor = Color.white;
+    [SerializeField] private Color eyeGlowColor = new Color(1f, 1f, 1f, 0.35f);
+    [SerializeField][Range(1f, 5f)] private float eyeGlowScale = 2.4f;
+    [SerializeField][Range(0f, 0.5f)] private float eyeGlowPulse = 0.12f;
+
+    [Header("Gizmos")]
+    [SerializeField] private bool drawRendererGizmos = true;
+    [SerializeField] private Color rendererGizmoColor = new Color(0.2f, 1f, 0.8f, 0.55f);
+
+    private const string OutlineName = "ProceduralSlime_Outline";
+    private const string BodyName = "ProceduralSlime_Body";
+    private const string HighlightName = "ProceduralSlime_Highlight";
+    private const string EyeGlowName = "ProceduralSlime_EyeGlow";
+    private const string EyeName = "ProceduralSlime_Eyes";
+
+    private SpriteRenderer fallbackSprite;
+    private Rigidbody2D targetRigidbody;
+    private Collider2D targetCollider;
+    private CircleCollider2D targetCircleCollider;
+
+    private Mesh outlineMesh;
+    private Mesh bodyMesh;
+    private Mesh highlightMesh;
+    private Mesh eyeGlowMesh;
+    private Mesh eyeMesh;
+    private MeshRenderer outlineRenderer;
+    private MeshRenderer bodyRenderer;
+    private MeshRenderer highlightRenderer;
+    private MeshRenderer eyeGlowRenderer;
+    private MeshRenderer eyeRenderer;
+    private MeshFilter outlineFilter;
+    private MeshFilter bodyFilter;
+    private MeshFilter highlightFilter;
+    private MeshFilter eyeGlowFilter;
+    private MeshFilter eyeFilter;
+    private Material outlineMaterial;
+    private Material bodyMaterial;
+    private Material highlightMaterial;
+    private Material eyeGlowMaterial;
+    private Material eyeMaterial;
+
+    private Vector3[] outlineVertices;
+    private Vector3[] bodyVertices;
+    private Vector3[] smoothedBodyVertices;
+    private Vector3[] highlightVertices;
+    private Vector3[] eyeGlowVertices;
+    private Vector3[] eyeVertices;
+    private Color[] outlineColors;
+    private Color[] bodyColors;
+    private Color[] highlightColors;
+    private Color[] eyeGlowColors;
+    private Color[] eyeColors;
+    private int[] bodyTriangles;
+    private int[] highlightTriangles;
+    private int[] eyeTriangles;
+    private float[] wobbleOffsets;
+    private ContactPoint2D[] environmentContacts;
+    private ContactPlane[] contactPlanes;
+    private int cachedResolution;
+    private int cachedHighlightResolution;
+    private int cachedEyeResolution;
+    private int contactPlaneCount;
+    private bool initialized;
+    private Vector2 previousVelocity;
+    private float impactPulse;
+
+    private struct ContactPlane
+    {
+        public Vector2 point;
+        public Vector2 normal;
+    }
+
+    public bool IsRenderingEnabled => useProceduralRendering && initialized;
+
+    public void Initialize(SpriteRenderer spriteRenderer, Rigidbody2D rig, Collider2D col)
+    {
+        fallbackSprite = spriteRenderer;
+        targetRigidbody = rig;
+        targetCollider = col;
+        targetCircleCollider = col as CircleCollider2D;
+
+        EnsureRenderObjects();
+        SyncSorting();
+        RebuildMeshBuffers();
+        SetRenderersActive(useProceduralRendering);
+        SetFallbackSpriteVisible(!useProceduralRendering || !hideSpriteRenderer);
+        initialized = true;
+    }
+
+    public void RenderTick(S_Player player, S_fluid_climb climbSkill)
+    {
+        if (!useProceduralRendering)
+        {
+            SetRenderersActive(false);
+            SetFallbackSpriteVisible(true);
+            return;
+        }
+
+        if (!initialized)
+            Initialize(GetComponent<SpriteRenderer>(), GetComponent<Rigidbody2D>(), GetComponent<Collider2D>());
+
+        if (meshResolution != cachedResolution || eyeResolution != cachedEyeResolution)
+            RebuildMeshBuffers();
+
+        SetRenderersActive(true);
+        SetFallbackSpriteVisible(!hideSpriteRenderer);
+        SyncSorting();
+
+        Rigidbody2D rig = player != null ? player.GetRigidbody() : targetRigidbody;
+        Vector2 velocity = rig != null ? rig.linearVelocity : Vector2.zero;
+        bool isFluid = player == null || player.getForm();
+        bool isParalyzed = player != null && player.IsParalyzed;
+        S_fluid_climb.SurfaceType surface = climbSkill != null ? climbSkill.GetSurface() : S_fluid_climb.SurfaceType.None;
+        Vector2 surfaceNormal = climbSkill != null ? climbSkill.GetSurfNormal() : Vector2.zero;
+        bool facingRight = player == null || player.GetFaceRight();
+
+        UpdateImpactPulse(velocity, surface);
+        UpdateMeshes(velocity, surface, surfaceNormal, isFluid, isParalyzed, facingRight);
+        previousVelocity = velocity;
+    }
+
+    public void DrawRendererGizmos()
+    {
+        if (!drawRendererGizmos)
+            return;
+
+        float radius = GetBodyRadius();
+        Gizmos.color = rendererGizmoColor;
+        Gizmos.DrawWireSphere(transform.position, radius);
+
+        int sampleCount = Mathf.Clamp(meshResolution, 12, 96);
+        for (int i = 0; i < sampleCount; i += Mathf.Max(1, sampleCount / 12))
+        {
+            float angle = Mathf.PI * 2f * i / sampleCount;
+            Vector3 point = transform.position + new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * radius;
+            Gizmos.DrawWireSphere(point, radius * 0.035f);
+        }
+
+        if (drawContactFitGizmos && contactPlanes != null)
+        {
+            Gizmos.color = contactPlaneGizmoColor;
+            for (int i = 0; i < contactPlaneCount; i++)
+            {
+                Vector3 point = contactPlanes[i].point;
+                Vector3 normal = contactPlanes[i].normal;
+                Vector3 tangent = new Vector3(-normal.y, normal.x, 0f);
+                Gizmos.DrawLine(point - tangent * radius * 0.55f, point + tangent * radius * 0.55f);
+                Gizmos.DrawLine(point, point + normal * radius * 0.35f);
+                Gizmos.DrawWireSphere(point, radius * 0.04f);
+            }
+        }
+    }
+
+    private void OnDisable()
+    {
+        SetRenderersActive(false);
+        SetFallbackSpriteVisible(true);
+    }
+
+    private void OnDestroy()
+    {
+        DestroyRuntimeObject(outlineMesh);
+        DestroyRuntimeObject(bodyMesh);
+        DestroyRuntimeObject(highlightMesh);
+        DestroyRuntimeObject(eyeGlowMesh);
+        DestroyRuntimeObject(eyeMesh);
+        DestroyRuntimeObject(outlineMaterial);
+        DestroyRuntimeObject(bodyMaterial);
+        DestroyRuntimeObject(highlightMaterial);
+        DestroyRuntimeObject(eyeGlowMaterial);
+        DestroyRuntimeObject(eyeMaterial);
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        DrawRendererGizmos();
+    }
+
+    private void OnValidate()
+    {
+        meshResolution = Mathf.Clamp(meshResolution, 12, 96);
+        eyeResolution = Mathf.Clamp(eyeResolution, 8, 32);
+        bodyRadius = Mathf.Max(0.1f, bodyRadius);
+        outlineWidth = Mathf.Max(0f, outlineWidth);
+    }
+
+    private void EnsureRenderObjects()
+    {
+        Shader shader = FindSpriteShader();
+
+        outlineFilter = EnsureRenderChild(OutlineName, out outlineRenderer);
+        bodyFilter = EnsureRenderChild(BodyName, out bodyRenderer);
+        highlightFilter = EnsureRenderChild(HighlightName, out highlightRenderer);
+        eyeGlowFilter = EnsureRenderChild(EyeGlowName, out eyeGlowRenderer);
+        eyeFilter = EnsureRenderChild(EyeName, out eyeRenderer);
+
+        outlineMesh = EnsureMesh(outlineMesh, "Procedural Slime Outline");
+        bodyMesh = EnsureMesh(bodyMesh, "Procedural Slime Body");
+        highlightMesh = EnsureMesh(highlightMesh, "Procedural Slime Highlight");
+        eyeGlowMesh = EnsureMesh(eyeGlowMesh, "Procedural Slime Eye Glow");
+        eyeMesh = EnsureMesh(eyeMesh, "Procedural Slime Eyes");
+
+        outlineFilter.sharedMesh = outlineMesh;
+        bodyFilter.sharedMesh = bodyMesh;
+        highlightFilter.sharedMesh = highlightMesh;
+        eyeGlowFilter.sharedMesh = eyeGlowMesh;
+        eyeFilter.sharedMesh = eyeMesh;
+
+        outlineMaterial = EnsureMaterial(outlineMaterial, shader, "Procedural Slime Outline Material");
+        bodyMaterial = EnsureMaterial(bodyMaterial, shader, "Procedural Slime Body Material");
+        highlightMaterial = EnsureMaterial(highlightMaterial, shader, "Procedural Slime Highlight Material");
+        eyeGlowMaterial = EnsureMaterial(eyeGlowMaterial, shader, "Procedural Slime Eye Glow Material");
+        eyeMaterial = EnsureMaterial(eyeMaterial, shader, "Procedural Slime Eye Material");
+
+        outlineRenderer.sharedMaterial = outlineMaterial;
+        bodyRenderer.sharedMaterial = bodyMaterial;
+        highlightRenderer.sharedMaterial = highlightMaterial;
+        eyeGlowRenderer.sharedMaterial = eyeGlowMaterial;
+        eyeRenderer.sharedMaterial = eyeMaterial;
+    }
+
+    private MeshFilter EnsureRenderChild(string childName, out MeshRenderer meshRenderer)
+    {
+        Transform child = transform.Find(childName);
+        if (child == null)
+        {
+            GameObject childObject = new GameObject(childName);
+            childObject.layer = gameObject.layer;
+            childObject.transform.SetParent(transform, false);
+            child = childObject.transform;
+        }
+        else
+        {
+            child.gameObject.layer = gameObject.layer;
+        }
+
+        MeshFilter meshFilter = child.GetComponent<MeshFilter>();
+        if (meshFilter == null)
+            meshFilter = child.gameObject.AddComponent<MeshFilter>();
+
+        meshRenderer = child.GetComponent<MeshRenderer>();
+        if (meshRenderer == null)
+            meshRenderer = child.gameObject.AddComponent<MeshRenderer>();
+
+        child.localPosition = Vector3.zero;
+        child.localRotation = Quaternion.identity;
+        child.localScale = Vector3.one;
+        return meshFilter;
+    }
+
+    private Mesh EnsureMesh(Mesh mesh, string meshName)
+    {
+        if (mesh != null)
+            return mesh;
+
+        Mesh newMesh = new Mesh();
+        newMesh.name = meshName;
+        newMesh.MarkDynamic();
+        return newMesh;
+    }
+
+    private Material EnsureMaterial(Material material, Shader shader, string materialName)
+    {
+        if (material != null)
+            return material;
+
+        Material newMaterial = new Material(shader);
+        newMaterial.name = materialName;
+        newMaterial.hideFlags = HideFlags.DontSave;
+        if (newMaterial.HasProperty("_Color"))
+            newMaterial.SetColor("_Color", Color.white);
+        return newMaterial;
+    }
+
+    private static Shader FindSpriteShader()
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default");
+        if (shader == null) shader = Shader.Find("Sprites/Default");
+        if (shader == null) shader = Shader.Find("Unlit/Transparent");
+        return shader;
+    }
+
+    private void SyncSorting()
+    {
+        int sortingLayerId = fallbackSprite != null ? fallbackSprite.sortingLayerID : 0;
+        int sortingOrder = fallbackSprite != null ? fallbackSprite.sortingOrder : 0;
+
+        if (outlineRenderer != null)
+        {
+            outlineRenderer.sortingLayerID = sortingLayerId;
+            outlineRenderer.sortingOrder = sortingOrder;
+        }
+
+        if (bodyRenderer != null)
+        {
+            bodyRenderer.sortingLayerID = sortingLayerId;
+            bodyRenderer.sortingOrder = sortingOrder + 1;
+        }
+
+        if (highlightRenderer != null)
+        {
+            highlightRenderer.sortingLayerID = sortingLayerId;
+            highlightRenderer.sortingOrder = sortingOrder + 2;
+        }
+
+        if (eyeGlowRenderer != null)
+        {
+            eyeGlowRenderer.sortingLayerID = sortingLayerId;
+            eyeGlowRenderer.sortingOrder = sortingOrder + 3;
+        }
+
+        if (eyeRenderer != null)
+        {
+            eyeRenderer.sortingLayerID = sortingLayerId;
+            eyeRenderer.sortingOrder = sortingOrder + 4;
+        }
+    }
+
+    private void RebuildMeshBuffers()
+    {
+        cachedResolution = Mathf.Clamp(meshResolution, 12, 96);
+        cachedHighlightResolution = Mathf.Clamp(cachedResolution / 2, 12, 32);
+        cachedEyeResolution = Mathf.Clamp(eyeResolution, 8, 32);
+
+        int vertexCount = cachedResolution + 1;
+        outlineVertices = new Vector3[vertexCount];
+        bodyVertices = new Vector3[vertexCount];
+        smoothedBodyVertices = new Vector3[vertexCount];
+        outlineColors = new Color[vertexCount];
+        bodyColors = new Color[vertexCount];
+        bodyTriangles = CreateFanTriangles(cachedResolution);
+        wobbleOffsets = new float[cachedResolution];
+        environmentContacts = new ContactPoint2D[8];
+        contactPlanes = new ContactPlane[8];
+
+        for (int i = 0; i < cachedResolution; i++)
+            wobbleOffsets[i] = Random.value * Mathf.PI * 2f;
+
+        int highlightVertexCount = cachedHighlightResolution + 1;
+        highlightVertices = new Vector3[highlightVertexCount];
+        highlightColors = new Color[highlightVertexCount];
+        highlightTriangles = CreateFanTriangles(cachedHighlightResolution);
+
+        int eyeVertexCount = (cachedEyeResolution + 1) * 2;
+        eyeGlowVertices = new Vector3[eyeVertexCount];
+        eyeVertices = new Vector3[eyeVertexCount];
+        eyeGlowColors = new Color[eyeVertexCount];
+        eyeColors = new Color[eyeVertexCount];
+        eyeTriangles = CreateDoubleFanTriangles(cachedEyeResolution);
+
+        outlineMesh.Clear();
+        outlineMesh.vertices = outlineVertices;
+        outlineMesh.triangles = bodyTriangles;
+        outlineMesh.colors = outlineColors;
+
+        bodyMesh.Clear();
+        bodyMesh.vertices = bodyVertices;
+        bodyMesh.triangles = bodyTriangles;
+        bodyMesh.colors = bodyColors;
+
+        highlightMesh.Clear();
+        highlightMesh.vertices = highlightVertices;
+        highlightMesh.triangles = highlightTriangles;
+        highlightMesh.colors = highlightColors;
+
+        eyeGlowMesh.Clear();
+        eyeGlowMesh.vertices = eyeGlowVertices;
+        eyeGlowMesh.triangles = eyeTriangles;
+        eyeGlowMesh.colors = eyeGlowColors;
+
+        eyeMesh.Clear();
+        eyeMesh.vertices = eyeVertices;
+        eyeMesh.triangles = eyeTriangles;
+        eyeMesh.colors = eyeColors;
+    }
+
+    private int[] CreateFanTriangles(int ringCount)
+    {
+        int[] triangles = new int[ringCount * 3];
+        for (int i = 0; i < ringCount; i++)
+        {
+            int triangleIndex = i * 3;
+            triangles[triangleIndex] = 0;
+            triangles[triangleIndex + 1] = i + 1;
+            triangles[triangleIndex + 2] = ((i + 1) % ringCount) + 1;
+        }
+
+        return triangles;
+    }
+
+    private int[] CreateDoubleFanTriangles(int ringCount)
+    {
+        int[] triangles = new int[ringCount * 3 * 2];
+        int vertexStride = ringCount + 1;
+
+        for (int eye = 0; eye < 2; eye++)
+        {
+            int vertexOffset = eye * vertexStride;
+            int triangleOffset = eye * ringCount * 3;
+            for (int i = 0; i < ringCount; i++)
+            {
+                int triangleIndex = triangleOffset + i * 3;
+                triangles[triangleIndex] = vertexOffset;
+                triangles[triangleIndex + 1] = vertexOffset + i + 1;
+                triangles[triangleIndex + 2] = vertexOffset + ((i + 1) % ringCount) + 1;
+            }
+        }
+
+        return triangles;
+    }
+
+    private void UpdateImpactPulse(Vector2 velocity, S_fluid_climb.SurfaceType surface)
+    {
+        bool landingLikeImpact = previousVelocity.y < -4f && Mathf.Abs(velocity.y) < 1f;
+        bool wallLikeImpact = Mathf.Abs(previousVelocity.x) > 5f && Mathf.Abs(velocity.x) < 1f;
+
+        if (surface == S_fluid_climb.SurfaceType.Floor && landingLikeImpact)
+            impactPulse = 1f;
+        else if ((surface == S_fluid_climb.SurfaceType.WallLeft || surface == S_fluid_climb.SurfaceType.WallRight) && wallLikeImpact)
+            impactPulse = 0.75f;
+
+        impactPulse = Mathf.MoveTowards(impactPulse, 0f, Time.deltaTime * 4.5f);
+    }
+
+    private void SampleContactPlanes()
+    {
+        contactPlaneCount = 0;
+        if (!fitToContactPlanes || targetCollider == null)
+            return;
+
+        if (environmentContacts == null || environmentContacts.Length == 0)
+            environmentContacts = new ContactPoint2D[8];
+
+        if (contactPlanes == null || contactPlanes.Length == 0)
+            contactPlanes = new ContactPlane[8];
+
+        int count = targetCollider.GetContacts(environmentContacts);
+        for (int i = 0; i < count && contactPlaneCount < contactPlanes.Length; i++)
+        {
+            ContactPoint2D contact = environmentContacts[i];
+            if (contact.collider == null || contact.normal.sqrMagnitude < 0.001f)
+                continue;
+
+            Vector2 normal = contact.normal.normalized;
+            if (HasSimilarContactPlane(contact.point, normal))
+                continue;
+
+            contactPlanes[contactPlaneCount] = new ContactPlane
+            {
+                point = contact.point,
+                normal = normal,
+            };
+            contactPlaneCount++;
+        }
+    }
+
+    private bool HasSimilarContactPlane(Vector2 point, Vector2 normal)
+    {
+        for (int i = 0; i < contactPlaneCount; i++)
+        {
+            float normalDot = Vector2.Dot(contactPlanes[i].normal, normal);
+            float pointDistance = Vector2.Distance(contactPlanes[i].point, point);
+            if (normalDot > 0.94f && pointDistance < 0.08f)
+                return true;
+        }
+
+        return false;
+    }
+
+    private void ApplyContactPlaneDeformation(Vector2 dir, float radius, ref float radiusScale)
+    {
+        if (!fitToContactPlanes || contactPlaneCount == 0)
+            return;
+
+        Vector2 worldCenter = transform.position;
+        for (int i = 0; i < contactPlaneCount; i++)
+        {
+            Vector2 normal = contactPlanes[i].normal;
+            Vector2 towardSurface = -normal;
+            float surfaceDot = Mathf.Max(0f, Vector2.Dot(dir, towardSurface));
+
+            float centerDistance = Mathf.Abs(Vector2.Dot(worldCenter - contactPlanes[i].point, normal));
+            float influence = 1f - Mathf.Clamp01(centerDistance / Mathf.Max(radius * contactInfluenceRadius, 0.01f));
+            if (influence <= 0f)
+                continue;
+
+            float tangentDot = 1f - Mathf.Abs(Vector2.Dot(dir, normal));
+            float apexDot = Mathf.Max(0f, Vector2.Dot(dir, normal));
+            float shoulder = Mathf.Pow(Mathf.Clamp01(tangentDot), 2.5f);
+            radiusScale -= surfaceDot * surfaceDot * contactCompressionStrength * influence;
+            radiusScale += shoulder * contactSpreadStrength * influence;
+            radiusScale += shoulder * contactShoulderBulge * contactTriangleStrength * influence;
+            radiusScale -= apexDot * apexDot * contactApexTaper * contactTriangleStrength * influence;
+        }
+    }
+
+    private Vector3 FitLocalPointToContactPlanes(Vector3 localPoint, float skin)
+    {
+        if (!fitToContactPlanes || contactPlaneCount == 0)
+            return localPoint;
+
+        Vector3 worldPoint = transform.TransformPoint(localPoint);
+        for (int i = 0; i < contactPlaneCount; i++)
+        {
+            Vector2 normal = contactPlanes[i].normal;
+            float signedDistance = Vector2.Dot((Vector2)worldPoint - contactPlanes[i].point, normal);
+            if (signedDistance < skin)
+                worldPoint += (Vector3)(normal * (skin - signedDistance));
+        }
+
+        return transform.InverseTransformPoint(worldPoint);
+    }
+
+    private void UpdateMeshes(
+        Vector2 velocity,
+        S_fluid_climb.SurfaceType surface,
+        Vector2 surfaceNormal,
+        bool isFluid,
+        bool isParalyzed,
+        bool facingRight)
+    {
+        float radius = GetBodyRadius();
+        Color centerColor = isFluid ? fluidCenterColor : solidCenterColor;
+        Color edgeColor = isFluid ? fluidEdgeColor : solidEdgeColor;
+        SampleContactPlanes();
+
+        float time = Time.time;
+        Vector2 velocityDirection = velocity.sqrMagnitude > 0.001f ? velocity.normalized : Vector2.right * (facingRight ? 1f : -1f);
+        float stretch = Mathf.Min(velocity.magnitude * velocityStretch, maxStretch);
+        float trailingStretch = Mathf.Min(velocity.magnitude * motionLag, maxTailStretch);
+        Vector2 stickDirection = surfaceNormal.sqrMagnitude > 0.001f ? -surfaceNormal.normalized : Vector2.zero;
+        Vector2 contactDirection = stickDirection;
+        bool isSticking = surface == S_fluid_climb.SurfaceType.WallLeft
+            || surface == S_fluid_climb.SurfaceType.WallRight
+            || surface == S_fluid_climb.SurfaceType.Ceiling;
+        bool hasSurface = surface != S_fluid_climb.SurfaceType.None && surfaceNormal.sqrMagnitude > 0.001f;
+
+        bodyVertices[0] = Vector3.zero;
+        outlineVertices[0] = Vector3.zero;
+        bodyColors[0] = centerColor;
+        outlineColors[0] = outlineColor;
+
+        for (int i = 0; i < cachedResolution; i++)
+        {
+            float angle = Mathf.PI * 2f * i / cachedResolution;
+            Vector2 dir = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+            float axial = Vector2.Dot(dir, velocityDirection);
+            float perpendicular = 1f - Mathf.Abs(axial);
+            float bottom = Mathf.Max(0f, -dir.y);
+            float top = Mathf.Max(0f, dir.y);
+            float rear = Mathf.Max(0f, Vector2.Dot(dir, -velocityDirection));
+            float radiusScale = 1f
+                + idleSquash * Mathf.Abs(dir.x)
+                - idleSquash * 0.65f * Mathf.Abs(dir.y)
+                + bottomBulge * bottom * bottom
+                - bottomBulge * 0.25f * top * top * top
+                + stretch * axial * axial
+                - stretch * 0.55f * perpendicular
+                + trailingStretch * rear * rear * 0.55f;
+
+            float squash = impactPulse * impactSquash;
+            radiusScale += squash * Mathf.Abs(dir.x);
+            radiusScale -= squash * Mathf.Abs(dir.y) * 0.75f;
+
+            if (hasSurface)
+            {
+                float contactDot = Mathf.Max(0f, Vector2.Dot(dir, contactDirection));
+                float tangentDot = 1f - Mathf.Abs(Vector2.Dot(dir, surfaceNormal.normalized));
+                radiusScale -= contactDot * contactDot * contactFlatten;
+                radiusScale += tangentDot * tangentDot * contactFlatten * 0.45f;
+            }
+
+            ApplyContactPlaneDeformation(dir, radius, ref radiusScale);
+
+            if (isSticking)
+            {
+                float stickDot = Mathf.Max(0f, Vector2.Dot(dir, stickDirection));
+                radiusScale += stickDot * stickDot * surfaceStickDeform;
+            }
+
+            if (isFluid)
+            {
+                float wobble = Mathf.Sin(time * wobbleSpeed + angle * 3f + wobbleOffsets[i]) * wobbleAmount;
+                radiusScale += wobble;
+            }
+
+            float finalRadius = Mathf.Max(radius * 0.35f, radius * radiusScale);
+            Vector3 point = new Vector3(dir.x * finalRadius, dir.y * finalRadius, 0f);
+
+            bodyVertices[i + 1] = point;
+            bodyColors[i + 1] = edgeColor;
+        }
+
+        SmoothBodyBoundary();
+        for (int i = 0; i < cachedResolution; i++)
+        {
+            Vector3 point = FitLocalPointToContactPlanes(bodyVertices[i + 1], contactPlaneSkin);
+            bodyVertices[i + 1] = point;
+            outlineVertices[i + 1] = FitLocalPointToContactPlanes(point.normalized * (point.magnitude + outlineWidth), contactPlaneSkin);
+            outlineColors[i + 1] = outlineColor;
+        }
+
+        UpdateHighlightMesh(radius, facingRight, isFluid, isParalyzed);
+        UpdateEyeMeshes(radius, velocity, facingRight, isParalyzed);
+        ApplyMeshData();
+    }
+
+    private void SmoothBodyBoundary()
+    {
+        if (edgeSmoothStrength <= 0f || smoothedBodyVertices == null || cachedResolution <= 2)
+            return;
+
+        smoothedBodyVertices[0] = bodyVertices[0];
+        for (int i = 0; i < cachedResolution; i++)
+        {
+            int prev = ((i - 1 + cachedResolution) % cachedResolution) + 1;
+            int current = i + 1;
+            int next = ((i + 1) % cachedResolution) + 1;
+            Vector3 neighborAverage = (bodyVertices[prev] + bodyVertices[current] * 2f + bodyVertices[next]) * 0.25f;
+            smoothedBodyVertices[current] = Vector3.Lerp(bodyVertices[current], neighborAverage, edgeSmoothStrength);
+        }
+
+        for (int i = 1; i <= cachedResolution; i++)
+            bodyVertices[i] = smoothedBodyVertices[i];
+    }
+
+    private void UpdateHighlightMesh(float radius, bool facingRight, bool isFluid, bool isParalyzed)
+    {
+        Color highlight = highlightColor;
+        if (!isFluid)
+            highlight.a *= 0.45f;
+        if (isParalyzed)
+            highlight = Color.Lerp(highlight, paralyzedTint, 0.25f);
+
+        float side = facingRight ? -1f : 1f;
+        Vector2 center = new Vector2(side * radius * 0.2f, radius * 0.24f);
+        float width = radius * 0.22f;
+        float height = radius * 0.1f;
+        float tilt = side * -20f * Mathf.Deg2Rad;
+        float cos = Mathf.Cos(tilt);
+        float sin = Mathf.Sin(tilt);
+
+        highlightVertices[0] = center;
+        highlightColors[0] = highlight;
+
+        Color edge = highlight;
+        edge.a = 0f;
+        for (int i = 0; i < cachedHighlightResolution; i++)
+        {
+            float angle = Mathf.PI * 2f * i / cachedHighlightResolution;
+            Vector2 ellipse = new Vector2(Mathf.Cos(angle) * width, Mathf.Sin(angle) * height);
+            Vector2 rotated = new Vector2(
+                ellipse.x * cos - ellipse.y * sin,
+                ellipse.x * sin + ellipse.y * cos);
+
+            highlightVertices[i + 1] = center + rotated;
+            highlightColors[i + 1] = edge;
+        }
+    }
+
+    private void UpdateEyeMeshes(float radius, Vector2 velocity, bool facingRight, bool isParalyzed)
+    {
+        Color eyeFill = isParalyzed ? Color.Lerp(eyeColor, paralyzedTint, 0.25f) : eyeColor;
+        Color glowFill = isParalyzed ? Color.Lerp(eyeGlowColor, paralyzedTint, 0.45f) : eyeGlowColor;
+
+        float facingSign = facingRight ? 1f : -1f;
+        float lookOffset = Mathf.Clamp(velocity.x * eyeFollowVelocity, -radius * 0.09f, radius * 0.09f);
+        float pulse = 1f + Mathf.Sin(Time.time * 7.5f) * eyeGlowPulse;
+        float baseEyeRadius = radius * eyeRadius;
+        float faceOffset = radius * eyeHorizontalOffset * facingSign + lookOffset;
+        float spacing = radius * eyeSpacing;
+        float vertical = radius * eyeVerticalOffset;
+
+        for (int eyeIndex = 0; eyeIndex < 2; eyeIndex++)
+        {
+            float side = eyeIndex == 0 ? -0.5f : 0.5f;
+            Vector2 center = new Vector2(faceOffset + side * spacing, vertical);
+            WriteEyeFan(eyeVertices, eyeColors, eyeIndex, center, baseEyeRadius, baseEyeRadius * eyeTallness, eyeFill, eyeFill);
+
+            Color glowEdge = glowFill;
+            glowEdge.a = 0f;
+            WriteEyeFan(
+                eyeGlowVertices,
+                eyeGlowColors,
+                eyeIndex,
+                center,
+                baseEyeRadius * eyeGlowScale * pulse,
+                baseEyeRadius * eyeTallness * eyeGlowScale * pulse,
+                glowFill,
+                glowEdge);
+        }
+    }
+
+    private void WriteEyeFan(
+        Vector3[] vertices,
+        Color[] colors,
+        int eyeIndex,
+        Vector2 center,
+        float width,
+        float height,
+        Color centerColor,
+        Color edgeColor)
+    {
+        int stride = cachedEyeResolution + 1;
+        int offset = eyeIndex * stride;
+        vertices[offset] = center;
+        colors[offset] = centerColor;
+
+        for (int i = 0; i < cachedEyeResolution; i++)
+        {
+            float angle = Mathf.PI * 2f * i / cachedEyeResolution;
+            Vector2 point = center + new Vector2(Mathf.Cos(angle) * width, Mathf.Sin(angle) * height);
+            vertices[offset + i + 1] = point;
+            colors[offset + i + 1] = edgeColor;
+        }
+    }
+
+    private void ApplyMeshData()
+    {
+        outlineMesh.vertices = outlineVertices;
+        outlineMesh.colors = outlineColors;
+        outlineMesh.RecalculateBounds();
+
+        bodyMesh.vertices = bodyVertices;
+        bodyMesh.colors = bodyColors;
+        bodyMesh.RecalculateBounds();
+
+        highlightMesh.vertices = highlightVertices;
+        highlightMesh.colors = highlightColors;
+        highlightMesh.RecalculateBounds();
+
+        eyeGlowMesh.vertices = eyeGlowVertices;
+        eyeGlowMesh.colors = eyeGlowColors;
+        eyeGlowMesh.RecalculateBounds();
+
+        eyeMesh.vertices = eyeVertices;
+        eyeMesh.colors = eyeColors;
+        eyeMesh.RecalculateBounds();
+    }
+
+    private float GetBodyRadius()
+    {
+        if (matchCircleColliderRadius && targetCircleCollider != null)
+            return Mathf.Max(0.1f, targetCircleCollider.radius);
+
+        return Mathf.Max(0.1f, bodyRadius);
+    }
+
+    private void SetRenderersActive(bool active)
+    {
+        if (outlineRenderer != null) outlineRenderer.enabled = active;
+        if (bodyRenderer != null) bodyRenderer.enabled = active;
+        if (highlightRenderer != null) highlightRenderer.enabled = active;
+        if (eyeGlowRenderer != null) eyeGlowRenderer.enabled = active && drawEyes;
+        if (eyeRenderer != null) eyeRenderer.enabled = active && drawEyes;
+    }
+
+    private void SetFallbackSpriteVisible(bool visible)
+    {
+        if (fallbackSprite != null)
+            fallbackSprite.enabled = visible;
+    }
+
+    private void DestroyRuntimeObject(Object target)
+    {
+        if (target == null)
+            return;
+
+        if (Application.isPlaying)
+            Destroy(target);
+        else
+            DestroyImmediate(target);
+    }
+}

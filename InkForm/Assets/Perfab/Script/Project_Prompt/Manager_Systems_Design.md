@@ -254,3 +254,17 @@ Any System ──(BGMChange)──> S_GameEvent ──> S_AudioManager.PlayBGM()
 | Time scale stuck at 0 | Check GameReStart properly sets Time.timeScale = 1 |
 | Duplicate managers | Ensure only one S_UIManager and one S_GameManager per context |
 | Button clicks not responding | Verify OnClick events are wired in the Button Inspector |
+
+---
+
+## 7. UIManager Persistence Guard
+
+`S_UIManager` now routes persistence through `PreserveAcrossScenes()` instead of calling `DontDestroyOnLoad(gameObject)` directly in `Awake()`.
+
+This guard prevents Unity's duplicate persistent-scene assertion by:
+
+- Returning early when the object is already in the `DontDestroyOnLoad` scene.
+- Detaching from a parent before calling `DontDestroyOnLoad`.
+- Clearing `S_UIManager.Instance` in `OnDestroy()` when the active instance is destroyed.
+
+This keeps the singleton stable across scene loads and protects against accidentally calling `DontDestroyOnLoad` twice on the same UIManager object.

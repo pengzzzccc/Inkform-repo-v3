@@ -1,5 +1,32 @@
 # InkForm — Changelog
 
+## v0.6.1 - Slime Rendering Baseline & Interaction Polish (2026-05-12)
+
+### New Features
+- Added procedural player slime rendering via `S_PlayerProceduralRenderer`.
+- Added runtime-generated body, outline, eye glow, and white eye meshes for the player body.
+- Added contact-plane visual fitting so the slime boundary is pushed outside floors, walls, and ceilings.
+- Added rounded-triangle contact shaping for a smoother weighted slime silhouette.
+- Added dynamic `CircleCollider2D` support via `S_PlayerDynamicCollider`.
+- Added Grip buffer snapping so fluid climb can start slightly before full wall contact.
+- Added direct Ceiling state entry when gripping and contacting ceilings.
+- Added JumpPad force range and force-to-color visualization.
+
+### Tuning
+- Reduced slime tail size with lower `motionLag`, capped `maxTailStretch`, and lower tail contribution.
+- Increased default player slime mesh resolution and added edge smoothing for softer boundaries.
+- Synchronized current scene player sprite settings back into `Pre_MainChar.prefab`.
+
+### Bug Fixes
+- Guarded `S_UIManager` against duplicate `DontDestroyOnLoad` registration assertions.
+- Updated JumpPad color in edit mode with `OnValidate`.
+
+### Documentation
+- Added Player Procedural Rendering design document.
+- Updated Player Controller, Skill System, Level Objects, and Manager Systems notes for the current baseline.
+
+---
+
 ## v0.6.0 - Input Binding UI & Rigidbody-Free NPC Knockback (2026-05-10)
 
 ### New Features

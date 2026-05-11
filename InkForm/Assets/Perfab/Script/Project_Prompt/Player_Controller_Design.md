@@ -269,3 +269,20 @@ Surface Types:
 | Player falls through platform | Check Rigidbody2D Collision Detection = Continuous |
 | Sprite not flipping | Ensure sprites[] array has correct ordering [right, left] |
 | Double jump not working | Set MaxJump >= 2 in Inspector |
+
+---
+
+## 8. Procedural Slime Rendering Baseline
+
+The player body can now use procedural slime rendering through `S_PlayerProceduralRenderer` on the Body child. `S_Player` owns two serialized toggles/references:
+
+| Field | Description |
+|-------|-------------|
+| useProceduralRenderer | Enables the procedural rendering path in `UpdateSprite()` |
+| proceduralRenderer | Reference to the Body `S_PlayerProceduralRenderer` |
+| useDynamicCollider | Enables the current dynamic circle collider path |
+| dynamicCollider | Reference to the Body `S_PlayerDynamicCollider` |
+
+When enabled, `S_PlayerProceduralRenderer` hides the fallback `SpriteRenderer` and generates mesh children for body, outline, eyes, and eye glow. The fallback `sprites[]` are still kept on `Pre_MainChar.prefab` so the player can fall back to sprite rendering if the procedural path is disabled.
+
+`S_PlayerDynamicCollider` currently adjusts the existing `CircleCollider2D` radius and offset for crouch/slick input, wall attachment, ceiling attachment, speed shrink, and impact compression. The next planned phase is a dynamic `CapsuleCollider2D` that better matches the slime silhouette.

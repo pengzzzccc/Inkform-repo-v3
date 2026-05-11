@@ -302,3 +302,17 @@ OnCollisionExit2D(collision)
 | Move block activates without trigger | Check trigger child Collider2D size — reduce if too large |
 | Player death not triggering on lava | Check S_coleve is on player body AND lava is tagged `"lava"` |
 | Ground detection unreliable | Ensure ground objects are on `"Ground"` layer and check contact normal threshold |
+
+---
+
+## 6. JumpPad Update
+
+`S_JumpPad` now exposes `jumpForce` with an Inspector range from `10` to `1000`.
+
+The JumpPad visual color is driven by that force:
+
+- Low force: green
+- High force: red
+- Intermediate values: linear gradient between green and red
+
+The color updates in edit mode via `OnValidate()` and at runtime via `Awake()`. The script auto-finds a `SpriteRenderer` on the JumpPad object, so prefab setup does not require an extra serialized renderer reference.

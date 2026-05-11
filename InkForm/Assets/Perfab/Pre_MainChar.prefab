@@ -50,7 +50,11 @@ MonoBehaviour:
   MaxJump: 1
   JumpCoolDownTime: 0.1
   body: {fileID: 5018208651326739801}
-  sprites: []
+  sprites:
+  - {fileID: -6573777416417220690, guid: ae6b76cb4cfddff458ba412da34e7eff, type: 3}
+  - {fileID: 600787656912180804, guid: ae6b76cb4cfddff458ba412da34e7eff, type: 3}
+  - {fileID: 5670999935819666744, guid: ae6b76cb4cfddff458ba412da34e7eff, type: 3}
+  - {fileID: 3561037995832689329, guid: ae6b76cb4cfddff458ba412da34e7eff, type: 3}
   SolidMat: {fileID: 6200000, guid: cfd77d09831c5fe41881ca6bb3abde31, type: 2}
   FluidMat: {fileID: 6200000, guid: cfd77d09831c5fe41881ca6bb3abde31, type: 2}
   fluidClimbSkill: {fileID: 11400000, guid: 5cf4f0abfe21bbb4da609adf4d0d63cf, type: 2}
@@ -58,6 +62,12 @@ MonoBehaviour:
   kickForceMultiplier: 10
   jumpClip: {fileID: 8300000, guid: b84d0e303798b0241a1a88dd5536fa8f, type: 3}
   formSwitchClip: {fileID: 0}
+  paralyzeSlowMultiplier: 0.5
+  defaultParalyzeDuration: 3
+  useProceduralRenderer: 1
+  proceduralRenderer: {fileID: 7118824901916483507}
+  useDynamicCollider: 1
+  dynamicCollider: {fileID: 6147769573892842105}
 --- !u!1 &5018208651326739801
 GameObject:
   m_ObjectHideFlags: 0
@@ -70,7 +80,9 @@ GameObject:
   - component: {fileID: 35790584131555219}
   - component: {fileID: 7689569613379528282}
   - component: {fileID: 165952055740687509}
+  - component: {fileID: 7118824901916483507}
   - component: {fileID: 2545007993996226252}
+  - component: {fileID: 6147769573892842105}
   m_Layer: 3
   m_Name: body
   m_TagString: Player
@@ -187,6 +199,67 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a676057d4ba1f3140a8d32298e289f0c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &7118824901916483507
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5018208651326739801}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f5ea4755d9a4d248ba25f2bf0f736fb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  useProceduralRendering: 0
+  hideSpriteRenderer: 1
+  matchCircleColliderRadius: 1
+  meshResolution: 64
+  bodyRadius: 0.5
+  outlineWidth: 0.055
+  wobbleAmount: 0.025
+  wobbleSpeed: 7
+  velocityStretch: 0.035
+  maxStretch: 0.249
+  impactSquash: 0.18
+  surfaceStickDeform: 0.12
+  idleSquash: 0.08
+  bottomBulge: 0.22
+  motionLag: 0.012
+  maxTailStretch: 0.08
+  contactFlatten: 0.16
+  edgeSmoothStrength: 0.35
+  fitToContactPlanes: 1
+  contactPlaneSkin: 0.012
+  contactSpreadStrength: 0.18
+  contactCompressionStrength: 0.14
+  contactTriangleStrength: 0.18
+  contactShoulderBulge: 0.16
+  contactApexTaper: 0.08
+  contactInfluenceRadius: 1
+  drawContactFitGizmos: 1
+  contactPlaneGizmoColor: {r: 1, g: 0.35, b: 0.1, a: 0.85}
+  fluidCenterColor: {r: 0, g: 0, b: 0, a: 1}
+  fluidEdgeColor: {r: 0, g: 0, b: 0, a: 1}
+  solidCenterColor: {r: 0, g: 0, b: 0, a: 1}
+  solidEdgeColor: {r: 0, g: 0, b: 0, a: 1}
+  outlineColor: {r: 0, g: 0, b: 0, a: 1}
+  highlightColor: {r: 0, g: 0, b: 0, a: 0}
+  paralyzedTint: {r: 0.62, g: 0.42, b: 1, a: 1}
+  drawEyes: 1
+  eyeResolution: 18
+  eyeSpacing: 0.35
+  eyeHorizontalOffset: 0.14
+  eyeVerticalOffset: 0.18
+  eyeRadius: 0.095
+  eyeTallness: 1.35
+  eyeFollowVelocity: 0.02
+  eyeColor: {r: 1, g: 1, b: 1, a: 1}
+  eyeGlowColor: {r: 1, g: 1, b: 1, a: 0.35}
+  eyeGlowScale: 2.4
+  eyeGlowPulse: 0.12
+  drawRendererGizmos: 1
+  rendererGizmoColor: {r: 0.2, g: 1, b: 0.8, a: 0.55}
 --- !u!58 &2545007993996226252
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -223,3 +296,35 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 0.5
+--- !u!114 &6147769573892842105
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5018208651326739801}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4fa9d64a38f048d48b5a5c49c95f8fe9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  useDynamicCollider: 1
+  restoreColliderOnDisable: 1
+  keepSurfaceContact: 1
+  minRadiusScale: 0.68
+  crouchRadiusScale: 0.72
+  wallRadiusScale: 0.86
+  ceilingRadiusScale: 0.82
+  maxSpeedShrink: 0.08
+  speedForMaxShrink: 14
+  impactShrink: 0.08
+  crouchInputThreshold: 0.45
+  crouchOffsetY: -0.06
+  surfaceOffset: 0.04
+  shrinkSpeed: 12
+  expandSpeed: 7
+  offsetSpeed: 12
+  impactRecoverSpeed: 6
+  drawDynamicColliderGizmos: 1
+  currentColliderGizmoColor: {r: 1, g: 0.85, b: 0.15, a: 0.8}
+  targetColliderGizmoColor: {r: 0.2, g: 0.95, b: 1, a: 0.45}

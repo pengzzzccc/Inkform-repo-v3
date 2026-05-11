@@ -9,6 +9,7 @@ using UnityEngine.UI;
 public class S_UIManager : MonoBehaviour
 {
     public static S_UIManager Instance { get; private set; }
+    private const string DontDestroyOnLoadSceneName = "DontDestroyOnLoad";
 
     [SerializeField] private GameObject background;
     [SerializeField] private Button StartButton;
@@ -36,11 +37,28 @@ public class S_UIManager : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-        DontDestroyOnLoad(gameObject);
+        PreserveAcrossScenes();
 
         InputSystem_Actions actions = S_InputBindingManager.Instance.Actions;
         openMemu = actions.UI.OpenMenu;
         cancelAction = actions.UI.Cancel;
+    }
+
+    private void PreserveAcrossScenes()
+    {
+        if (gameObject.scene.name == DontDestroyOnLoadSceneName)
+            return;
+
+        if (transform.parent != null)
+            transform.SetParent(null);
+
+        DontDestroyOnLoad(gameObject);
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
     }
 
     void Start()
