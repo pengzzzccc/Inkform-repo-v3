@@ -339,6 +339,8 @@ Every spawnInterval seconds:
 | cleanupDistantNpcs | true | Auto-destroy far NPCs |
 | cleanupDistance | 30f | Distance threshold for cleanup |
 | cleanupCheckInterval | 5f | Seconds between cleanup checks |
+| spawnYFallback | 0f | Y position used when ground raycast finds no surface |
+| debugLogs | false | Enable debug logging for spawn/cleanup events |
 
 ### 9.3 Setup
 

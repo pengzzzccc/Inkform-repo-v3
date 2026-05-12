@@ -313,8 +313,20 @@ The sprint skill (`S_Soild_sprint`) now supports a hold-to-charge sprint mechani
 | stage3Cooldown | 1.0s | Cooldown after stage 3 release |
 | bufferTime | 0.15s | Quick-tap buffer threshold |
 | chargeBallMaterial | - | Low-friction PhysicsMaterial2D for rolling |
+| chargeStartClip | - | SFX played when charge begins (after buffer exits) |
+| chargeStageClip | - | SFX played when entering a new charge stage |
 
-### 8.2 New Methods
+### 8.2 Original Sprint Parameters (preserved)
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| sprintSpeed | 20f | Original instant-sprint impulse (used by legacy `Activate()` fallback) |
+| cooldown | 1.0s | Cooldown between instant `Activate()` calls |
+| SprintLockTime | 0.1s | Duration player is locked in solid form during sprint |
+| stunRadius | 2f | OverlapCircle radius for detecting enemies on sprint hit |
+| enemyLayer | ~0 | LayerMask filtering which colliders count as enemies |
+
+### 8.3 New Methods
 
 | Method | Description |
 |--------|-------------|
@@ -324,10 +336,10 @@ The sprint skill (`S_Soild_sprint`) now supports a hold-to-charge sprint mechani
 | `GetShakeOffset(float shakeTimer)` | Returns damped sine shake offset for stage transitions |
 | `ActivateCharge(player, speed, direction)` | Performs charged sprint with stun hit detection |
 
-### 8.3 Buffer System
+### 8.4 Buffer System
 
 Quick-tap sprint (press and release within `bufferTime`) bypasses all visual/physics changes and immediately performs a `minSprintSpeed` dash. This ensures responsive instant-dash for skilled players.
 
-### 8.4 S_SkillTree Integration
+### 8.5 S_SkillTree Integration
 
 `S_SkillTree.GetSprintSkill()` returns the `S_Soild_sprint` instance so `S_Player` can access charge parameters without holding a direct reference.

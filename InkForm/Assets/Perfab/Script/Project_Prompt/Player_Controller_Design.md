@@ -112,6 +112,12 @@ Player (S_Player component)
 | kickForceMultiplier | 10f | Force multiplier for KickOut() |
 | jumpClip | - | SFX played on jump |
 | formSwitchClip | - | SFX played when form changes |
+| paralyzeSlowMultiplier | 0.5f | Movement speed multiplier while paralyzed |
+| defaultParalyzeDuration | 3f | Default duration of paralyze effect (seconds) |
+| useProceduralRenderer | true | Enable procedural slime rendering path |
+| proceduralRenderer | - | Reference to Body S_PlayerProceduralRenderer |
+| useDynamicCollider | true | Enable dynamic circle/capsule collider path |
+| dynamicCollider | - | Reference to Body S_PlayerDynamicCollider |
 
 **Public Methods**:
 | Method | Parameters | Description |
