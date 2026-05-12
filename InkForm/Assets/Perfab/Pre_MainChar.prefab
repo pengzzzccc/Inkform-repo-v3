@@ -186,7 +186,7 @@ Rigidbody2D:
     m_Bits: 0
   m_Interpolate: 0
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 4
 --- !u!114 &165952055740687509
 MonoBehaviour:
@@ -212,22 +212,32 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2f5ea4755d9a4d248ba25f2bf0f736fb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  useProceduralRendering: 0
+  useProceduralRendering: 1
   hideSpriteRenderer: 1
   matchCircleColliderRadius: 1
-  meshResolution: 64
+  meshResolution: 55
   bodyRadius: 0.5
   outlineWidth: 0.055
   wobbleAmount: 0.025
   wobbleSpeed: 7
   velocityStretch: 0.035
-  maxStretch: 0.249
+  maxStretch: 0.115
   impactSquash: 0.18
   surfaceStickDeform: 0.12
   idleSquash: 0.08
   bottomBulge: 0.22
-  motionLag: 0.012
-  maxTailStretch: 0.08
+  motionLag: 0.017
+  maxTailStretch: 0.013
+  bodyTailInfluence: 0.22
+  useCircleTail: 1
+  tailResolution: 18
+  tailRadiusScale: 0.3
+  tailMinRadiusScale: 0.16
+  tailBaseDistance: 0.16
+  tailMaxDistance: 0.42
+  tailSpeedDistanceScale: 0.035
+  tailBridgeOverlap: 0.04
+  tailFollowSpeed: 14
   tailGroundStick: 0.72
   tailGroundSkin: 0.014
   tailGroundMemoryTime: 0.08
@@ -238,7 +248,7 @@ MonoBehaviour:
   colliderShapeFollowSpeed: 14
   fitToContactPlanes: 1
   contactPlaneSkin: 0.012
-  drawContactFill: 1
+  drawContactFill: 0
   contactFillDepth: 0.035
   contactFillWidthScale: 1.15
   contactFillBodyOverlap: 0.025
@@ -259,16 +269,16 @@ MonoBehaviour:
   paralyzedTint: {r: 0.62, g: 0.42, b: 1, a: 1}
   drawEyes: 1
   eyeResolution: 18
-  eyeSpacing: 0.35
+  eyeSpacing: 0.658
   eyeHorizontalOffset: 0.14
   eyeVerticalOffset: 0.18
-  eyeRadius: 0.095
-  eyeTallness: 1.35
+  eyeRadius: 0.126
+  eyeTallness: 1
   eyeFollowVelocity: 0.02
   eyeColor: {r: 1, g: 1, b: 1, a: 1}
   eyeGlowColor: {r: 1, g: 1, b: 1, a: 0.35}
-  eyeGlowScale: 2.4
-  eyeGlowPulse: 0.12
+  eyeGlowScale: 2.46
+  eyeGlowPulse: 0.037
   drawRendererGizmos: 1
   rendererGizmoColor: {r: 0.2, g: 1, b: 0.8, a: 0.55}
 --- !u!58 &2545007993996226252
@@ -367,9 +377,9 @@ MonoBehaviour:
   maxSpeedShrink: 0.08
   speedForMaxShrink: 14
   impactShrink: 0.08
-  crouchCapsuleWidthScale: 1.12
-  crouchCapsuleHeightScale: 0.56
-  wallCapsuleWidthScale: 0.58
+  crouchCapsuleWidthScale: 1.153
+  crouchCapsuleHeightScale: 0.555
+  wallCapsuleWidthScale: 0.561
   wallCapsuleHeightScale: 1.14
   ceilingCapsuleWidthScale: 1.16
   ceilingCapsuleHeightScale: 0.5
@@ -380,6 +390,9 @@ MonoBehaviour:
   crouchReleaseThreshold: 0.18
   crouchOffsetY: -0.06
   surfaceOffset: 0.04
+  capsuleCenterlineBias: 0.65
+  capsuleRenderShapeFollow: 0.65
+  capsuleRenderSkin: 0.01
   shrinkSpeed: 12
   expandSpeed: 7
   offsetSpeed: 12

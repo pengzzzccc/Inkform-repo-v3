@@ -27,6 +27,8 @@ Pre_MainChar
 Runtime children created by S_PlayerProceduralRenderer:
     ProceduralSlime_Outline
     ProceduralSlime_Body
+    ProceduralSlime_Tail
+    ProceduralSlime_ContactFill
     ProceduralSlime_Highlight
     ProceduralSlime_EyeGlow
     ProceduralSlime_Eyes
@@ -41,6 +43,8 @@ The runtime mesh children inherit the body layer and the fallback sprite sorting
 `S_PlayerProceduralRenderer` builds fan meshes each frame:
 
 - Body mesh: black slime mass with velocity, impact, contact, and wobble deformation.
+- Tail mesh: black circle-tail plus bridge polygon, connected to the body with external tangent points.
+- Contact fill mesh: thin black patch that hides tiny contact-plane skin gaps near the floor.
 - Outline mesh: slightly larger version constrained against contact planes.
 - Highlight mesh: optional subtle body highlight, currently transparent by default for a pure black body.
 - Eye glow mesh: translucent white halo around the eyes.
@@ -51,6 +55,7 @@ The runtime mesh children inherit the body layer and the fallback sprite sorting
 | Input | Effect |
 |-------|--------|
 | Rigidbody2D velocity | Stretches along movement direction and adds a small rear lag |
+| Hybrid tail | Keeps body lag subtle while a smaller tail circle supplies controllable tail volume |
 | Impact pulse | Squashes on floor/wall impact then recovers |
 | Fluid climb surface | Pulls/flatten body toward walls or ceiling |
 | Contact points | Prevents visual boundary from crossing ground/walls |
@@ -58,7 +63,29 @@ The runtime mesh children inherit the body layer and the fallback sprite sorting
 
 ---
 
-## 4. Environment Fit
+## 4. Hybrid Tail
+
+The current tail is a hybrid of two systems:
+
+- `bodyTailInfluence` keeps a small amount of the original body rear stretch.
+- `ProceduralSlime_Tail` renders a separate smaller tail circle.
+- The body circle and tail circle are connected by two external tangent lines, forming a filled bridge polygon.
+- `tailGroundStick`, `tailGroundSkin`, and `tailGroundMemoryTime` keep the tail close to the floor contact plane without requiring the physics collider to deform.
+
+Useful tuning groups:
+
+| Field | Use |
+|-------|-----|
+| `bodyTailInfluence` | How much the main body itself stretches backward |
+| `tailRadiusScale` / `tailMinRadiusScale` | Tail circle size |
+| `tailBaseDistance` / `tailMaxDistance` | Tail circle distance from the body |
+| `tailSpeedDistanceScale` | How strongly speed pushes the tail farther back |
+| `tailBridgeOverlap` | How deeply the bridge overlaps body/tail to avoid gaps |
+| `tailFollowSpeed` | How quickly the separate tail follows target size/position |
+
+---
+
+## 5. Environment Fit
 
 The renderer samples `targetCollider.GetContacts()` and builds contact planes from the real collision points and normals.
 
@@ -77,7 +104,7 @@ This keeps the slime from visually sinking into floors and helps it read as havi
 
 ---
 
-## 5. Dynamic Circle And Capsule Collider
+## 6. Dynamic Circle And Capsule Collider
 
 `S_PlayerDynamicCollider` keeps the normal state as a circle, then switches to a smoothed `CapsuleCollider2D` for slime-specific poses.
 
@@ -104,7 +131,7 @@ The procedural renderer now reads `S_Player.GetCollider()` each frame, so contac
 
 ---
 
-## 6. Prefab Source Of Truth
+## 7. Prefab Source Of Truth
 
 `Assets/Perfab/Pre_MainChar.prefab` is the source of truth for:
 

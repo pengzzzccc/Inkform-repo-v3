@@ -111,6 +111,7 @@ public class S_Player : MonoBehaviour
         b_Rig.gravityScale = solidGravityScale;
 
         b_Rig.interpolation = RigidbodyInterpolation2D.Interpolate;
+        b_Rig.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         SetupProceduralRenderer();
         SetupDynamicCollider();
 

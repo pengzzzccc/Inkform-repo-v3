@@ -30,7 +30,7 @@ public class S_fluid_climb : S_SkillBase
     [System.NonSerialized] private SurfaceType surface = SurfaceType.None;
     [System.NonSerialized] private Vector2 surfNormal = Vector2.up;
     [System.NonSerialized] private ContactPoint2D[] contacts;
-    [System.NonSerialized] private RaycastHit2D[] gripBufferHits;
+    [System.NonSerialized] private Collider2D[] gripBufferHits;
     [System.NonSerialized] private int noContactFrames = 0;
     [System.NonSerialized] private float climbTimer = 0f;
     [System.NonSerialized] private bool wasClimbing = false;
@@ -182,28 +182,51 @@ public class S_fluid_climb : S_SkillBase
         if (col == null || rig == null)
             return false;
 
-        if (gripBufferHits == null) gripBufferHits = new RaycastHit2D[4];
+        if (gripBufferHits == null) gripBufferHits = new Collider2D[6];
 
         float directionX = GetGripDirection(player, inputX);
         Vector2 direction = new Vector2(directionX, 0f);
         ContactFilter2D filter = CreateSurfaceFilter();
-        int hitCount = col.Cast(direction, filter, gripBufferHits, gripBufferDistance);
+        Bounds bounds = col.bounds;
+        Vector2 bufferCenter = GetGripBufferCenter(bounds);
+        int hitCount = Physics2D.OverlapCircle(bufferCenter, gripBufferDistance, filter, gripBufferHits);
 
+        float closestSnapDistance = float.MaxValue;
+        Vector2 closestNormal = Vector2.zero;
         for (int i = 0; i < hitCount; i++)
         {
-            RaycastHit2D hit = gripBufferHits[i];
-            if (hit.collider == null)
+            Collider2D hitCollider = gripBufferHits[i];
+            if (hitCollider == null || hitCollider == col || hitCollider.attachedRigidbody == rig)
                 continue;
 
-            if (!IsWallHitForDirection(hit.normal, directionX))
+            Vector2 closestPoint = hitCollider.ClosestPoint(bufferCenter);
+            Vector2 toSurface = closestPoint - bufferCenter;
+            float distanceInDirection = Vector2.Dot(toSurface, direction);
+            if (distanceInDirection < -0.001f)
                 continue;
 
+            Vector2 normal = toSurface.sqrMagnitude > 0.0001f
+                ? -toSurface.normalized
+                : -direction;
+
+            if (!IsWallHitForDirection(normal, directionX))
+                continue;
+
+            float snapDistance = Mathf.Max(distanceInDirection - gripSnapSkin, 0f);
+            if (snapDistance >= closestSnapDistance)
+                continue;
+
+            closestSnapDistance = snapDistance;
+            closestNormal = normal;
+        }
+
+        if (closestNormal.sqrMagnitude > 0.001f)
+        {
             surface = directionX < 0f ? SurfaceType.WallLeft : SurfaceType.WallRight;
-            surfNormal = hit.normal;
+            surfNormal = closestNormal;
             noContactFrames = 0;
 
-            float snapDistance = Mathf.Max(hit.distance - gripSnapSkin, 0f);
-            rig.position += direction * snapDistance;
+            rig.position += direction * closestSnapDistance;
             rig.linearVelocity = new Vector2(0f, rig.linearVelocity.y);
             return true;
         }
@@ -217,6 +240,11 @@ public class S_fluid_climb : S_SkillBase
             return Mathf.Sign(inputX);
 
         return player.GetFaceRight() ? 1f : -1f;
+    }
+
+    private Vector2 GetGripBufferCenter(Bounds bounds)
+    {
+        return bounds.center;
     }
 
     private bool IsWallHitForDirection(Vector2 normal, float directionX)
@@ -244,22 +272,19 @@ public class S_fluid_climb : S_SkillBase
             ? bodyCollider.bounds
             : new Bounds(bodyTransform.position, Vector3.one);
 
-        Vector3 leftCenter = bounds.center + Vector3.left * (bounds.extents.x + gripBufferDistance * 0.5f);
-        Vector3 rightCenter = bounds.center + Vector3.right * (bounds.extents.x + gripBufferDistance * 0.5f);
-        Vector3 bufferSize = new Vector3(gripBufferDistance, bounds.size.y, 0.05f);
+        Vector3 bufferCenter = GetGripBufferCenter(bounds);
 
         Color bufferColor = gripBufferGizmoColor;
         Gizmos.color = bufferColor;
-        Gizmos.DrawWireCube(leftCenter, bufferSize);
-        Gizmos.DrawWireCube(rightCenter, bufferSize);
+        Gizmos.DrawWireSphere(bufferCenter, gripBufferDistance);
 
         Vector3 gripDirection = facingRight ? Vector3.right : Vector3.left;
         Vector3 origin = bounds.center;
-        Vector3 end = origin + gripDirection * (bounds.extents.x + gripBufferDistance);
+        Vector3 end = origin + gripDirection * gripBufferDistance;
 
         Gizmos.color = Color.yellow;
         Gizmos.DrawLine(origin, end);
-        Gizmos.DrawWireSphere(end, 0.05f);
+        Gizmos.DrawWireSphere(end, gripBufferDistance * 0.18f);
     }
 
     private Vector2 ComputeFluidVelocity(Rigidbody2D rig, float inputX, float inputY, float moveSpeed)

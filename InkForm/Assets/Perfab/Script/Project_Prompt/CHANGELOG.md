@@ -1,5 +1,14 @@
 # InkForm — Changelog
 
+## v0.6.3 - Hybrid Slime Tail Pass (2026-05-12)
+
+### Rendering
+- Added a hybrid tail model that keeps light body lag while rendering a separate circle-tail mesh.
+- Tail mesh uses external tangent bridge points between the body circle and a smaller tail circle.
+- Added direct tail size, distance, bridge, and follow-speed parameters for easier tuning.
+
+---
+
 ## v0.6.2 - Dynamic Capsule Collider Phase (2026-05-12)
 
 ### New Features

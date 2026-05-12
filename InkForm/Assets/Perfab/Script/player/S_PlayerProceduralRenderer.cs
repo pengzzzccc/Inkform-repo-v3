@@ -22,6 +22,16 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
     [SerializeField][Range(0f, 0.45f)] private float bottomBulge = 0.22f;
     [SerializeField][Range(0f, 0.15f)] private float motionLag = 0.012f;
     [SerializeField][Range(0f, 0.2f)] private float maxTailStretch = 0.08f;
+    [SerializeField][Range(0f, 1f)] private float bodyTailInfluence = 0.22f;
+    [SerializeField] private bool useCircleTail = true;
+    [SerializeField][Range(8, 32)] private int tailResolution = 18;
+    [SerializeField][Range(0.05f, 0.6f)] private float tailRadiusScale = 0.3f;
+    [SerializeField][Range(0.02f, 0.5f)] private float tailMinRadiusScale = 0.16f;
+    [SerializeField][Range(0f, 0.6f)] private float tailBaseDistance = 0.16f;
+    [SerializeField][Range(0f, 0.8f)] private float tailMaxDistance = 0.42f;
+    [SerializeField][Range(0f, 0.12f)] private float tailSpeedDistanceScale = 0.035f;
+    [SerializeField][Range(0f, 0.15f)] private float tailBridgeOverlap = 0.04f;
+    [SerializeField][Range(1f, 30f)] private float tailFollowSpeed = 14f;
     [SerializeField][Range(0f, 1f)] private float tailGroundStick = 0.72f;
     [SerializeField][Range(0f, 0.08f)] private float tailGroundSkin = 0.014f;
     [SerializeField][Range(0f, 0.2f)] private float tailGroundMemoryTime = 0.08f;
@@ -34,7 +44,7 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
     [Header("Environment Fit")]
     [SerializeField] private bool fitToContactPlanes = true;
     [SerializeField][Range(0f, 0.08f)] private float contactPlaneSkin = 0.012f;
-    [SerializeField] private bool drawContactFill = true;
+    [SerializeField] private bool drawContactFill = false;
     [SerializeField][Range(0f, 0.12f)] private float contactFillDepth = 0.035f;
     [SerializeField][Range(0.2f, 2f)] private float contactFillWidthScale = 1.15f;
     [SerializeField][Range(0f, 0.08f)] private float contactFillBodyOverlap = 0.025f;
@@ -76,6 +86,7 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
 
     private const string OutlineName = "ProceduralSlime_Outline";
     private const string BodyName = "ProceduralSlime_Body";
+    private const string TailName = "ProceduralSlime_Tail";
     private const string ContactFillName = "ProceduralSlime_ContactFill";
     private const string HighlightName = "ProceduralSlime_Highlight";
     private const string EyeGlowName = "ProceduralSlime_EyeGlow";
@@ -89,24 +100,28 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
 
     private Mesh outlineMesh;
     private Mesh bodyMesh;
+    private Mesh tailMesh;
     private Mesh contactFillMesh;
     private Mesh highlightMesh;
     private Mesh eyeGlowMesh;
     private Mesh eyeMesh;
     private MeshRenderer outlineRenderer;
     private MeshRenderer bodyRenderer;
+    private MeshRenderer tailRenderer;
     private MeshRenderer contactFillRenderer;
     private MeshRenderer highlightRenderer;
     private MeshRenderer eyeGlowRenderer;
     private MeshRenderer eyeRenderer;
     private MeshFilter outlineFilter;
     private MeshFilter bodyFilter;
+    private MeshFilter tailFilter;
     private MeshFilter contactFillFilter;
     private MeshFilter highlightFilter;
     private MeshFilter eyeGlowFilter;
     private MeshFilter eyeFilter;
     private Material outlineMaterial;
     private Material bodyMaterial;
+    private Material tailMaterial;
     private Material contactFillMaterial;
     private Material highlightMaterial;
     private Material eyeGlowMaterial;
@@ -114,6 +129,7 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
 
     private Vector3[] outlineVertices;
     private Vector3[] bodyVertices;
+    private Vector3[] tailVertices;
     private Vector3[] contactFillVertices;
     private Vector3[] smoothedBodyVertices;
     private Vector3[] highlightVertices;
@@ -121,11 +137,13 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
     private Vector3[] eyeVertices;
     private Color[] outlineColors;
     private Color[] bodyColors;
+    private Color[] tailColors;
     private Color[] contactFillColors;
     private Color[] highlightColors;
     private Color[] eyeGlowColors;
     private Color[] eyeColors;
     private int[] bodyTriangles;
+    private int[] tailTriangles;
     private int[] contactFillTriangles;
     private int[] highlightTriangles;
     private int[] eyeTriangles;
@@ -134,11 +152,15 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
     private ContactPlane[] contactPlanes;
     private ContactPlane cachedTailGroundPlane;
     private int cachedResolution;
+    private int cachedTailResolution;
     private int cachedHighlightResolution;
     private int cachedEyeResolution;
     private int contactPlaneCount;
     private float tailGroundMemoryTimer;
     private float tailGroundBlend;
+    private Vector2 currentTailCenter;
+    private float currentTailRadius;
+    private float currentTailBlend;
     private Vector2 currentColliderShapeScale = Vector2.one;
     private bool initialized;
     private Vector2 previousVelocity;
@@ -178,7 +200,7 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
         if (!initialized)
             Initialize(GetComponent<SpriteRenderer>(), GetComponent<Rigidbody2D>(), GetComponent<Collider2D>());
 
-        if (meshResolution != cachedResolution || eyeResolution != cachedEyeResolution)
+        if (meshResolution != cachedResolution || tailResolution != cachedTailResolution || eyeResolution != cachedEyeResolution)
             RebuildMeshBuffers();
 
         SetRenderersActive(true);
@@ -242,12 +264,14 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
     {
         DestroyRuntimeObject(outlineMesh);
         DestroyRuntimeObject(bodyMesh);
+        DestroyRuntimeObject(tailMesh);
         DestroyRuntimeObject(contactFillMesh);
         DestroyRuntimeObject(highlightMesh);
         DestroyRuntimeObject(eyeGlowMesh);
         DestroyRuntimeObject(eyeMesh);
         DestroyRuntimeObject(outlineMaterial);
         DestroyRuntimeObject(bodyMaterial);
+        DestroyRuntimeObject(tailMaterial);
         DestroyRuntimeObject(contactFillMaterial);
         DestroyRuntimeObject(highlightMaterial);
         DestroyRuntimeObject(eyeGlowMaterial);
@@ -262,6 +286,7 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
     private void OnValidate()
     {
         meshResolution = Mathf.Clamp(meshResolution, 12, 96);
+        tailResolution = Mathf.Clamp(tailResolution, 8, 32);
         eyeResolution = Mathf.Clamp(eyeResolution, 8, 32);
         bodyRadius = Mathf.Max(0.1f, bodyRadius);
         outlineWidth = Mathf.Max(0f, outlineWidth);
@@ -273,38 +298,67 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
 
         outlineFilter = EnsureRenderChild(OutlineName, out outlineRenderer);
         bodyFilter = EnsureRenderChild(BodyName, out bodyRenderer);
-        contactFillFilter = EnsureRenderChild(ContactFillName, out contactFillRenderer);
+        tailFilter = EnsureRenderChild(TailName, out tailRenderer);
+        if (drawContactFill)
+            contactFillFilter = EnsureRenderChild(ContactFillName, out contactFillRenderer);
+        else
+            ClearContactFillChild();
         highlightFilter = EnsureRenderChild(HighlightName, out highlightRenderer);
         eyeGlowFilter = EnsureRenderChild(EyeGlowName, out eyeGlowRenderer);
         eyeFilter = EnsureRenderChild(EyeName, out eyeRenderer);
 
         outlineMesh = EnsureMesh(outlineMesh, "Procedural Slime Outline");
         bodyMesh = EnsureMesh(bodyMesh, "Procedural Slime Body");
-        contactFillMesh = EnsureMesh(contactFillMesh, "Procedural Slime Contact Fill");
+        tailMesh = EnsureMesh(tailMesh, "Procedural Slime Tail");
+        if (drawContactFill)
+            contactFillMesh = EnsureMesh(contactFillMesh, "Procedural Slime Contact Fill");
         highlightMesh = EnsureMesh(highlightMesh, "Procedural Slime Highlight");
         eyeGlowMesh = EnsureMesh(eyeGlowMesh, "Procedural Slime Eye Glow");
         eyeMesh = EnsureMesh(eyeMesh, "Procedural Slime Eyes");
 
         outlineFilter.sharedMesh = outlineMesh;
         bodyFilter.sharedMesh = bodyMesh;
-        contactFillFilter.sharedMesh = contactFillMesh;
+        tailFilter.sharedMesh = tailMesh;
+        if (drawContactFill && contactFillFilter != null)
+            contactFillFilter.sharedMesh = contactFillMesh;
         highlightFilter.sharedMesh = highlightMesh;
         eyeGlowFilter.sharedMesh = eyeGlowMesh;
         eyeFilter.sharedMesh = eyeMesh;
 
         outlineMaterial = EnsureMaterial(outlineMaterial, shader, "Procedural Slime Outline Material");
         bodyMaterial = EnsureMaterial(bodyMaterial, shader, "Procedural Slime Body Material");
-        contactFillMaterial = EnsureMaterial(contactFillMaterial, shader, "Procedural Slime Contact Fill Material");
+        tailMaterial = EnsureMaterial(tailMaterial, shader, "Procedural Slime Tail Material");
+        if (drawContactFill)
+            contactFillMaterial = EnsureMaterial(contactFillMaterial, shader, "Procedural Slime Contact Fill Material");
         highlightMaterial = EnsureMaterial(highlightMaterial, shader, "Procedural Slime Highlight Material");
         eyeGlowMaterial = EnsureMaterial(eyeGlowMaterial, shader, "Procedural Slime Eye Glow Material");
         eyeMaterial = EnsureMaterial(eyeMaterial, shader, "Procedural Slime Eye Material");
 
         outlineRenderer.sharedMaterial = outlineMaterial;
         bodyRenderer.sharedMaterial = bodyMaterial;
-        contactFillRenderer.sharedMaterial = contactFillMaterial;
+        tailRenderer.sharedMaterial = tailMaterial;
+        if (drawContactFill && contactFillRenderer != null)
+            contactFillRenderer.sharedMaterial = contactFillMaterial;
         highlightRenderer.sharedMaterial = highlightMaterial;
         eyeGlowRenderer.sharedMaterial = eyeGlowMaterial;
         eyeRenderer.sharedMaterial = eyeMaterial;
+    }
+
+    private void ClearContactFillChild()
+    {
+        if (contactFillRenderer != null)
+            contactFillRenderer.enabled = false;
+
+        DestroyRuntimeObject(contactFillMesh);
+        DestroyRuntimeObject(contactFillMaterial);
+        contactFillMesh = null;
+        contactFillMaterial = null;
+        contactFillFilter = null;
+        contactFillRenderer = null;
+
+        Transform child = transform.Find(ContactFillName);
+        if (child != null)
+            DestroyRuntimeObject(child.gameObject);
     }
 
     private MeshFilter EnsureRenderChild(string childName, out MeshRenderer meshRenderer)
@@ -385,6 +439,12 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
             bodyRenderer.sortingOrder = sortingOrder + 1;
         }
 
+        if (tailRenderer != null)
+        {
+            tailRenderer.sortingLayerID = sortingLayerId;
+            tailRenderer.sortingOrder = sortingOrder + 1;
+        }
+
         if (contactFillRenderer != null)
         {
             contactFillRenderer.sortingLayerID = sortingLayerId;
@@ -413,6 +473,7 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
     private void RebuildMeshBuffers()
     {
         cachedResolution = Mathf.Clamp(meshResolution, 12, 96);
+        cachedTailResolution = Mathf.Clamp(tailResolution, 8, 32);
         cachedHighlightResolution = Mathf.Clamp(cachedResolution / 2, 12, 32);
         cachedEyeResolution = Mathf.Clamp(eyeResolution, 8, 32);
 
@@ -423,9 +484,22 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
         outlineColors = new Color[vertexCount];
         bodyColors = new Color[vertexCount];
         bodyTriangles = CreateFanTriangles(cachedResolution);
-        contactFillVertices = new Vector3[4];
-        contactFillColors = new Color[4];
-        contactFillTriangles = new[] { 0, 1, 2, 2, 1, 3 };
+        int tailVertexCount = cachedTailResolution + 5;
+        tailVertices = new Vector3[tailVertexCount];
+        tailColors = new Color[tailVertexCount];
+        tailTriangles = CreateTailTriangles(cachedTailResolution);
+        if (drawContactFill && contactFillMesh != null)
+        {
+            contactFillVertices = new Vector3[4];
+            contactFillColors = new Color[4];
+            contactFillTriangles = new[] { 0, 1, 2, 2, 1, 3 };
+        }
+        else
+        {
+            contactFillVertices = null;
+            contactFillColors = null;
+            contactFillTriangles = null;
+        }
         wobbleOffsets = new float[cachedResolution];
         environmentContacts = new ContactPoint2D[8];
         contactPlanes = new ContactPlane[8];
@@ -455,10 +529,18 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
         bodyMesh.triangles = bodyTriangles;
         bodyMesh.colors = bodyColors;
 
-        contactFillMesh.Clear();
-        contactFillMesh.vertices = contactFillVertices;
-        contactFillMesh.triangles = contactFillTriangles;
-        contactFillMesh.colors = contactFillColors;
+        tailMesh.Clear();
+        tailMesh.vertices = tailVertices;
+        tailMesh.triangles = tailTriangles;
+        tailMesh.colors = tailColors;
+
+        if (drawContactFill && contactFillMesh != null)
+        {
+            contactFillMesh.Clear();
+            contactFillMesh.vertices = contactFillVertices;
+            contactFillMesh.triangles = contactFillTriangles;
+            contactFillMesh.colors = contactFillColors;
+        }
 
         highlightMesh.Clear();
         highlightMesh.vertices = highlightVertices;
@@ -485,6 +567,29 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
             triangles[triangleIndex] = 0;
             triangles[triangleIndex + 1] = i + 1;
             triangles[triangleIndex + 2] = ((i + 1) % ringCount) + 1;
+        }
+
+        return triangles;
+    }
+
+    private int[] CreateTailTriangles(int ringCount)
+    {
+        int[] triangles = new int[6 + ringCount * 3];
+        triangles[0] = 0;
+        triangles[1] = 1;
+        triangles[2] = 2;
+        triangles[3] = 2;
+        triangles[4] = 1;
+        triangles[5] = 3;
+
+        int centerIndex = 4;
+        int ringStart = centerIndex + 1;
+        for (int i = 0; i < ringCount; i++)
+        {
+            int triangleIndex = 6 + i * 3;
+            triangles[triangleIndex] = centerIndex;
+            triangles[triangleIndex + 1] = ringStart + i;
+            triangles[triangleIndex + 2] = ringStart + ((i + 1) % ringCount);
         }
 
         return triangles;
@@ -663,7 +768,7 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
                 - bottomBulge * 0.25f * top * top * top
                 + stretch * axial * axial
                 - stretch * 0.55f * perpendicular
-                + trailingStretch * rear * rear * 0.55f;
+                + trailingStretch * rear * rear * bodyTailInfluence;
 
             radiusScale *= Mathf.Lerp(1f, colliderShapeRadius, colliderShapeFollow);
 
@@ -711,6 +816,7 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
         }
 
         UpdateHighlightMesh(radius, facingRight, isFluid, isParalyzed);
+        UpdateCircleTailMesh(radius, velocity, velocityDirection, trailingStretch, edgeColor);
         UpdateContactFillMesh(radius, edgeColor);
         UpdateEyeMeshes(radius, velocity, facingRight, isParalyzed);
         ApplyMeshData();
@@ -718,6 +824,13 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
 
     private void UpdateContactFillMesh(float radius, Color fillColor)
     {
+        if (!drawContactFill)
+        {
+            if (contactFillRenderer != null)
+                contactFillRenderer.enabled = false;
+            return;
+        }
+
         if (contactFillRenderer == null || contactFillVertices == null || contactFillColors == null)
             return;
 
@@ -755,6 +868,121 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
         contactFillColors[1] = edge;
         contactFillColors[2] = inner;
         contactFillColors[3] = edge;
+    }
+
+    private void UpdateCircleTailMesh(float radius, Vector2 velocity, Vector2 velocityDirection, float trailingStretch, Color fillColor)
+    {
+        if (tailRenderer == null || tailVertices == null || tailColors == null)
+            return;
+
+        float speedWeight = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.001f, Mathf.Max(maxTailStretch, 0.002f), trailingStretch));
+        float targetBlend = useCircleTail && speedWeight > 0.001f ? 1f : 0f;
+        float blendStep = 1f - Mathf.Exp(-tailFollowSpeed * Time.deltaTime);
+        currentTailBlend = Mathf.Lerp(currentTailBlend, targetBlend, blendStep);
+
+        tailRenderer.enabled = useProceduralRendering && useCircleTail && currentTailBlend > 0.001f;
+        if (!tailRenderer.enabled)
+            return;
+
+        float targetRadius = radius * Mathf.Lerp(tailMinRadiusScale, tailRadiusScale, speedWeight);
+        float targetDistance = Mathf.Min(tailMaxDistance, tailBaseDistance + velocity.magnitude * tailSpeedDistanceScale);
+        Vector2 targetCenter = -velocityDirection * Mathf.Max(targetDistance, targetRadius * 0.55f);
+        targetCenter = StickTailCenterToGround(targetCenter, targetRadius);
+
+        currentTailCenter = Vector2.Lerp(currentTailCenter, targetCenter, blendStep);
+        currentTailRadius = Mathf.Lerp(currentTailRadius <= 0.001f ? targetRadius : currentTailRadius, targetRadius, blendStep);
+
+        float bodyConnectRadius = Mathf.Max(radius * 0.35f, radius + tailBridgeOverlap);
+        float tailConnectRadius = Mathf.Max(currentTailRadius * 0.5f, currentTailRadius + tailBridgeOverlap);
+        WriteCircleTailMesh(Vector2.zero, bodyConnectRadius, currentTailCenter, tailConnectRadius, currentTailRadius, fillColor);
+    }
+
+    private Vector2 StickTailCenterToGround(Vector2 localCenter, float tailRadius)
+    {
+        if (tailGroundStick <= 0f || !TryGetTailGroundPlane(tailRadius, out ContactPlane groundPlane))
+            return localCenter;
+
+        Vector3 worldCenter = transform.TransformPoint(localCenter);
+        Vector2 normal = groundPlane.normal.normalized;
+        float distance = Vector2.Dot((Vector2)worldCenter - groundPlane.point, normal);
+        float desiredDistance = Mathf.Max(tailGroundSkin, contactPlaneSkin) + tailRadius;
+        float stickWeight = tailGroundStick * tailGroundBlend;
+        worldCenter += (Vector3)(normal * (desiredDistance - distance) * stickWeight);
+        return transform.InverseTransformPoint(worldCenter);
+    }
+
+    private void WriteCircleTailMesh(
+        Vector2 bodyCenter,
+        float bodyConnectRadius,
+        Vector2 tailCenter,
+        float tailConnectRadius,
+        float visibleTailRadius,
+        Color fillColor)
+    {
+        GetExternalTangentPoints(
+            bodyCenter,
+            bodyConnectRadius,
+            tailCenter,
+            tailConnectRadius,
+            out Vector2 bodyPointA,
+            out Vector2 tailPointA,
+            out Vector2 bodyPointB,
+            out Vector2 tailPointB);
+
+        tailVertices[0] = bodyPointA;
+        tailVertices[1] = tailPointA;
+        tailVertices[2] = bodyPointB;
+        tailVertices[3] = tailPointB;
+        tailVertices[4] = tailCenter;
+
+        Color tailColor = fillColor;
+        tailColor.a *= currentTailBlend;
+        for (int i = 0; i < tailColors.Length; i++)
+            tailColors[i] = tailColor;
+
+        for (int i = 0; i < cachedTailResolution; i++)
+        {
+            float angle = Mathf.PI * 2f * i / cachedTailResolution;
+            Vector2 point = tailCenter + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * visibleTailRadius;
+            tailVertices[5 + i] = point;
+        }
+    }
+
+    private void GetExternalTangentPoints(
+        Vector2 centerA,
+        float radiusA,
+        Vector2 centerB,
+        float radiusB,
+        out Vector2 pointA0,
+        out Vector2 pointB0,
+        out Vector2 pointA1,
+        out Vector2 pointB1)
+    {
+        Vector2 delta = centerB - centerA;
+        float sqrDistance = Mathf.Max(delta.sqrMagnitude, 0.0001f);
+        float radiusDelta = radiusA - radiusB;
+        float tangentLength = Mathf.Sqrt(Mathf.Max(0.0001f, sqrDistance - radiusDelta * radiusDelta));
+        Vector2 perpendicular = new Vector2(-delta.y, delta.x);
+
+        Vector2 normal0 = (delta * radiusDelta + perpendicular * tangentLength) / sqrDistance;
+        Vector2 normal1 = (delta * radiusDelta - perpendicular * tangentLength) / sqrDistance;
+
+        if (normal0.sqrMagnitude < 0.0001f || normal1.sqrMagnitude < 0.0001f)
+        {
+            Vector2 fallback = delta.sqrMagnitude > 0.0001f ? delta.normalized : Vector2.right;
+            normal0 = new Vector2(-fallback.y, fallback.x);
+            normal1 = -normal0;
+        }
+        else
+        {
+            normal0.Normalize();
+            normal1.Normalize();
+        }
+
+        pointA0 = centerA + normal0 * radiusA;
+        pointB0 = centerB + normal0 * radiusB;
+        pointA1 = centerA + normal1 * radiusA;
+        pointB1 = centerB + normal1 * radiusB;
     }
 
     private Vector3 StickTailPointToGround(Vector3 localPoint, Vector2 velocityDirection, float radius, float trailingStretch)
@@ -961,9 +1189,16 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
         bodyMesh.colors = bodyColors;
         bodyMesh.RecalculateBounds();
 
-        contactFillMesh.vertices = contactFillVertices;
-        contactFillMesh.colors = contactFillColors;
-        contactFillMesh.RecalculateBounds();
+        tailMesh.vertices = tailVertices;
+        tailMesh.colors = tailColors;
+        tailMesh.RecalculateBounds();
+
+        if (drawContactFill && contactFillMesh != null)
+        {
+            contactFillMesh.vertices = contactFillVertices;
+            contactFillMesh.colors = contactFillColors;
+            contactFillMesh.RecalculateBounds();
+        }
 
         highlightMesh.vertices = highlightVertices;
         highlightMesh.colors = highlightColors;
@@ -1019,6 +1254,7 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
     {
         if (outlineRenderer != null) outlineRenderer.enabled = active;
         if (bodyRenderer != null) bodyRenderer.enabled = active;
+        if (tailRenderer != null) tailRenderer.enabled = active && useCircleTail;
         if (contactFillRenderer != null) contactFillRenderer.enabled = active && drawContactFill;
         if (highlightRenderer != null) highlightRenderer.enabled = active;
         if (eyeGlowRenderer != null) eyeGlowRenderer.enabled = active && drawEyes;

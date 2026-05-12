@@ -19,7 +19,7 @@ MonoBehaviour:
   prerequisites: []
   availableSolid: 0
   availableFluid: 1
-  stickyForce: 5
+  stickyForce: 7.96
   climbSpeed: 8
   fluidGravityScale: 4
   activeTime: 2
@@ -28,3 +28,8 @@ MonoBehaviour:
     m_Bits: 4294967295
   floorDotThreshold: 0.5
   ceilingDotThreshold: 0.5
+  gripBufferDistance: 0.72
+  gripSnapSkin: 0.01
+  gripInputThreshold: 0.1
+  drawGripBufferGizmos: 1
+  gripBufferGizmoColor: {r: 0, g: 0.8, b: 1, a: 0.35}

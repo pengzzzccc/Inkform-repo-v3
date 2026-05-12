@@ -43,6 +43,9 @@ public class S_PlayerDynamicCollider : MonoBehaviour
     [SerializeField][Range(0f, 1f)] private float crouchReleaseThreshold = 0.18f;
     [SerializeField][Range(-0.3f, 0f)] private float crouchOffsetY = -0.06f;
     [SerializeField][Range(0f, 0.2f)] private float surfaceOffset = 0.04f;
+    [SerializeField][Range(0f, 1f)] private float capsuleCenterlineBias = 0.65f;
+    [SerializeField][Range(0f, 1f)] private float capsuleRenderShapeFollow = 0.65f;
+    [SerializeField][Range(0f, 0.08f)] private float capsuleRenderSkin = 0.01f;
 
     [Header("Smoothing")]
     [SerializeField][Range(1f, 30f)] private float shrinkSpeed = 12f;
@@ -277,6 +280,8 @@ public class S_PlayerDynamicCollider : MonoBehaviour
 
         if (ShouldApplySurfaceOffset(surface, surfaceNormal))
             targetCapsuleOffset += -surfaceNormal.normalized * surfaceOffset;
+
+        targetCapsuleOffset = ConstrainCapsuleOffsetToRenderVolume(targetCapsuleOffset, targetCapsuleSize);
     }
 
     private bool ShouldApplySurfaceOffset(S_fluid_climb.SurfaceType surface, Vector2 surfaceNormal)
@@ -323,7 +328,30 @@ public class S_PlayerDynamicCollider : MonoBehaviour
                 break;
         }
 
-        return offset;
+        return Vector2.Lerp(offset, baseOffset, capsuleCenterlineBias);
+    }
+
+    private Vector2 ConstrainCapsuleOffsetToRenderVolume(Vector2 offset, Vector2 size)
+    {
+        Vector2 centerDelta = offset - baseOffset;
+        Vector2 renderHalfSize = GetEstimatedRenderHalfSize(size);
+        Vector2 colliderHalfSize = size * 0.5f;
+        float maxX = Mathf.Max(0f, renderHalfSize.x - colliderHalfSize.x - capsuleRenderSkin);
+        float maxY = Mathf.Max(0f, renderHalfSize.y - colliderHalfSize.y - capsuleRenderSkin);
+
+        centerDelta.x = Mathf.Clamp(centerDelta.x, -maxX, maxX);
+        centerDelta.y = Mathf.Clamp(centerDelta.y, -maxY, maxY);
+        return baseOffset + centerDelta;
+    }
+
+    private Vector2 GetEstimatedRenderHalfSize(Vector2 capsuleSize)
+    {
+        float diameter = Mathf.Max(baseRadius * 2f, 0.01f);
+        Vector2 capsuleScale = new Vector2(
+            Mathf.Max(0.2f, capsuleSize.x / diameter),
+            Mathf.Max(0.2f, capsuleSize.y / diameter));
+        Vector2 renderScale = Vector2.Lerp(Vector2.one, capsuleScale, capsuleRenderShapeFollow);
+        return new Vector2(baseRadius * renderScale.x, baseRadius * renderScale.y);
     }
 
     private CapsuleDirection2D GetCapsuleDirection(ColliderMode mode)
