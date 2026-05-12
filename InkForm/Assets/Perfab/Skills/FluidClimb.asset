@@ -28,7 +28,7 @@ MonoBehaviour:
     m_Bits: 4294967295
   floorDotThreshold: 0.5
   ceilingDotThreshold: 0.5
-  gripBufferDistance: 0.72
+  gripBufferDistance: 0.85
   gripSnapSkin: 0.01
   gripInputThreshold: 0.1
   drawGripBufferGizmos: 1
