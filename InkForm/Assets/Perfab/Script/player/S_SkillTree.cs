@@ -87,6 +87,12 @@ public class S_SkillTree : MonoBehaviour
 
     public int GetSkillPoints() => skillPoints;
 
+    public S_Soild_sprint GetSprintSkill()
+    {
+        S_SkillBase skill = FindSkill("Sprint");
+        return skill as S_Soild_sprint;
+    }
+
     private S_SkillBase FindSkill(string name)
     {
         foreach (var s in allSkills)

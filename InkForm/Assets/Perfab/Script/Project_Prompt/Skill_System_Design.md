@@ -286,3 +286,48 @@ Additional serialized fields:
 | gripBufferGizmoColor | Gizmo color for buffer visualization |
 
 The surface state machine also allows direct `None/Floor -> Ceiling` entry while Grip movement is active. This lets the player attach to ceilings directly instead of requiring a wall-to-ceiling transition first.
+
+---
+
+## 8. Sprint Charge System (v0.7.0)
+
+The sprint skill (`S_Soild_sprint`) now supports a hold-to-charge sprint mechanism. The player holds the sprint key to accumulate charge, and releases to dash.
+
+### 8.1 New Parameters (Sprint Charge section)
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| maxChargeTime | 2f | Maximum charge duration for full sprint speed |
+| maxSprintSpeed | 200f | Maximum sprint impulse at full charge |
+| minSprintSpeed | 20f | Minimum sprint impulse (quick-tap) |
+| stage1Scale | 1.0 | Visual/collider scale during stage 1 |
+| stage2Scale | 1.3 | Visual/collider scale during stage 2 |
+| stage3Scale | 1.6 | Visual/collider scale during stage 3 |
+| stage2Time | 0.5s | Time threshold to enter stage 2 |
+| stage3Time | 1.2s | Time threshold to enter stage 3 |
+| shakeFrequency | 25 | Stage transition shake frequency |
+| shakeAmplitude | 0.15 | Stage transition shake amplitude |
+| shakeDecay | 5 | Shake exponential decay rate |
+| stage1Cooldown | 0.1s | Cooldown after stage 1 release |
+| stage2Cooldown | 0.5s | Cooldown after stage 2 release |
+| stage3Cooldown | 1.0s | Cooldown after stage 3 release |
+| bufferTime | 0.15s | Quick-tap buffer threshold |
+| chargeBallMaterial | - | Low-friction PhysicsMaterial2D for rolling |
+
+### 8.2 New Methods
+
+| Method | Description |
+|--------|-------------|
+| `GetStage(float timer)` | Returns stage index (0, 1, 2) based on charge time |
+| `GetStageScale(float timer)` | Returns scale multiplier for current stage |
+| `GetCooldown(int stage)` | Returns cooldown duration for given stage |
+| `GetShakeOffset(float shakeTimer)` | Returns damped sine shake offset for stage transitions |
+| `ActivateCharge(player, speed, direction)` | Performs charged sprint with stun hit detection |
+
+### 8.3 Buffer System
+
+Quick-tap sprint (press and release within `bufferTime`) bypasses all visual/physics changes and immediately performs a `minSprintSpeed` dash. This ensures responsive instant-dash for skilled players.
+
+### 8.4 S_SkillTree Integration
+
+`S_SkillTree.GetSprintSkill()` returns the `S_Soild_sprint` instance so `S_Player` can access charge parameters without holding a direct reference.

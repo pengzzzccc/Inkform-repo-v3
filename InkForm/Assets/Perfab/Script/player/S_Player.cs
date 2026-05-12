@@ -58,13 +58,10 @@ public class S_Player : MonoBehaviour
     private bool gripping = false;
 
     private bool isSprinting = false;
-    private bool movementLocked = false;
-    private RigidbodyConstraints2D constraintsBeforeMovementLock;
 
     public void SetSprinting(bool value)
     {
         if (value && isParalyzed) return;
-        if (value && movementLocked) return;
         isSprinting = value;
     }
 
@@ -81,6 +78,34 @@ public class S_Player : MonoBehaviour
         solid,
     }
     private form inkform;
+
+    // Sprint Charge
+    private bool isSprintCharging;
+    private float sprintChargeTimer;
+    private int sprintChargeStage;
+    private float sprintChargeDirection;
+    private float chargeScaleMultiplier = 1f;
+    private float chargeShakeTimer;
+    private int previousChargeStage;
+    private bool chargeRotationUnlocked;
+    private PhysicsMaterial2D originalPhysicsMaterial;
+    private S_Soild_sprint sprintSkill;
+    private float sprintCooldownRemaining;
+    private bool chargeVisualsActive;
+
+    public bool IsSprintCharging => isSprintCharging;
+
+    private bool movementLocked = false;
+    public void SetMovementLocked(bool locked)
+    {
+        movementLocked = locked;
+        if (locked)
+        {
+            b_Rig.linearVelocity = Vector2.zero;
+            b_Rig.angularVelocity = 0f;
+        }
+    }
+    public bool IsMovementLocked => movementLocked;
 
     void Awake()
     {
@@ -128,14 +153,16 @@ public class S_Player : MonoBehaviour
 
     void Update()
     {
-        if (movementLocked)
-        {
-            MaintainMovementLock();
-            return;
-        }
-
         Jump();
         StateRunner();
+
+        if (isSprintCharging && m_PlayerSprint.WasReleasedThisFrame())
+        {
+            ReleaseSprintCharge();
+        }
+
+        if (sprintCooldownRemaining > 0)
+            sprintCooldownRemaining -= Time.deltaTime;
     }
 
     void LateUpdate()
@@ -144,11 +171,17 @@ public class S_Player : MonoBehaviour
     }
     void StateRunner()
     {
+        if (movementLocked)
+        {
+            gripping = false;
+            return;
+        }
         gripping = m_PlayerGrep.IsPressed();
     }
 
     void Jump()
     {
+        if (movementLocked) return;
 
         if (inkform == form.solid || (inkform == form.fluid && !gripping))
         {
@@ -163,9 +196,9 @@ public class S_Player : MonoBehaviour
                 jumpCoolDownTimer = jumpCoolDownTime;
             }
 
-            if (m_PlayerSprint.WasPerformedThisFrame())
+            if (m_PlayerSprint.WasPerformedThisFrame() && !isSprintCharging)
             {
-                S_SkillTree.Instance.ActivateSkill("Sprint");
+                BeginSprintCharge();
             }
 
             if (fluidClimbSkill != null && fluidClimbSkill.GetSurface() == S_fluid_climb.SurfaceType.Floor)
@@ -179,7 +212,9 @@ public class S_Player : MonoBehaviour
     {
         if (movementLocked)
         {
-            MaintainMovementLock();
+            b_Rig.linearVelocity = Vector2.zero;
+            b_Rig.angularVelocity = 0f;
+            UpdateDynamicCollider();
             return;
         }
 
@@ -187,6 +222,9 @@ public class S_Player : MonoBehaviour
             SolidMovement();
         else
             FluidMovement();
+
+        if (isSprintCharging)
+            UpdateSprintCharge();
 
         UpdateDynamicCollider();
     }
@@ -354,42 +392,9 @@ public class S_Player : MonoBehaviour
 
     public bool GetFaceRight() => facingRight;
 
-    public bool IsMovementLocked => movementLocked;
 
-    public void SetMovementLocked(bool locked)
-    {
-        if (movementLocked == locked)
-            return;
 
-        movementLocked = locked;
 
-        if (b_Rig == null)
-            return;
-
-        if (locked)
-        {
-            constraintsBeforeMovementLock = b_Rig.constraints;
-            SetSprinting(false);
-            SetSprintMomentum(false);
-            gripping = false;
-            MaintainMovementLock();
-            b_Rig.constraints = RigidbodyConstraints2D.FreezeAll;
-            return;
-        }
-
-        b_Rig.constraints = constraintsBeforeMovementLock;
-        b_Rig.gravityScale = solidGravityScale;
-    }
-
-    private void MaintainMovementLock()
-    {
-        if (b_Rig == null)
-            return;
-
-        b_Rig.linearVelocity = Vector2.zero;
-        b_Rig.angularVelocity = 0f;
-        b_Rig.gravityScale = 0f;
-    }
 
 
     public bool getForm()
@@ -437,4 +442,126 @@ public class S_Player : MonoBehaviour
 
         paralyzeCoroutine = null;
     }
+
+    void OnEnable()
+    {
+        S_InputBindingManager.Instance.Actions.Player.Enable();
+    }
+
+
+    void OnDisable()
+    {
+        S_InputBindingManager.Instance.Actions.Player.Disable();
+    }
+
+    // Sprint Charge System
+    private void BeginSprintCharge()
+    {
+        if (isSprintCharging) return;
+        if (isParalyzed) return;
+        if (sprintCooldownRemaining > 0) return;
+
+        sprintSkill = S_SkillTree.Instance != null ? S_SkillTree.Instance.GetSprintSkill() : null;
+        if (sprintSkill == null) return;
+        if (!sprintSkill.availableSolid && !getForm()) return;
+        if (!sprintSkill.availableFluid && getForm()) return;
+
+        isSprintCharging = true;
+        sprintChargeTimer = 0f;
+        sprintChargeStage = 0;
+        previousChargeStage = 0;
+        chargeShakeTimer = 0f;
+        chargeScaleMultiplier = 1f;
+        chargeVisualsActive = false;
+        sprintChargeDirection = facingRight ? 1f : -1f;
+    }
+
+    private void UpdateSprintCharge()
+    {
+        if (!isSprintCharging) return;
+
+        sprintChargeTimer += Time.fixedDeltaTime;
+
+        if (!chargeVisualsActive && sprintChargeTimer >= sprintSkill.BufferTime)
+        {
+            chargeVisualsActive = true;
+            originalPhysicsMaterial = b_Rig.sharedMaterial;
+            if (sprintSkill.ChargeBallMaterial != null)
+                b_Rig.sharedMaterial = sprintSkill.ChargeBallMaterial;
+
+            b_Rig.freezeRotation = false;
+            chargeRotationUnlocked = true;
+
+            if (proceduralRenderer != null)
+                proceduralRenderer.SetChargeOverride(true);
+
+            S_GameEvent.PlaySFX(sprintSkill.ChargeStartClip);
+        }
+
+        if (!chargeVisualsActive) return;
+
+        sprintChargeStage = sprintSkill.GetStage(sprintChargeTimer);
+
+        if (sprintChargeStage != previousChargeStage)
+        {
+            chargeShakeTimer = 0f;
+            previousChargeStage = sprintChargeStage;
+            S_GameEvent.PlaySFX(sprintSkill.ChargeStageClip);
+        }
+
+        chargeShakeTimer += Time.fixedDeltaTime;
+        float baseScale = sprintSkill.GetStageScale(sprintChargeTimer);
+        float shakeOffset = sprintSkill.GetShakeOffset(chargeShakeTimer);
+        chargeScaleMultiplier = baseScale + shakeOffset;
+
+        if (useDynamicCollider && dynamicCollider != null)
+            dynamicCollider.SetChargeOverride(true, chargeScaleMultiplier);
+
+        b_Rig.gravityScale = solidGravityScale;
+    }
+
+    public void ReleaseSprintCharge()
+    {
+        if (!isSprintCharging) return;
+
+        float releaseDirection = facingRight ? 1f : -1f;
+
+        if (!chargeVisualsActive)
+        {
+            sprintCooldownRemaining = sprintSkill.GetCooldown(0);
+            sprintSkill.ActivateCharge(this, sprintSkill.MinSprintSpeed, releaseDirection);
+            isSprintCharging = false;
+            sprintChargeTimer = 0f;
+            return;
+        }
+
+        float charge01 = Mathf.Clamp01(sprintChargeTimer / sprintSkill.MaxChargeTime);
+        float finalSpeed = Mathf.Lerp(sprintSkill.MinSprintSpeed, sprintSkill.MaxSprintSpeed, charge01);
+
+        sprintCooldownRemaining = sprintSkill.GetCooldown(sprintChargeStage);
+        sprintSkill.ActivateCharge(this, finalSpeed, releaseDirection);
+
+        isSprintCharging = false;
+        chargeVisualsActive = false;
+        chargeScaleMultiplier = 1f;
+        sprintChargeTimer = 0f;
+        sprintChargeStage = 0;
+        chargeShakeTimer = 0f;
+
+        if (chargeRotationUnlocked)
+        {
+            b_Rig.freezeRotation = true;
+            b_Rig.rotation = 0f;
+            chargeRotationUnlocked = false;
+        }
+
+        b_Rig.sharedMaterial = originalPhysicsMaterial;
+
+        if (proceduralRenderer != null)
+            proceduralRenderer.SetChargeOverride(false);
+
+        if (useDynamicCollider && dynamicCollider != null)
+            dynamicCollider.SetChargeOverride(false, 1f);
+    }
+
 }

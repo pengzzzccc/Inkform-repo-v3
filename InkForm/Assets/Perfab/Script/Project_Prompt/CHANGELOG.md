@@ -1,5 +1,55 @@
 # InkForm — Changelog
 
+## v0.7.0 - Sprint Charge, NPC Jumping & Wave Spawner (2026-05-13)
+
+### New Features
+- **Sprint Charge System**: Hold sprint key to charge, release to dash
+  - Three-stage size scaling (stage1Scale, stage2Scale, stage3Scale) with time thresholds
+  - High-frequency shake effect on stage transition (damped sine wave)
+  - Sprint direction now uses release-time facing (no more initial direction lock)
+  - Eyes follow current velocity direction during charge (no longer frozen)
+  - Procedural renderer freezes into a perfect circle during charge (no tail, no deformation)
+  - Dynamic collider scales with charge stage
+  - Minimum sprint speed guarantee via `minSprintSpeed` parameter
+  - Buffer time system: quick-tap immediately dashes at minSprintSpeed with no visual delay
+  - Stage-based cooldowns: Stage 1 = 0.1s, Stage 2 = 0.5s, Stage 3 = 1.0s (all adjustable)
+  - During charge: player can move, jump, and grip walls normally
+  - Low-friction charge ball physics material for rolling behavior
+
+- **NPC Jumping System**: Predictive jump for gap and obstacle traversal
+  - Wall detection via forward raycast
+  - Gap detection via multi-step ground scanning with landing spot prediction
+  - Player-above detection for vertical chase
+  - Dynamic jump force and horizontal boost calculated from landing point distance/height
+  - Air control factor (50% by default) for natural jump arcs
+  - Works with both Rigidbody and Transform movement modes
+
+- **NPC Wave Spawner** (`S_NPCWaveSpawner`): Runtime NPC generation
+  - Spawns NPCs at camera edges every configurable interval (default 30s)
+  - Configurable NPCs per side, max alive count, ground detection
+  - Automatic cleanup of distant NPCs
+  - Inspector camera reference (falls back to Camera.main)
+  - Gizmo visualization of spawn zones and cleanup radius
+
+### Bug Fixes
+- Fixed `SetMovementLocked` missing from `S_Player` causing `S_HideSpot` compile error
+- `movementLocked` now properly blocks jumping, gripping, and movement input
+
+### Refactored
+- Sprint input changed from `WasPerformedThisFrame()` instant activation to hold-to-charge system
+- `S_Player.BeginSprintCharge()` no longer sets visual/physics state immediately (buffer delay)
+- `S_PlayerProceduralRenderer.SetChargeOverride()` simplified to `bool active` parameter
+- `MoveHorizontally()` in `S_NPCEnemy` now preserves air control during jumps
+
+### Documentation
+- Updated Player Controller design document with Sprint Charge system
+- Updated Skill System design document with new Sprint parameters
+- Updated NPC System design document with jumping ability and wave spawner
+- Updated Manager Systems design document with `SetMovementLocked` API
+- Updated memory-bank context and progress files
+
+---
+
 ## v0.6.3 - Hybrid Slime Tail Pass (2026-05-12)
 
 ### Rendering

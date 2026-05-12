@@ -78,6 +78,20 @@ public class S_NPCEnemy : S_NPCbase
     [SerializeField] private float wanderPauseTimeMin = 0.5f;
     [SerializeField] private float wanderPauseTimeMax = 2f;
 
+    [Header("Jump Ability")]
+    [SerializeField] private bool canJump = true;
+    [SerializeField] private float jumpForce = 8f;
+    [SerializeField] private float jumpCooldown = 1.0f;
+    [SerializeField] private float obstacleDetectDistance = 1.0f;
+    [SerializeField] private float gapDetectDistance = 1.5f;
+    [SerializeField] private float gapDetectHeight = 0.5f;
+    [SerializeField] private float gapScanStep = 0.3f;
+    [SerializeField] private int gapScanMaxSteps = 10;
+    [SerializeField] private float airControlFactor = 0.5f;
+    [SerializeField] private float playerAboveThreshold = 1f;
+    [SerializeField] private float playerAboveMaxHeight = 4f;
+    [SerializeField] private LayerMask jumpObstacleLayer = ~0;
+
     private enum State
     {
         Patrol,
@@ -119,6 +133,13 @@ public class S_NPCEnemy : S_NPCbase
     private float wanderWalkTimer;
     private float wanderPauseTimer;
     private Vector2 wanderDirection;
+
+    // Jump ability
+    private float jumpCooldownTimer;
+    private bool shouldJump;
+    private float cachedJumpForce;
+    private float cachedHorizBoost;
+    private RaycastHit2D[] jumpScanHits;
     private bool originalSpriteEnabled = true;
     private bool originalColliderEnabled = true;
     private RigidbodyType2D originalBodyType = RigidbodyType2D.Dynamic;
@@ -197,6 +218,8 @@ public class S_NPCEnemy : S_NPCbase
         // Tick cooldowns everywhere
         if (aimCooldownTimer > 0f)
             aimCooldownTimer -= Time.deltaTime;
+        if (jumpCooldownTimer > 0f)
+            jumpCooldownTimer -= Time.deltaTime;
 
         UpdateStateMachine();
         UpdateGroundCheck();
@@ -207,6 +230,8 @@ public class S_NPCEnemy : S_NPCbase
             return;
         }
 
+        EvaluateJump();
+        ExecuteJump();
         ExecuteMovement();
         UpdateTransformVerticalMovement();
         UpdateHitVisual();
@@ -386,7 +411,7 @@ public class S_NPCEnemy : S_NPCbase
             if (isGrounded)
                 npcRig.linearVelocity = new Vector2(speedX, npcRig.linearVelocity.y);
             else
-                npcRig.linearVelocity = new Vector2(0f, npcRig.linearVelocity.y);
+                npcRig.linearVelocity = new Vector2(speedX * airControlFactor, npcRig.linearVelocity.y);
             return;
         }
 
@@ -934,6 +959,141 @@ public class S_NPCEnemy : S_NPCbase
         EnterState(State.Patrol);
     }
 
+    private void EvaluateJump()
+    {
+        if (!canJump || !isGrounded || jumpCooldownTimer > 0f || knockbackTimer > 0f)
+        {
+            shouldJump = false;
+            return;
+        }
+
+        if (currentState != State.Chase && currentState != State.Arrest && currentState != State.Patrol)
+        {
+            shouldJump = false;
+            return;
+        }
+
+        float dir = facingRight ? 1f : -1f;
+        Vector2 origin = (Vector2)transform.position;
+
+        // 1. Wall ahead
+        RaycastHit2D wallHit = Physics2D.Raycast(
+            origin + Vector2.up * 0.5f,
+            Vector2.right * dir,
+            obstacleDetectDistance, jumpObstacleLayer);
+        bool wallAhead = wallHit.collider != null && npcCol != null && wallHit.collider != npcCol;
+
+        // 2. Gap ahead - scan forward to find ground
+        bool gapAhead = false;
+        if (!wallAhead)
+        {
+            gapAhead = FindLandingSpot(Vector2.right * dir, out Vector2 landing);
+            if (gapAhead)
+            {
+                cachedJumpForce = jumpForce;
+                cachedHorizBoost = 0f;
+                CalculateJumpParameters(landing, out cachedJumpForce, out cachedHorizBoost);
+            }
+        }
+
+        // 3. Player above
+        bool playerAbove = false;
+        if (playerTransform != null)
+        {
+            float heightDiff = playerTransform.position.y - transform.position.y;
+            float horizDist = Mathf.Abs(playerTransform.position.x - transform.position.x);
+            playerAbove = heightDiff > playerAboveThreshold && heightDiff < playerAboveMaxHeight && horizDist < chaseRange;
+            if (playerAbove)
+            {
+                cachedJumpForce = jumpForce + heightDiff * 2f;
+                cachedHorizBoost = 0f;
+            }
+        }
+
+        if (wallAhead)
+        {
+            cachedJumpForce = jumpForce;
+            cachedHorizBoost = 0f;
+        }
+
+        shouldJump = wallAhead || gapAhead || playerAbove;
+    }
+
+    private bool FindLandingSpot(Vector2 moveDir, out Vector2 landingPoint)
+    {
+        landingPoint = Vector2.zero;
+        jumpScanHits ??= new RaycastHit2D[3];
+        bool hadGround = false;
+        bool foundGap = false;
+
+        for (int i = 1; i <= gapScanMaxSteps; i++)
+        {
+            Vector2 probeX = (Vector2)transform.position + moveDir * gapScanStep * i;
+            Vector2 probeOrigin = probeX + Vector2.up * gapDetectHeight;
+            RaycastHit2D hit = Physics2D.Raycast(probeOrigin, Vector2.down, gapDetectHeight * 2f + 1f, groundLayer);
+
+            if (hit.collider != null)
+            {
+                if (!hadGround)
+                    hadGround = true;
+                else if (foundGap)
+                {
+                    landingPoint = hit.point;
+                    return true;
+                }
+            }
+            else
+            {
+                if (hadGround)
+                    foundGap = true;
+                else if (i > 1)
+                {
+                    foundGap = true;
+                }
+            }
+        }
+
+        return foundGap;
+    }
+
+    private void CalculateJumpParameters(Vector2 landingPoint, out float outJumpForce, out float outHorizBoost)
+    {
+        float dx = Mathf.Abs(landingPoint.x - transform.position.x);
+        float dy = landingPoint.y - transform.position.y;
+
+        outJumpForce = jumpForce;
+
+        if (dy > 0.5f)
+            outJumpForce += dy * 2f;
+
+        outHorizBoost = dx > gapDetectDistance ? dx * 1.5f : 0f;
+    }
+
+    private void ExecuteJump()
+    {
+        if (!shouldJump) return;
+
+        jumpCooldownTimer = jumpCooldown;
+        shouldJump = false;
+
+        if (UseRigidbodyMovement)
+        {
+            npcRig.linearVelocity = new Vector2(npcRig.linearVelocity.x, 0f);
+            npcRig.AddForce(Vector2.up * cachedJumpForce, ForceMode2D.Impulse);
+
+            if (cachedHorizBoost > 0f)
+            {
+                float dir = facingRight ? 1f : -1f;
+                npcRig.linearVelocity += new Vector2(dir * cachedHorizBoost, 0f);
+            }
+        }
+        else
+        {
+            transformVerticalVelocity = cachedJumpForce;
+            isGrounded = false;
+        }
+    }
+
     private void DiagnosticLog()
     {
         Vector3 npcPos = transform.position;
@@ -973,5 +1133,4 @@ public class S_NPCEnemy : S_NPCbase
         }
     }
 }
-
 

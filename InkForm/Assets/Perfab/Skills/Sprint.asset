@@ -26,3 +26,21 @@ MonoBehaviour:
   enemyLayer:
     serializedVersion: 2
     m_Bits: 256
+  maxChargeTime: 2
+  maxSprintSpeed: 250
+  minSprintSpeed: 75
+  stage1Scale: 0.8
+  stage2Scale: 1.2
+  stage3Scale: 1.4
+  stage2Time: 0.8
+  stage3Time: 1.8
+  shakeFrequency: 25
+  shakeAmplitude: 0.15
+  shakeDecay: 5
+  stage1Cooldown: 0.1
+  stage2Cooldown: 0.5
+  stage3Cooldown: 1
+  bufferTime: 0.15
+  chargeBallMaterial: {fileID: 0}
+  chargeStartClip: {fileID: 0}
+  chargeStageClip: {fileID: 0}

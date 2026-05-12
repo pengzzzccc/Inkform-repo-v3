@@ -268,3 +268,29 @@ This guard prevents Unity's duplicate persistent-scene assertion by:
 - Clearing `S_UIManager.Instance` in `OnDestroy()` when the active instance is destroyed.
 
 This keeps the singleton stable across scene loads and protects against accidentally calling `DontDestroyOnLoad` twice on the same UIManager object.
+
+---
+
+## 8. S_Player Movement Lock API (v0.7.0)
+
+`S_Player` exposes a `SetMovementLocked(bool)` method used by `S_HideSpot` and other systems that need to freeze the player in place.
+
+### 8.1 API
+
+| Method/Property | Type | Description |
+|-----------------|------|-------------|
+| `SetMovementLocked(bool locked)` | void | Locks/unlocks player movement. When locked: velocity zeroed, angular velocity zeroed, movement/jump/grip input blocked |
+| `IsMovementLocked` | bool (read-only) | Returns current lock state |
+
+### 8.2 Behavior When Locked
+
+| System | Behavior |
+|--------|----------|
+| FixedUpdate | Velocity set to zero every frame, no SolidMovement/FluidMovement |
+| Jump() | Returns immediately, no jump or sprint charge |
+| StateRunner() | Gripping set to false |
+| Rigidbody2D | Velocity and angular velocity zeroed on lock activation |
+
+### 8.3 Integration with S_HideSpot
+
+`S_HideSpot` calls `player.SetMovementLocked(true)` when hiding and `player.SetMovementLocked(false)` when exiting. This replaces the fallback Rigidbody freeze approach.

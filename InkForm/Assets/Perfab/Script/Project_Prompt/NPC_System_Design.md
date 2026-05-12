@@ -244,3 +244,106 @@ foreach (Collider2D hit in hits)
 - **Symptom**: NPC drifts off platforms, doesn't fall with gravity
 - **Cause**: `transform.Translate()` bypassed physics engine — no gravity, no ground collision
 - **Fix**: Use Rigidbody2D.velocity with ground detection (this refactor)
+
+---
+
+## 8. NPC Jumping System (v0.7.0)
+
+NPC enemies now have predictive jump ability to traverse gaps, walls, and reach higher platforms.
+
+### 8.1 Jump Detection
+
+`EvaluateJump()` runs every frame in `Update()` before `ExecuteMovement()`. It checks three conditions:
+
+| Condition | Detection Method |
+|-----------|-----------------|
+| Wall ahead | Forward raycast from NPC center, distance = `obstacleDetectDistance` |
+| Gap ahead | Multi-step forward ground scan with `FindLandingSpot()` |
+| Player above | Height difference check (threshold to max height) + horizontal range |
+
+### 8.2 Predictive Jump (FindLandingSpot)
+
+When a gap is detected, the NPC scans forward in `gapScanStep` increments to find the landing platform:
+
+```
+Scan direction = facing direction
+For each step (up to gapScanMaxSteps):
+    Raycast down from probe position
+    If ground found after a gap → record landing point
+    Calculate jump parameters from distance and height difference
+```
+
+### 8.3 Jump Parameters
+
+`CalculateJumpParameters()` adjusts force based on terrain:
+
+| Factor | Adjustment |
+|--------|-----------|
+| Higher landing point | `jumpForce += heightDiff * 2f` |
+| Far horizontal distance | `horizBoost = distance * 1.5f` |
+
+### 8.4 Air Control
+
+`MoveHorizontally()` now preserves `airControlFactor` (default 50%) horizontal velocity when airborne, creating natural jump arcs.
+
+### 8.5 Inspector Parameters (Jump Ability section)
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| canJump | true | Enable/disable jumping |
+| jumpForce | 8f | Base jump impulse force |
+| jumpCooldown | 1.0s | Minimum time between jumps |
+| obstacleDetectDistance | 1.0f | Forward raycast distance for wall detection |
+| gapDetectHeight | 0.5f | Ground scan ray origin height |
+| gapScanStep | 0.3f | Distance between scan points |
+| gapScanMaxSteps | 10 | Maximum forward scan distance |
+| airControlFactor | 0.5f | Horizontal control factor while airborne |
+| playerAboveThreshold | 1.0f | Minimum height difference to trigger jump toward player |
+| playerAboveMaxHeight | 4.0f | Maximum height difference for player-above jump |
+| jumpObstacleLayer | ~0 | Layer mask for obstacle detection |
+
+### 8.6 Jump States
+
+Jumping only activates during Patrol, Chase, and Arrest states. Disabled during Aim and Stunned.
+
+---
+
+## 9. NPC Wave Spawner (v0.7.0)
+
+`S_NPCWaveSpawner` generates NPC waves at runtime, spawning enemies at camera edges.
+
+### 9.1 Behavior
+
+```
+Every spawnInterval seconds:
+    1. Get camera left/right edge X positions + sideOffset
+    2. Raycast down from camera height to find ground
+    3. Instantiate npcsPerSide NPCs on each side
+    4. Set facing direction toward camera center
+    5. Respect maxAliveNpcs limit
+    6. Cleanup distant NPCs beyond cleanupDistance
+```
+
+### 9.2 Inspector Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| targetCamera | (drag) | Camera reference (falls back to Camera.main) |
+| npcPrefab | (drag) | NPC prefab to spawn |
+| spawnInterval | 30f | Seconds between waves |
+| npcsPerSide | 2 | NPCs spawned per side per wave |
+| maxAliveNpcs | 20 | Maximum NPCs alive at once |
+| sideOffset | 2f | Extra distance beyond camera edge |
+| groundDetectDistance | 10f | Downward raycast distance for ground |
+| groundLayer | ~0 | Ground detection layer |
+| cleanupDistantNpcs | true | Auto-destroy far NPCs |
+| cleanupDistance | 30f | Distance threshold for cleanup |
+| cleanupCheckInterval | 5f | Seconds between cleanup checks |
+
+### 9.3 Setup
+
+1. Create empty GameObject in scene
+2. Attach `S_NPCWaveSpawner`
+3. Drag NPC prefab into `npcPrefab`
+4. Drag scene camera into `targetCamera`
+5. Adjust parameters as needed

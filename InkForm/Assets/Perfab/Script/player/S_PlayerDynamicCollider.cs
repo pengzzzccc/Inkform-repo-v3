@@ -80,6 +80,15 @@ public class S_PlayerDynamicCollider : MonoBehaviour
     private bool crouchInputHeld;
     private bool initialized;
 
+    private bool isChargeOverride;
+    private float chargeScaleMultiplier = 1f;
+
+    public void SetChargeOverride(bool active, float scaleMultiplier)
+    {
+        isChargeOverride = active;
+        chargeScaleMultiplier = scaleMultiplier;
+    }
+
     public Collider2D GetActiveCollider()
     {
         if (!useDynamicCollider)
@@ -118,6 +127,21 @@ public class S_PlayerDynamicCollider : MonoBehaviour
 
     public void DynamicColliderTick(S_Player player, S_fluid_climb climbSkill)
     {
+        if (isChargeOverride)
+        {
+            if (!initialized)
+                Initialize(GetComponent<CircleCollider2D>(), GetComponent<Rigidbody2D>());
+
+            SetCircleActive(true);
+            SetCapsuleActive(false);
+            circleCollider.radius = baseRadius * chargeScaleMultiplier;
+            circleCollider.offset = baseOffset;
+            currentRadius = circleCollider.radius;
+            currentOffset = baseOffset;
+            currentMode = ColliderMode.Circle;
+            return;
+        }
+
         if (!useDynamicCollider)
         {
             RestoreCollider();

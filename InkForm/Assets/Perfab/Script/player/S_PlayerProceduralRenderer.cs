@@ -166,6 +166,9 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
     private Vector2 previousVelocity;
     private float impactPulse;
 
+    private bool isChargeOverride;
+    private float chargeEyeAngle;
+
     private struct ContactPlane
     {
         public Vector2 point;
@@ -173,6 +176,11 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
     }
 
     public bool IsRenderingEnabled => useProceduralRendering && initialized;
+
+    public void SetChargeOverride(bool active)
+    {
+        isChargeOverride = active;
+    }
 
     public void Initialize(SpriteRenderer spriteRenderer, Rigidbody2D rig, Collider2D col)
     {
@@ -209,6 +217,16 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
 
         Rigidbody2D rig = player != null ? player.GetRigidbody() : targetRigidbody;
         SetTargetCollider(player != null ? player.GetCollider() : targetCollider);
+
+        if (isChargeOverride)
+        {
+            float chargeRadius = GetBodyRadius();
+            bool chargeFluid = player == null || player.getForm();
+            bool chargeParalyzed = player != null && player.IsParalyzed;
+            UpdateChargeMeshes(chargeRadius, chargeFluid, chargeParalyzed);
+            previousVelocity = rig != null ? rig.linearVelocity : Vector2.zero;
+            return;
+        }
 
         Vector2 velocity = rig != null ? rig.linearVelocity : Vector2.zero;
         bool isFluid = player == null || player.getForm();
@@ -1097,6 +1115,106 @@ public class S_PlayerProceduralRenderer : MonoBehaviour
             highlight = Color.Lerp(highlight, paralyzedTint, 0.25f);
 
         float side = facingRight ? -1f : 1f;
+        Vector2 center = new Vector2(side * radius * 0.2f, radius * 0.24f);
+        float width = radius * 0.22f;
+        float height = radius * 0.1f;
+        float tilt = side * -20f * Mathf.Deg2Rad;
+        float cos = Mathf.Cos(tilt);
+        float sin = Mathf.Sin(tilt);
+
+        highlightVertices[0] = center;
+        highlightColors[0] = highlight;
+
+        Color edge = highlight;
+        edge.a = 0f;
+        for (int i = 0; i < cachedHighlightResolution; i++)
+        {
+            float angle = Mathf.PI * 2f * i / cachedHighlightResolution;
+            Vector2 ellipse = new Vector2(Mathf.Cos(angle) * width, Mathf.Sin(angle) * height);
+            Vector2 rotated = new Vector2(
+                ellipse.x * cos - ellipse.y * sin,
+                ellipse.x * sin + ellipse.y * cos);
+
+            highlightVertices[i + 1] = center + rotated;
+            highlightColors[i + 1] = edge;
+        }
+    }
+
+    private void UpdateChargeMeshes(float radius, bool isFluid, bool isParalyzed)
+    {
+        Color centerColor = isFluid ? fluidCenterColor : solidCenterColor;
+        Color edgeColor = isFluid ? fluidEdgeColor : solidEdgeColor;
+
+        bodyVertices[0] = Vector3.zero;
+        outlineVertices[0] = Vector3.zero;
+        bodyColors[0] = centerColor;
+        outlineColors[0] = outlineColor;
+
+        for (int i = 0; i < cachedResolution; i++)
+        {
+            float angle = Mathf.PI * 2f * i / cachedResolution;
+            Vector2 dir = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+
+            float finalRadius = radius;
+            Vector3 point = new Vector3(dir.x * finalRadius, dir.y * finalRadius, 0f);
+
+            bodyVertices[i + 1] = point;
+            bodyColors[i + 1] = edgeColor;
+            outlineVertices[i + 1] = dir * (finalRadius + outlineWidth);
+            outlineColors[i + 1] = outlineColor;
+        }
+
+        if (tailRenderer != null)
+            tailRenderer.enabled = false;
+        if (contactFillRenderer != null)
+            contactFillRenderer.enabled = false;
+
+        UpdateChargeEyeMesh(radius, isParalyzed);
+        UpdateChargeHighlightMesh(radius);
+        ApplyMeshData();
+    }
+
+    private void UpdateChargeEyeMesh(float radius, bool isParalyzed)
+    {
+        Color eyeFill = isParalyzed ? Color.Lerp(eyeColor, paralyzedTint, 0.25f) : eyeColor;
+        Color glowFill = isParalyzed ? Color.Lerp(eyeGlowColor, paralyzedTint, 0.45f) : eyeGlowColor;
+
+        float baseEyeRadius = radius * eyeRadius;
+        float spacing = radius * eyeSpacing;
+        float vertical = radius * eyeVerticalOffset;
+        float facingSign = transform.parent != null ? (targetRigidbody != null && targetRigidbody.linearVelocity.x >= 0f ? 1f : -1f) : 1f;
+        if (targetRigidbody != null && Mathf.Abs(targetRigidbody.linearVelocity.x) < 0.01f)
+            facingSign = chargeEyeAngle >= 0f ? 1f : -1f;
+        else if (targetRigidbody != null)
+            chargeEyeAngle = facingSign > 0f ? 0f : Mathf.PI;
+        float faceOffset = radius * eyeHorizontalOffset * facingSign;
+
+        for (int eyeIndex = 0; eyeIndex < 2; eyeIndex++)
+        {
+            float side = eyeIndex == 0 ? -0.5f : 0.5f;
+            Vector2 center = new Vector2(faceOffset + side * spacing, vertical);
+            WriteEyeFan(eyeVertices, eyeColors, eyeIndex, center, baseEyeRadius, baseEyeRadius * eyeTallness, eyeFill, eyeFill);
+
+            Color glowEdge = glowFill;
+            glowEdge.a = 0f;
+            WriteEyeFan(
+                eyeGlowVertices,
+                eyeGlowColors,
+                eyeIndex,
+                center,
+                baseEyeRadius * eyeGlowScale,
+                baseEyeRadius * eyeTallness * eyeGlowScale,
+                glowFill,
+                glowEdge);
+        }
+    }
+
+    private void UpdateChargeHighlightMesh(float radius)
+    {
+        Color highlight = highlightColor;
+        highlight.a *= 0.45f;
+
+        float side = chargeEyeAngle >= 0f ? -1f : 1f;
         Vector2 center = new Vector2(side * radius * 0.2f, radius * 0.24f);
         float width = radius * 0.22f;
         float height = radius * 0.1f;

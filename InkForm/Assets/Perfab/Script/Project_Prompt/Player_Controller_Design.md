@@ -286,3 +286,75 @@ The player body can now use procedural slime rendering through `S_PlayerProcedur
 When enabled, `S_PlayerProceduralRenderer` hides the fallback `SpriteRenderer` and generates mesh children for body, outline, eyes, and eye glow. The fallback `sprites[]` are still kept on `Pre_MainChar.prefab` so the player can fall back to sprite rendering if the procedural path is disabled.
 
 `S_PlayerDynamicCollider` keeps normal movement on `CircleCollider2D`, then switches to a dynamic `CapsuleCollider2D` for crouch/slick, wall climbing, and ceiling climbing. `S_Player.GetCollider()` returns the active collider, so climb classification, grip buffer casts, and procedural contact rendering all follow the current physical shape.
+
+---
+
+## 9. Sprint Charge System
+
+The sprint skill has been replaced with a hold-to-charge sprint system. Instead of `WasPerformedThisFrame()` triggering an instant dash, the player now holds the sprint key to charge, and releases to dash.
+
+### 9.1 Behavior Overview
+
+```
+Sprint key pressed
+    |-- Buffer phase (0 ~ bufferTime, default 0.15s)
+    |   |-- No visual/physics changes
+    |   |-- Player can still move, jump, grip normally
+    |   `-- If released during buffer → instant minSprintSpeed dash (quick-tap)
+    |
+    |-- Charge phase (bufferTime ~ maxChargeTime)
+    |   |-- Visual: procedural renderer → perfect circle, tail hidden, eyes follow velocity
+    |   |-- Physics: low-friction ball material, rotation unlocked (rolls on ground)
+    |   |-- Collider: scales with charge stage (1.0x → 1.3x → 1.6x)
+    |   |-- Player can still move, jump, grip during charge
+    |   |-- Three stages with shake transition effects:
+    |   |   Stage 1 (0s): 1.0x scale, 0.1s cooldown
+    |   |   Stage 2 (stage2Time): 1.3x scale, 0.5s cooldown
+    |   |   Stage 3 (stage3Time): 1.6x scale, 1.0s cooldown
+    |   `-- Direction locked at charge start (visual only)
+    |
+    Sprint key released
+    |-- Release direction = current facing at release moment
+    |-- Sprint speed = Lerp(minSprintSpeed, maxSprintSpeed, charge01)
+    |-- Stun nearby enemies via OverlapCircleAll
+    |-- SprintLock coroutine for form/physics restore
+    `-- Cooldown set based on release stage
+```
+
+### 9.2 S_Player Sprint Charge Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `isSprintCharging` | bool | Whether charge is active |
+| `sprintChargeTimer` | float | Accumulated charge time |
+| `sprintChargeStage` | int | Current stage (0, 1, 2) |
+| `chargeScaleMultiplier` | float | Current visual/collider scale |
+| `chargeVisualsActive` | bool | Whether buffer has passed and visuals are active |
+| `sprintCooldownRemaining` | float | Remaining cooldown seconds |
+
+### 9.3 S_Soild_sprint Charge Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `maxChargeTime` | 2f | Maximum charge duration for full speed |
+| `maxSprintSpeed` | 200f | Maximum sprint impulse at full charge |
+| `minSprintSpeed` | 20f | Minimum sprint impulse (quick-tap) |
+| `stage1Scale` | 1.0 | Scale multiplier for stage 1 |
+| `stage2Scale` | 1.3 | Scale multiplier for stage 2 |
+| `stage3Scale` | 1.6 | Scale multiplier for stage 3 |
+| `stage2Time` | 0.5s | Time to enter stage 2 |
+| `stage3Time` | 1.2s | Time to enter stage 3 |
+| `shakeFrequency` | 25 | Stage transition shake frequency |
+| `shakeAmplitude` | 0.15 | Stage transition shake amplitude |
+| `shakeDecay` | 5 | Shake exponential decay rate |
+| `stage1Cooldown` | 0.1s | Cooldown after stage 1 release |
+| `stage2Cooldown` | 0.5s | Cooldown after stage 2 release |
+| `stage3Cooldown` | 1.0s | Cooldown after stage 3 release |
+| `bufferTime` | 0.15s | Quick-tap buffer threshold |
+| `chargeBallMaterial` | - | Low-friction physics material for rolling |
+
+### 9.4 Integration Points
+
+- **S_PlayerProceduralRenderer**: `SetChargeOverride(bool)` toggles perfect-circle rendering during charge
+- **S_PlayerDynamicCollider**: `SetChargeOverride(bool, float)` scales collider with charge stage
+- **S_SkillTree**: `GetSprintSkill()` returns the S_Soild_sprint instance for charge parameter access

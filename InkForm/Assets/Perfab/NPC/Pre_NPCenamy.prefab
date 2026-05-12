@@ -154,6 +154,20 @@ MonoBehaviour:
   wanderWalkTimeMax: 3
   wanderPauseTimeMin: 0.5
   wanderPauseTimeMax: 2
+  canJump: 1
+  jumpForce: 8
+  jumpCooldown: 1
+  obstacleDetectDistance: 1
+  gapDetectDistance: 1.5
+  gapDetectHeight: 0.5
+  gapScanStep: 0.3
+  gapScanMaxSteps: 10
+  airControlFactor: 0.5
+  playerAboveThreshold: 1
+  playerAboveMaxHeight: 4
+  jumpObstacleLayer:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!70 &5797758674906934611
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -207,7 +221,7 @@ Rigidbody2D:
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_GravityScale: 1
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 6200000, guid: 9161f6d4bd6279642a7740eaec6c768c, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
