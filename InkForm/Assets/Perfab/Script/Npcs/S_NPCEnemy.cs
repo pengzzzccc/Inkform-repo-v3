@@ -1,13 +1,16 @@
-using UnityEngine;
+﻿using UnityEngine;
+
+using System.Collections.Generic;
 
 /// <summary>
-/// Enemy guard with full state machine: Patrol, Chase, Aim, Attack, Arrest, Stunned.
-/// Aim: stop → wait → fire one shot → return to Chase immediately.
-/// Attack: keep distance only (no firing). Firing happens only in Aim.
-/// Arrest: timed chase (arrestDuration seconds), game over if player paralyzed within arrestRange.
+/// Enemy guard with full state machine: Patrol, Chase, Aim, Arrest, Stunned.
+/// Aim stops and fires one shot once started, even if the player leaves range.
+/// Arrest is a timed chase window; if it fails, the guard returns to Chase.
 /// </summary>
 public class S_NPCEnemy : S_NPCbase
 {
+    private static readonly HashSet<S_NPCEnemy> activeEnemies = new HashSet<S_NPCEnemy>();
+
     [Header("State Machine")]
     [SerializeField] private float chaseRange = 8f;
     [SerializeField] private float loseRange = 12f;
@@ -26,6 +29,13 @@ public class S_NPCEnemy : S_NPCbase
     [SerializeField] private Color aimColor = new Color(1f, 0.65f, 0f, 1f);
     [SerializeField] private Color arrestColor = Color.red;
     [SerializeField] private Color defaultColor = Color.white;
+
+    [Header("Health")]
+    [SerializeField, Min(1)] private int hitsToDie = 2;
+    [SerializeField] private Color hitVisualColor = new Color(1f, 0.35f, 0.35f, 1f);
+    [SerializeField, Min(0f)] private float hitVisualDuration = 0.15f;
+    [SerializeField] private bool hideSpriteOnDeath = true;
+    [SerializeField] private bool disableColliderOnDeath = true;
 
     [Header("Attack (EM Projectile)")]
     [SerializeField] private float fireRate = 1.5f;
@@ -73,7 +83,6 @@ public class S_NPCEnemy : S_NPCbase
         Patrol,
         Chase,
         Aim,
-        Attack,
         Arrest,
         Stunned,
         Disabled
@@ -86,6 +95,8 @@ public class S_NPCEnemy : S_NPCbase
     private float stunTimer = 0f;
     private float arrestTimer = 0f;
     private float aimCooldownTimer = 0f;
+    private int currentHitCount = 0;
+    private float hitVisualTimer = 0f;
 
     private float waypointWaitTimer = 0f;
 
@@ -93,8 +104,6 @@ public class S_NPCEnemy : S_NPCbase
 
     private float diagnosticLogTimer = 0f;
     private const float DIAG_LOG_INTERVAL = 2f;
-
-    private bool projectileHitPlayer = false;
 
     // Ground detection & idle wandering
     private Vector2 spawnPosition;
@@ -110,6 +119,11 @@ public class S_NPCEnemy : S_NPCbase
     private float wanderWalkTimer;
     private float wanderPauseTimer;
     private Vector2 wanderDirection;
+    private bool originalSpriteEnabled = true;
+    private bool originalColliderEnabled = true;
+    private RigidbodyType2D originalBodyType = RigidbodyType2D.Dynamic;
+    private RigidbodyConstraints2D originalConstraints = RigidbodyConstraints2D.None;
+    private float originalGravityScale = 0f;
 
     public bool IsStunned => currentState == State.Stunned;
     private bool UseRigidbodyMovement => npcRig != null && useRigidbodyMovement;
@@ -128,6 +142,8 @@ public class S_NPCEnemy : S_NPCbase
         base.Awake();
 
         spawnPosition = transform.position;
+        originalSpriteEnabled = npcSprite == null || npcSprite.enabled;
+        originalColliderEnabled = npcCol == null || npcCol.enabled;
 
         if (npcRig != null)
         {
@@ -141,9 +157,25 @@ public class S_NPCEnemy : S_NPCbase
                 npcRig.gravityScale = 0f;
                 npcRig.linearVelocity = Vector2.zero;
             }
+
+            originalBodyType = npcRig.bodyType;
+            originalConstraints = npcRig.constraints;
+            originalGravityScale = npcRig.gravityScale;
         }
 
         ValidatePlayerReference();
+    }
+
+    protected override void OnEnable()
+    {
+        base.OnEnable();
+        activeEnemies.Add(this);
+    }
+
+    protected override void OnDisable()
+    {
+        activeEnemies.Remove(this);
+        base.OnDisable();
     }
 
     private void Update()
@@ -151,7 +183,7 @@ public class S_NPCEnemy : S_NPCbase
         if (!isActive || currentState == State.Disabled)
             return;
 
-        // Robust player reference — handles scene reload / execution order issues
+        // Robust player reference 鈥?handles scene reload / execution order issues
         ValidatePlayerReference();
 
         // Diagnostic log every 2 seconds
@@ -171,11 +203,13 @@ public class S_NPCEnemy : S_NPCbase
         if (ExecuteKnockback())
         {
             UpdateTransformVerticalMovement();
+            UpdateHitVisual();
             return;
         }
 
         ExecuteMovement();
         UpdateTransformVerticalMovement();
+        UpdateHitVisual();
     }
 
     /// <summary>
@@ -190,7 +224,7 @@ public class S_NPCEnemy : S_NPCbase
             return;
         }
 
-        // Always refresh to body transform — the root GameObject doesn't move
+        // Always refresh to body transform 鈥?the root GameObject doesn't move
         playerTransform = S_Player.Instance.GetBodyTransform();
     }
 
@@ -207,9 +241,6 @@ public class S_NPCEnemy : S_NPCbase
             case State.Aim:
                 UpdateAimTransitions();
                 break;
-            case State.Attack:
-                UpdateAttackTransitions();
-                break;
             case State.Stunned:
                 UpdateStunnedTransitions();
                 break;
@@ -221,12 +252,6 @@ public class S_NPCEnemy : S_NPCbase
 
     private void UpdatePatrolTransitions()
     {
-        if (projectileHitPlayer)
-        {
-            EnterState(State.Arrest);
-            return;
-        }
-
         if (S_SuspicionSystem.PlayerHidden)
         {
             return;
@@ -241,13 +266,6 @@ public class S_NPCEnemy : S_NPCbase
 
     private void UpdateChaseTransitions()
     {
-        // Projectile hit while returning to Chase → Arrest
-        if (projectileHitPlayer)
-        {
-            EnterState(State.Arrest);
-            return;
-        }
-
         if (S_SuspicionSystem.PlayerHidden)
         {
             EnterState(State.Patrol);
@@ -269,11 +287,6 @@ public class S_NPCEnemy : S_NPCbase
             return;
         }
 
-        // Attack: player too close — back off (no firing)
-        if (dist < attackRange * 0.6f)
-        {
-            EnterState(State.Attack);
-        }
     }
 
     private void UpdateAimTransitions()
@@ -282,56 +295,6 @@ public class S_NPCEnemy : S_NPCbase
         {
             EnterState(State.Patrol);
             return;
-        }
-
-        float dist = DistanceToPlayer();
-
-        if (dist > loseRange)
-        {
-            EnterState(State.Patrol);
-            return;
-        }
-
-        // If projectile hit player → Arrest
-        if (projectileHitPlayer)
-        {
-            EnterState(State.Arrest);
-            return;
-        }
-
-        // After firing (fireTimer elapses → shot fired in ExecuteAim), return to Chase
-        // ExecuteAim sets fireTimer back to fireRate after firing; we detect "has fired" by
-        // checking if we've already fired this Aim cycle.
-        // The transition back to Chase happens inside ExecuteAim after the shot.
-    }
-
-    private void UpdateAttackTransitions()
-    {
-        // Projectile hit while backing off → Arrest
-        if (projectileHitPlayer)
-        {
-            EnterState(State.Arrest);
-            return;
-        }
-
-        if (S_SuspicionSystem.PlayerHidden)
-        {
-            EnterState(State.Patrol);
-            return;
-        }
-
-        float dist = DistanceToPlayer();
-
-        if (dist > loseRange)
-        {
-            EnterState(State.Patrol);
-            return;
-        }
-
-        // When distance is safe again, go back to Chase
-        if (dist >= attackRange * 0.9f)
-        {
-            EnterState(State.Chase);
         }
     }
 
@@ -354,21 +317,15 @@ public class S_NPCEnemy : S_NPCbase
 
         float dist = DistanceToPlayer();
 
-        if (dist > loseRange)
-        {
-            EnterState(State.Patrol);
-            return;
-        }
-
         // Timer runs in ExecuteArrest
         if (arrestTimer <= 0f)
         {
-            // Out of time — go back to Chase
+            // Out of time 鈥?go back to Chase
             EnterState(State.Chase);
             return;
         }
 
-        // If player is paralyzed and within arrest range → success
+        // If player is paralyzed and within arrest range 鈫?success
         if (S_Player.Instance != null && S_Player.Instance.IsParalyzed && dist <= arrestRange)
         {
             TriggerArrest();
@@ -394,10 +351,6 @@ public class S_NPCEnemy : S_NPCbase
                 break;
             case State.Aim:
                 fireTimer = attackWindupTime;
-                projectileHitPlayer = false;
-                break;
-            case State.Attack:
-                fireTimer = 0f;
                 break;
             case State.Stunned:
                 stunTimer = stunDuration;
@@ -411,6 +364,11 @@ public class S_NPCEnemy : S_NPCbase
     private void UpdateStateColor()
     {
         if (npcSprite == null) return;
+        if (hitVisualTimer > 0f)
+        {
+            npcSprite.color = hitVisualColor;
+            return;
+        }
 
         npcSprite.color = currentState switch
         {
@@ -641,9 +599,6 @@ public class S_NPCEnemy : S_NPCbase
             case State.Aim:
                 ExecuteAim();
                 break;
-            case State.Attack:
-                ExecuteAttack();
-                break;
             case State.Arrest:
                 ExecuteArrest();
                 break;
@@ -693,7 +648,7 @@ public class S_NPCEnemy : S_NPCbase
 
     private void ExecuteIdleWandering()
     {
-        // Don't wander in the air — wait for ground
+        // Don't wander in the air 鈥?wait for ground
         if (!isGrounded)
             return;
 
@@ -707,7 +662,7 @@ public class S_NPCEnemy : S_NPCbase
         {
             wanderWalkTimer -= Time.deltaTime;
 
-            // Check boundary — if too far from spawn, turn around
+            // Check boundary 鈥?if too far from spawn, turn around
             Vector2 toSpawn = spawnPosition - (Vector2)transform.position;
             if (toSpawn.magnitude > wanderRadius)
                 wanderDirection = toSpawn.normalized;
@@ -722,7 +677,7 @@ public class S_NPCEnemy : S_NPCbase
             return;
         }
 
-        // Start new walk cycle — pick random direction
+        // Start new walk cycle 鈥?pick random direction
         float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
         wanderDirection = new Vector2(Mathf.Cos(angle), 0f).normalized;
         wanderWalkTimer = Random.Range(wanderWalkTimeMin, wanderWalkTimeMax);
@@ -755,28 +710,10 @@ public class S_NPCEnemy : S_NPCbase
 
         // Wait for windup, then fire one shot
         fireTimer -= Time.deltaTime;
-        if (fireTimer <= 0f && !projectileHitPlayer)
+        if (fireTimer <= 0f)
         {
             FireProjectile(toPlayer.normalized);
-            // After firing, go back to Chase immediately
             EnterState(State.Chase);
-        }
-    }
-
-    private void ExecuteAttack()
-    {
-        if (playerTransform == null)
-            return;
-
-        // Face player and back off — no firing
-        Vector2 toPlayer = playerTransform.position - transform.position;
-        FlipSprite(toPlayer.x);
-
-        float dist = toPlayer.magnitude;
-        if (dist < attackRange * 0.9f)
-        {
-            Vector2 backDir = -toPlayer.normalized;
-            MoveHorizontally(backDir.x * chaseSpeed * 0.5f);
         }
     }
 
@@ -790,7 +727,7 @@ public class S_NPCEnemy : S_NPCbase
 
         if (dist < 0.3f)
         {
-            // Contact — arrest successful
+            // Contact 鈥?arrest successful
             TriggerArrest();
             return;
         }
@@ -819,12 +756,32 @@ public class S_NPCEnemy : S_NPCbase
     }
 
     /// <summary>
-    /// Called by S_EMProjectile when the projectile hits the player.
-    /// Sets flag that drives Aim → Arrest transition.
+    /// Called by S_EMProjectile when any guard projectile hits the player.
+    /// The hit alert pushes every active guard into Arrest together.
     /// </summary>
     public void OnProjectileHitPlayer()
     {
-        projectileHitPlayer = true;
+        TriggerGlobalArrest();
+    }
+
+    private static void TriggerGlobalArrest()
+    {
+        foreach (S_NPCEnemy enemy in activeEnemies)
+        {
+            if (enemy == null || !enemy.isActive || enemy.currentState == State.Disabled)
+                continue;
+
+            enemy.EnterGlobalArrest();
+        }
+    }
+
+    private void EnterGlobalArrest()
+    {
+        ValidatePlayerReference();
+        knockbackTimer = 0f;
+        knockbackVelocity = Vector2.zero;
+        StopHorizontalMovement();
+        EnterState(State.Arrest);
     }
 
     private void TriggerArrest()
@@ -856,13 +813,102 @@ public class S_NPCEnemy : S_NPCbase
         if (currentState == State.Disabled || currentState == State.Arrest)
             return;
 
+        RegisterPlayerHit();
+        if (currentState == State.Disabled)
+            return;
+
         EnterState(State.Stunned);
         ApplySprintKnockback(hitDirection);
+    }
+
+    private void RegisterPlayerHit()
+    {
+        currentHitCount++;
+        ShowHitVisual();
+
+        if (currentHitCount >= Mathf.Max(1, hitsToDie))
+            Die();
+    }
+
+    private void ShowHitVisual()
+    {
+        hitVisualTimer = hitVisualDuration;
+
+        if (npcSprite != null)
+            npcSprite.color = hitVisualColor;
+    }
+
+    private void UpdateHitVisual()
+    {
+        if (hitVisualTimer <= 0f)
+            return;
+
+        hitVisualTimer -= Time.deltaTime;
+        if (hitVisualTimer <= 0f)
+        {
+            hitVisualTimer = 0f;
+            UpdateStateColor();
+        }
+        else if (npcSprite != null)
+        {
+            npcSprite.color = hitVisualColor;
+        }
+    }
+
+    private void Die()
+    {
+        knockbackTimer = 0f;
+        knockbackVelocity = Vector2.zero;
+        transformVerticalVelocity = 0f;
+
+        StopHorizontalMovement();
+        if (npcRig != null)
+        {
+            npcRig.linearVelocity = Vector2.zero;
+            npcRig.angularVelocity = 0f;
+            npcRig.gravityScale = 0f;
+            npcRig.constraints = RigidbodyConstraints2D.FreezeAll;
+        }
+
+        EnterState(State.Disabled);
+        isActive = false;
+
+        if (hideSpriteOnDeath && npcSprite != null)
+            npcSprite.enabled = false;
+
+        if (disableColliderOnDeath && npcCol != null)
+            npcCol.enabled = false;
+    }
+
+    private void RestoreAliveState()
+    {
+        isActive = true;
+        currentHitCount = 0;
+        hitVisualTimer = 0f;
+
+        if (npcSprite != null)
+        {
+            npcSprite.enabled = originalSpriteEnabled;
+            npcSprite.color = defaultColor;
+        }
+
+        if (npcCol != null)
+            npcCol.enabled = originalColliderEnabled;
+
+        if (npcRig != null)
+        {
+            npcRig.bodyType = originalBodyType;
+            npcRig.constraints = originalConstraints;
+            npcRig.gravityScale = originalGravityScale;
+            npcRig.linearVelocity = Vector2.zero;
+            npcRig.angularVelocity = 0f;
+        }
     }
 
     protected override void HandleGameStart()
     {
         base.HandleGameStart();
+        RestoreAliveState();
         currentWaypointIndex = 0;
         waypointWaitTimer = 0f;
         stunTimer = 0f;
@@ -870,7 +916,6 @@ public class S_NPCEnemy : S_NPCbase
         aimCooldownTimer = 0f;
         knockbackTimer = 0f;
         knockbackVelocity = Vector2.zero;
-        projectileHitPlayer = false;
         EnterState(State.Patrol);
     }
 
@@ -878,6 +923,7 @@ public class S_NPCEnemy : S_NPCbase
     {
         S_SuspicionSystem.PlayerHidden = false;
         base.HandleGameRestart();
+        RestoreAliveState();
         currentWaypointIndex = 0;
         waypointWaitTimer = 0f;
         stunTimer = 0f;
@@ -885,7 +931,6 @@ public class S_NPCEnemy : S_NPCbase
         aimCooldownTimer = 0f;
         knockbackTimer = 0f;
         knockbackVelocity = Vector2.zero;
-        projectileHitPlayer = false;
         EnterState(State.Patrol);
     }
 
@@ -928,3 +973,5 @@ public class S_NPCEnemy : S_NPCbase
         }
     }
 }
+
+

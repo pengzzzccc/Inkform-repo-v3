@@ -109,21 +109,26 @@ MonoBehaviour:
   dialogueAsset: {fileID: 0}
   chaseRange: 8
   loseRange: 12
-  attackRange: 5
+  attackRange: 6
   arrestRange: 1.5
-  stunDuration: 3
-  attackWindupTime: 0.5
+  stunDuration: 2
+  attackWindupTime: 1
   aimCooldownTime: 2
   arrestDuration: 3
   aimColor: {r: 1, g: 0.65, b: 0, a: 1}
   arrestColor: {r: 1, g: 0, b: 0, a: 1}
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
+  hitsToDie: 2
+  hitVisualColor: {r: 1, g: 0.35, b: 0.35, a: 1}
+  hitVisualDuration: 0.15
+  hideSpriteOnDeath: 1
+  disableColliderOnDeath: 1
   fireRate: 1.5
   projectilePrefab: {fileID: 9061237790333962518, guid: 065ca17e0cd375442a607e4c7d594e3b, type: 3}
   projectileSpeed: 8
   firePoint: {fileID: 2968948865893592686}
   waypoints: []
-  patrolSpeed: 2
+  patrolSpeed: 3
   waypointWaitTime: 1
   chaseSpeed: 5
   useRigidbodyMovement: 1
@@ -137,7 +142,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   groundNormalThreshold: 0.5
-  sprintKnockbackSpeed: 8
+  sprintKnockbackSpeed: 4
   sprintKnockbackDuration: 0.25
   sprintKnockbackDamping: 24
   knockbackObstacleLayer:

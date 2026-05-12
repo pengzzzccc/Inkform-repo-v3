@@ -4,23 +4,75 @@
 Pre-Production / Chapter 2 Development
 
 ## Current Version
-v0.5.0 (NPC Guard System + Suspicion + Hide Mechanics)
+v0.6.3 (Hybrid Slime Tail + Dynamic CapsuleCollider + Procedural Rendering + Input Binding UI)
 
 ## What Works
-- Player Controller (solid/fluid form switching, wall climb, wall jump)
+- Player Controller (solid/fluid form switching, wall climb, wall jump, paralyze)
+- Procedural Slime Rendering (body, outline, eye glow, contact-plane fitting, hybrid tail mesh)
+- Dynamic Collider (CircleCollider2D default + CapsuleCollider2D for crouch/wall/ceiling)
 - Skill System (Sprint stun on NPCs, Skill Tree structure)
-- Level Objects (breakable blocks, checkpoints, moving platforms, pipelines)
+- Input Binding System (S_InputBindingManager with runtime rebinding + PlayerPrefs persistence)
+- Level Objects (breakable blocks, checkpoints, moving platforms, pipelines, jump pads, doors, button doors)
 - Moving Platforms (delta displacement transfer)
 - Game Event Bus (all major events wired)
-- Manager Systems (GameManager, UIManager, AudioManager)
+- Manager Systems (GameManager, UIManager with runtime controls menu, AudioManager)
 - Level Section System (dual triggers, section-level movement)
-- NPC Guard System (5-state state machine: Patrol/Chase/Aim/Attack/Arrest/Stunned)
-- Suspiccion System (0-100 meter, 3-tier thresholds)
+- NPC Guard System (5-state: Patrol/Chase/Aim/Attack/Arrest/Stunned, Rigidbody2D optional)
+- NPC Spawner Tool (S_NPCSpawnerTool for inspector-driven spawning)
+- NPC Camera (S_NPCCamera)
+- NPC Dialogue & Story (S_NPCDialogue, S_NPCStory)
+- Suspicion System (0-100 meter, 3-tier thresholds)
 - Hide Mechanic (S_HideSpot with static PlayerHidden bridge)
 - Sprint Stun (Physics2D.OverlapCircleAll on enemy layer)
 - Audio System (BGM/SFX via S_AudioManager + S_GameEvent events)
+- Narrative System (Characters, Story Outline, World Overview, Willard Protocol)
 
-## 2026-05-07: NPC Physics Movement Refactor
+## 2026-05-12: v0.6.3 — Hybrid Slime Tail
+
+### Completed
+- [x] Hybrid tail model: separate circle-tail mesh with external tangent bridge points
+- [x] Tail mesh uses body circle + smaller tail circle with bridge geometry
+- [x] Direct tail size, distance, bridge, and follow-speed parameters
+
+## 2026-05-12: v0.6.2 — Dynamic Capsule Collider
+
+### Completed
+- [x] CapsuleCollider2D support: crouch (horizontal), wall climb (vertical), ceiling (flattened)
+- [x] Smooth size and offset interpolation between modes
+- [x] S_Player.GetCollider() returns active dynamic collider
+- [x] Grip buffer casts, surface classification follow active collider
+- [x] Renderer adds colliderShapeFollow for partial capsule proportion following
+- [x] Crouch capsule anchors from bottom edge with input/contact smoothing
+
+## 2026-05-12: v0.6.1 — Procedural Slime Rendering
+
+### Completed
+- [x] S_PlayerProceduralRenderer: runtime body, outline, eye glow, white eye meshes
+- [x] Contact-plane visual fitting (boundary pushed outside floors/walls/ceilings)
+- [x] Rounded-triangle contact shaping for smooth weighted silhouette
+- [x] Dynamic CircleCollider2D via S_PlayerDynamicCollider
+- [x] Grip buffer snapping for fluid climb pre-contact
+- [x] Direct Ceiling state entry when gripping + ceiling contact
+- [x] JumpPad force range and force-to-color visualization
+- [x] Reduced slime tail size, maxTailStretch cap, motionLag tuning
+- [x] Contact-fill mesh to cover gaps from contact-plane skin
+- [x] Guarded S_UIManager against duplicate DontDestroyOnLoad registration
+
+## 2026-05-10: v0.6.0 — Input Binding UI & Rigidbody-Free NPC
+
+### Completed
+- [x] S_InputBindingManager: singleton, shared InputSystem_Actions, binding persistence via PlayerPrefs
+- [x] S_UIManager: runtime-generated controls menu for keyboard/mouse/gamepad binding changes
+- [x] Gamepad menu support: selected UI state, Cancel/Back behavior
+- [x] S_NPCSpawnerTool: inspector-driven NPC spawning, count adjustment, generation, cleanup
+- [x] Rigidbody2D optional for NPC enemies — Transform-based movement with collider casts
+- [x] Sprint knockback support without Rigidbody2D
+- [x] Updated sprint hit detection to resolve S_NPCEnemy via GetComponentInParent
+- [x] Fixed no-Rigidbody NPC falling through ground (manual ground collision + vertical resolution)
+- [x] New level objects: S_ButtonDoor, S_Door, S_JumpPad
+- [x] NPC scripts: S_NPCCamera, S_NPCDialogue, S_NPCStory
+
+## 2026-05-07: v0.5.0 — NPC Physics Movement Refactor
 
 ### Completed
 - [x] S_NPCbase.Awake(): Rigidbody2D.bodyType = Dynamic + FreezeRotation
@@ -28,30 +80,17 @@ v0.5.0 (NPC Guard System + Suspicion + Hide Mechanics)
 - [x] S_NPCEnemy.UpdateGroundCheck() — Collider2D.GetContacts + normal-angle threshold
 - [x] S_NPCEnemy: all 6 movement states use Rigidbody2D.velocity (no more transform.Translate)
 - [x] S_NPCEnemy idle wandering: random walk direction + wanderRadius boundary constraint
-- [x] New Inspector fields: gravityScale, groundLayer, groundNormalThreshold, wanderRadius, wanderWalkTimeMin/Max, wanderPauseTimeMin/Max
-- [x] NPC_System_Design.md updated with Physics Movement section + new Inspector fields + error #7
-- [x] memory-bank/activeContext.md updated
-- [x] memory-bank/progress.md updated
+- [x] Arrest flow bug fixed: EnterState pattern + HandleArrest decoupling
+- [x] NPC_System_Design.md updated with Physics Movement section
+- [x] Suspicion_System_Design.md created
 
 ### Pending (Unity Editor)
-- [ ] Assign Rigidbody2D and Collider2D to all NPC prefabs
-- [ ] Configure gravityScale, groundLayer, wander fields in Inspector for each NPC
-- [ ] Assign NPC prefabs to Enemy layer (User Layer 9)
-- [ ] Configure Physics2D Layer Collision Matrix
-- [ ] Playtest: verify NPC physics movement, ground detection, idle wandering
+- [ ] Build Section Prefabs with NPC guards and hide spots
+- [ ] Configure NPC spawner tools in scenes
+- [ ] Playtest: procedural rendering across form transitions
+- [ ] Playtest Chapter 2 with full guard + suspicion + hide mechanics
 
 ## Previous Milestones
-
-### v0.5.0 — NPC Guard System
-- [x] S_NPCbase: identity, interaction, sprite/Rigidbody2D refs
-- [x] S_NPCEnemy: 5-state state machine, waypoint patrol, chase/attack/arrest
-- [x] S_EMProjectile: paralyze on player contact
-- [x] S_SuspicionSystem: 0-100 meter, 3-tier thresholds
-- [x] S_HideSpot: static PlayerHidden bridge to NPC state machine
-- [x] Sprint Stun: Physics2D.OverlapCircleAll on enemy layer
-- [x] NPC_System_Design.md, Suspicion_System_Design.md created
-- [x] 4 root-vs-body-transform bugs fixed
-- [x] Arrest flow bug fixed (EnterState pattern)
 
 ### v0.4.x — Section System & Audio
 - [x] S_LevelSection dual triggers + section-level movement

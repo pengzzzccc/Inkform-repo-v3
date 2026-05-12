@@ -101,9 +101,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 466cac74bd4d55342bc4410ffd009bcc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  paralyzeDuration: 3
-  moveSpeedReduction: 0.5
-  speed: 8
+  paralyzeDuration: 1.5
+  moveSpeedReduction: 0.8
+  speed: 20
   maxLifetime: 5
 --- !u!58 &1100594262512912621
 CircleCollider2D:

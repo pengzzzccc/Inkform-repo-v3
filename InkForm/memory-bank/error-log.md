@@ -148,6 +148,24 @@ Known bugs and their fixes. Updated whenever a runtime or logic bug is discovere
 
 ---
 
+## 2026-05-12 | S_UIManager duplicate DontDestroyOnLoad assertion
+- **Symptom**: Unity runtime assertion when S_UIManager registers DontDestroyOnLoad multiple times.
+- **Root Cause**: S_UIManager singleton pattern did not guard against re-registration after scene reload.
+- **Fix**: Added guard `if (Instance != null && Instance != this) { Destroy(gameObject); return; }` before `DontDestroyOnLoad`.
+- **Related Scripts**: `S_UIManager.cs`
+- **Lesson**: All DontDestroyOnLoad singletons must guard against duplicate registration in Awake().
+
+---
+
+## 2026-05-10 | No-Rigidbody NPC enemies falling through ground
+- **Symptom**: NPC enemies without Rigidbody2D fall through the ground.
+- **Root Cause**: Without Rigidbody2D, Unity physics does not handle ground collision for NPCs.
+- **Fix**: Added manual ground collision checks with `Physics2D.BoxCast` for vertical movement resolution and ground snapping.
+- **Related Scripts**: `S_NPCEnemy.cs`
+- **Lesson**: When making Rigidbody2D optional, all physics-based interactions (gravity, ground collision, obstacle blocking) must have Transform-based fallbacks using collider casts.
+
+---
+
 ## 2026-05-07 | NPC arrest stuck red + death UI never shows
 - **Symptom**: After arrest, NPC stays red (Discovered color). Cannot arrest again. Game restart doesn't reset NPC color. Death UI never appears.
 - **Root Cause**: Three bugs stacked:

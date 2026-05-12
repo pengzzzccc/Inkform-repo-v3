@@ -1,129 +1,381 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Attach to a trigger collider on any object (cabinets, pillars, machines).
-/// Allows the player to hide from guards, causing them to lose their target.
+/// The player can toggle hiding while inside the trigger, becoming invisible to NPC detection.
 /// </summary>
 public class S_HideSpot : MonoBehaviour
 {
+    private enum HideRenderDepth
+    {
+        Front,
+        Behind
+    }
+
     [Header("Hide Settings")]
-    [SerializeField] private float hideDuration = 0f;
-    [SerializeField] private float cooldownAfterHide = 2f;
+    [SerializeField] private Vector2 hideOffset = Vector2.zero;
     [SerializeField] private Vector2 exitOffset = new Vector2(1f, 0f);
-    [SerializeField] private float defaultGravityScale = 4f;
+
+    [Header("Render Depth")]
+    [SerializeField] private HideRenderDepth hideRenderDepth = HideRenderDepth.Front;
+    [SerializeField, Min(1)] private int frontSortingGap = 1;
+    [SerializeField, Min(1)] private int backSortingGap = 1;
+
+    private struct RendererState
+    {
+        public Renderer renderer;
+        public int sortingLayerID;
+        public int sortingOrder;
+    }
 
     private bool isHiding = false;
-    private float hideTimer = 0f;
-    private float cooldownTimer = 0f;
-    private bool onCooldown = false;
-
-    private SpriteRenderer playerSprite;
-    private Collider2D playerCol;
-    private Rigidbody2D playerRig;
     private bool playerInRange = false;
+
+    private S_Player player;
+    private Rigidbody2D playerRig;
+    private Transform playerBody;
+    private Renderer hideSpotRenderer;
+    private RendererState[] rendererStates;
+
+    private InputAction hideAction;
+
+    private bool fallbackRigidBodyLocked = false;
+    private float fallbackGravityScale;
+    private RigidbodyConstraints2D fallbackConstraints;
+
+    private void Awake()
+    {
+        CacheHideSpotRenderer();
+    }
+
+    private void OnEnable()
+    {
+        EnsureHideAction();
+        S_GameEvent.OnGameRestart += HandleGameRestart;
+    }
 
     private void Update()
     {
-        if (onCooldown)
-        {
-            cooldownTimer -= Time.deltaTime;
-            if (cooldownTimer <= 0f)
-                onCooldown = false;
-        }
+        EnsureHideAction();
 
         if (isHiding)
         {
-            // Notify suspicion system to decay while hidden
+            MaintainHiddenState();
+
             if (S_SuspicionSystem.Instance != null)
                 S_SuspicionSystem.Instance.HideDecay();
+        }
 
-            if (hideDuration > 0f)
-            {
-                hideTimer -= Time.deltaTime;
-                if (hideTimer <= 0f)
-                    ExitHide();
-            }
+        if ((playerInRange || isHiding) && HidePressedThisFrame())
+        {
+            if (isHiding)
+                ExitHide();
+            else
+                EnterHide();
         }
     }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (other.CompareTag("Player") && !onCooldown && !isHiding)
-        {
-            playerInRange = true;
-            CachePlayerComponents(other);
-        }
+        if (!IsPlayerCollider(other))
+            return;
+
+        playerInRange = true;
+        CachePlayerComponents(other);
     }
 
     private void OnTriggerStay2D(Collider2D other)
     {
-        if (other.CompareTag("Player") && playerInRange)
-        {
-            if (Input.GetKeyDown(KeyCode.E))
-            {
-                if (isHiding)
-                    ExitHide();
-                else if (!onCooldown)
-                    EnterHide();
-            }
-        }
+        if (!IsPlayerCollider(other))
+            return;
+
+        playerInRange = true;
+
+        if (player == null || playerBody == null)
+            CachePlayerComponents(other);
     }
 
     private void OnTriggerExit2D(Collider2D other)
     {
-        if (other.CompareTag("Player"))
-        {
-            playerInRange = false;
-        }
+        if (!IsPlayerCollider(other))
+            return;
+
+        if (isHiding)
+            return;
+
+        playerInRange = false;
+        ClearPlayerCache();
     }
 
-    private void CachePlayerComponents(Collider2D player)
+    private bool IsPlayerCollider(Collider2D other)
     {
-        playerSprite = player.GetComponent<SpriteRenderer>();
-        playerCol = player;
-        playerRig = player.attachedRigidbody;
+        return other.CompareTag("Player") || other.GetComponentInParent<S_Player>() != null;
+    }
+
+    private void CachePlayerComponents(Collider2D playerCollider)
+    {
+        player = playerCollider.GetComponentInParent<S_Player>();
+        if (player == null && playerCollider.CompareTag("Player"))
+            player = S_Player.Instance;
+
+        if (player != null)
+        {
+            playerRig = player.GetRigidbody();
+            playerBody = player.GetBodyTransform();
+            return;
+        }
+
+        playerRig = playerCollider.attachedRigidbody;
+        playerBody = playerRig != null ? playerRig.transform : playerCollider.transform;
+    }
+
+    private void ClearPlayerCache()
+    {
+        player = null;
+        playerRig = null;
+        playerBody = null;
+        rendererStates = null;
     }
 
     private void EnterHide()
     {
+        if (isHiding || playerBody == null)
+            return;
+
         isHiding = true;
         S_SuspicionSystem.PlayerHidden = true;
 
-        if (playerSprite != null) playerSprite.enabled = false;
-        if (playerCol != null) playerCol.enabled = false;
-        if (playerRig != null)
-        {
-            playerRig.linearVelocity = Vector2.zero;
-            playerRig.gravityScale = 0f;
-        }
-
-        if (hideDuration > 0f)
-            hideTimer = hideDuration;
+        CacheRendererStates();
+        MovePlayerTo(GetHidePosition());
+        LockPlayerMovement();
+        ApplyHiddenSorting();
     }
 
-    private void ExitHide()
+    private void ExitHide(bool applyExitOffset = true)
     {
+        if (!isHiding)
+            return;
+
         isHiding = false;
         S_SuspicionSystem.PlayerHidden = false;
 
-        if (playerSprite != null) playerSprite.enabled = true;
-        if (playerCol != null) playerCol.enabled = true;
-        if (playerRig != null)
+        UnlockPlayerMovement();
+        RestoreRendererSorting();
+
+        if (applyExitOffset && playerBody != null)
+            MovePlayerTo((Vector2)playerBody.position + exitOffset);
+    }
+
+    private void MaintainHiddenState()
+    {
+        MovePlayerTo(GetHidePosition());
+        ApplyHiddenSorting();
+
+        if (player != null)
+            player.SetMovementLocked(true);
+        else if (playerRig != null)
         {
-            playerRig.gravityScale = defaultGravityScale;
-            playerRig.position += exitOffset;
+            playerRig.linearVelocity = Vector2.zero;
+            playerRig.angularVelocity = 0f;
+            playerRig.gravityScale = 0f;
+        }
+    }
+
+    private Vector2 GetHidePosition()
+    {
+        return (Vector2)transform.position + hideOffset;
+    }
+
+    private void MovePlayerTo(Vector2 position)
+    {
+        if (player != null)
+        {
+            player.Teleport(position);
+            return;
         }
 
-        onCooldown = true;
-        cooldownTimer = cooldownAfterHide;
+        if (playerRig != null)
+        {
+            playerRig.linearVelocity = Vector2.zero;
+            playerRig.angularVelocity = 0f;
+            playerRig.position = position;
+            return;
+        }
+
+        if (playerBody != null)
+            playerBody.position = position;
+    }
+
+    private void LockPlayerMovement()
+    {
+        if (player != null)
+        {
+            player.SetMovementLocked(true);
+            return;
+        }
+
+        if (playerRig == null || fallbackRigidBodyLocked)
+            return;
+
+        fallbackRigidBodyLocked = true;
+        fallbackGravityScale = playerRig.gravityScale;
+        fallbackConstraints = playerRig.constraints;
+
+        playerRig.linearVelocity = Vector2.zero;
+        playerRig.angularVelocity = 0f;
+        playerRig.gravityScale = 0f;
+        playerRig.constraints = RigidbodyConstraints2D.FreezeAll;
+    }
+
+    private void UnlockPlayerMovement()
+    {
+        if (player != null)
+        {
+            player.SetMovementLocked(false);
+            return;
+        }
+
+        if (playerRig == null || !fallbackRigidBodyLocked)
+            return;
+
+        playerRig.constraints = fallbackConstraints;
+        playerRig.gravityScale = fallbackGravityScale;
+        fallbackRigidBodyLocked = false;
+    }
+
+    private void CacheRendererStates()
+    {
+        if (playerBody == null)
+        {
+            rendererStates = null;
+            return;
+        }
+
+        Renderer[] renderers = playerBody.GetComponentsInChildren<Renderer>(true);
+        rendererStates = new RendererState[renderers.Length];
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            rendererStates[i] = new RendererState
+            {
+                renderer = renderers[i],
+                sortingLayerID = renderers[i].sortingLayerID,
+                sortingOrder = renderers[i].sortingOrder,
+            };
+        }
+    }
+
+    private void ApplyHiddenSorting()
+    {
+        if (rendererStates == null || rendererStates.Length == 0)
+            return;
+
+        Renderer spotRenderer = CacheHideSpotRenderer();
+        if (spotRenderer == null)
+            return;
+
+        int minOrder = int.MaxValue;
+        int maxOrder = int.MinValue;
+
+        for (int i = 0; i < rendererStates.Length; i++)
+        {
+            if (rendererStates[i].renderer == null)
+                continue;
+
+            minOrder = Mathf.Min(minOrder, rendererStates[i].sortingOrder);
+            maxOrder = Mathf.Max(maxOrder, rendererStates[i].sortingOrder);
+        }
+
+        if (minOrder == int.MaxValue || maxOrder == int.MinValue)
+            return;
+
+        bool shouldHideInFront = hideRenderDepth == HideRenderDepth.Front;
+        int spotOrder = spotRenderer.sortingOrder;
+
+        for (int i = 0; i < rendererStates.Length; i++)
+        {
+            Renderer targetRenderer = rendererStates[i].renderer;
+            if (targetRenderer == null)
+                continue;
+
+            targetRenderer.sortingLayerID = spotRenderer.sortingLayerID;
+            targetRenderer.sortingOrder = shouldHideInFront
+                ? spotOrder + frontSortingGap + (rendererStates[i].sortingOrder - minOrder)
+                : spotOrder - backSortingGap - (maxOrder - rendererStates[i].sortingOrder);
+        }
+    }
+
+    private void RestoreRendererSorting()
+    {
+        if (rendererStates == null)
+            return;
+
+        for (int i = 0; i < rendererStates.Length; i++)
+        {
+            Renderer targetRenderer = rendererStates[i].renderer;
+            if (targetRenderer == null)
+                continue;
+
+            targetRenderer.sortingLayerID = rendererStates[i].sortingLayerID;
+            targetRenderer.sortingOrder = rendererStates[i].sortingOrder;
+        }
+    }
+
+    private Renderer CacheHideSpotRenderer()
+    {
+        if (hideSpotRenderer != null)
+            return hideSpotRenderer;
+
+        hideSpotRenderer = GetComponent<Renderer>();
+        if (hideSpotRenderer == null)
+            hideSpotRenderer = GetComponentInChildren<Renderer>();
+
+        return hideSpotRenderer;
+    }
+
+    private void EnsureHideAction()
+    {
+        if (hideAction != null)
+            return;
+
+        if (S_InputBindingManager.Instance == null)
+            return;
+
+        hideAction = S_InputBindingManager.Instance.Actions.Player.Hide;
+    }
+
+    private bool HidePressedThisFrame()
+    {
+        if (hideAction != null && hideAction.WasPerformedThisFrame())
+            return true;
+
+        if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
+            return true;
+
+        return Gamepad.current != null && Gamepad.current.rightShoulder.wasPressedThisFrame;
+    }
+
+    private void OnValidate()
+    {
+        frontSortingGap = Mathf.Max(1, frontSortingGap);
+        backSortingGap = Mathf.Max(1, backSortingGap);
     }
 
     private void OnDisable()
     {
+        S_GameEvent.OnGameRestart -= HandleGameRestart;
+
         if (isHiding)
-        {
             ExitHide();
-        }
     }
 
+    private void HandleGameRestart()
+    {
+        if (isHiding)
+            ExitHide(false);
+
+        playerInRange = false;
+        ClearPlayerCache();
+    }
 }

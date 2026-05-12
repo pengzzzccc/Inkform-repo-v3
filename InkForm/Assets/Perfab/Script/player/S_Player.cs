@@ -58,10 +58,13 @@ public class S_Player : MonoBehaviour
     private bool gripping = false;
 
     private bool isSprinting = false;
+    private bool movementLocked = false;
+    private RigidbodyConstraints2D constraintsBeforeMovementLock;
 
     public void SetSprinting(bool value)
     {
         if (value && isParalyzed) return;
+        if (value && movementLocked) return;
         isSprinting = value;
     }
 
@@ -125,6 +128,12 @@ public class S_Player : MonoBehaviour
 
     void Update()
     {
+        if (movementLocked)
+        {
+            MaintainMovementLock();
+            return;
+        }
+
         Jump();
         StateRunner();
     }
@@ -168,6 +177,12 @@ public class S_Player : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (movementLocked)
+        {
+            MaintainMovementLock();
+            return;
+        }
+
         if (inkform == form.solid)
             SolidMovement();
         else
@@ -339,8 +354,42 @@ public class S_Player : MonoBehaviour
 
     public bool GetFaceRight() => facingRight;
 
+    public bool IsMovementLocked => movementLocked;
 
+    public void SetMovementLocked(bool locked)
+    {
+        if (movementLocked == locked)
+            return;
 
+        movementLocked = locked;
+
+        if (b_Rig == null)
+            return;
+
+        if (locked)
+        {
+            constraintsBeforeMovementLock = b_Rig.constraints;
+            SetSprinting(false);
+            SetSprintMomentum(false);
+            gripping = false;
+            MaintainMovementLock();
+            b_Rig.constraints = RigidbodyConstraints2D.FreezeAll;
+            return;
+        }
+
+        b_Rig.constraints = constraintsBeforeMovementLock;
+        b_Rig.gravityScale = solidGravityScale;
+    }
+
+    private void MaintainMovementLock()
+    {
+        if (b_Rig == null)
+            return;
+
+        b_Rig.linearVelocity = Vector2.zero;
+        b_Rig.angularVelocity = 0f;
+        b_Rig.gravityScale = 0f;
+    }
 
 
     public bool getForm()

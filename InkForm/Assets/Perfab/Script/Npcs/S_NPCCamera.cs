@@ -50,7 +50,14 @@ public class S_NPCCamera : S_NPCbase
 
     private void UpdateDetection()
     {
+        if (S_SuspicionSystem.PlayerHidden)
+        {
+            playerDetected = false;
+            return;
+        }
+
         if (cooldownTimer > 0f) return;
+        if (S_Player.Instance == null) return;
 
         float distance = DistanceToPlayer();
         if (distance > detectionRange)
@@ -63,7 +70,10 @@ public class S_NPCCamera : S_NPCbase
             return;
         }
 
-        Vector2 directionToPlayer = (S_Player.Instance.transform.position - transform.position).normalized;
+        Transform playerBody = S_Player.Instance.GetBodyTransform();
+        if (playerBody == null) return;
+
+        Vector2 directionToPlayer = (playerBody.position - transform.position).normalized;
         float angle = Vector2.Angle(facingRight ? Vector2.right : Vector2.left, directionToPlayer);
 
         if (angle <= detectionAngle * 0.5f)
