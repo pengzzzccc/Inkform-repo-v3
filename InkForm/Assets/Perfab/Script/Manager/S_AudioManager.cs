@@ -24,8 +24,13 @@ public class S_AudioManager : MonoBehaviour
     [Header("SFX")]
     [SerializeField][Range(0f, 1f)] private float sfxVolume = 1f;
 
+    [Header("Platform Alarm")]
+    [SerializeField] private AudioClip platformAlarmClip;
+    [SerializeField][Min(0f)] private float platformAlarmVolumeMultiplier = 1f;
+
     private AudioSource bgmSource;
     private AudioSource sfxSource;
+    private AudioSource platformAlarmSource;
 
     void Awake()
     {
@@ -35,6 +40,7 @@ public class S_AudioManager : MonoBehaviour
         // Add two AudioSources programmatically — no need to manually attach in Inspector
         bgmSource = gameObject.AddComponent<AudioSource>();
         sfxSource = gameObject.AddComponent<AudioSource>();
+        platformAlarmSource = gameObject.AddComponent<AudioSource>();
 
         bgmSource.playOnAwake = false;
         bgmSource.loop = true;
@@ -43,6 +49,10 @@ public class S_AudioManager : MonoBehaviour
         sfxSource.playOnAwake = false;
         sfxSource.loop = false;
         sfxSource.volume = sfxVolume;
+
+        platformAlarmSource.playOnAwake = false;
+        platformAlarmSource.loop = true;
+        platformAlarmSource.volume = sfxVolume * platformAlarmVolumeMultiplier;
     }
 
     void Start()
@@ -56,12 +66,16 @@ public class S_AudioManager : MonoBehaviour
     {
         S_GameEvent.OnPlaySFX += PlaySFX;
         S_GameEvent.OnBGMChange += PlayBGM;
+        S_GameEvent.OnSectionDescentStarted += StartPlatformAlarm;
+        S_GameEvent.OnSectionDescentCompleted += StopPlatformAlarm;
     }
 
     void OnDisable()
     {
         S_GameEvent.OnPlaySFX -= PlaySFX;
         S_GameEvent.OnBGMChange -= PlayBGM;
+        S_GameEvent.OnSectionDescentStarted -= StartPlatformAlarm;
+        S_GameEvent.OnSectionDescentCompleted -= StopPlatformAlarm;
     }
 
     // Called via S_GameEvent.PlaySFX(clip)
@@ -89,5 +103,28 @@ public class S_AudioManager : MonoBehaviour
     {
         if (bgmSource != null)
             bgmSource.Stop();
+    }
+
+    private void StartPlatformAlarm(int sectionIndex)
+    {
+        if (platformAlarmClip == null || platformAlarmSource == null)
+            return;
+
+        if (platformAlarmSource.isPlaying)
+            return;
+
+        platformAlarmSource.clip = platformAlarmClip;
+        platformAlarmSource.loop = true;
+        platformAlarmSource.volume = sfxVolume * platformAlarmVolumeMultiplier;
+        platformAlarmSource.Play();
+    }
+
+    private void StopPlatformAlarm(int sectionIndex)
+    {
+        if (platformAlarmSource == null)
+            return;
+
+        platformAlarmSource.Stop();
+        platformAlarmSource.clip = null;
     }
 }

@@ -12,6 +12,8 @@ public static class S_GameEvent
     public static event Action<Transform> reNewSpwnPoint;
     public static event Action<int> OnSectionStart;
     public static event Action<int> OnSectionEnd;
+    public static event Action<int> OnSectionDescentStarted;
+    public static event Action<int> OnSectionDescentCompleted;
     public static event Action<AudioClip> OnPlaySFX;
     public static event Action<AudioClip> OnBGMChange;
 
@@ -31,6 +33,8 @@ public static class S_GameEvent
     public static void SkillUsed(string skillName) => OnSkillUsed?.Invoke(skillName);
     public static void SectionStart(int index) => OnSectionStart?.Invoke(index);
     public static void SectionEnd(int index) => OnSectionEnd?.Invoke(index);
+    public static void SectionDescentStarted(int index) => OnSectionDescentStarted?.Invoke(index);
+    public static void SectionDescentCompleted(int index) => OnSectionDescentCompleted?.Invoke(index);
     public static void PlaySFX(AudioClip clip) => OnPlaySFX?.Invoke(clip);
     public static void BGMChange(AudioClip clip) => OnBGMChange?.Invoke(clip);
 

@@ -30,6 +30,8 @@ public class S_Player : MonoBehaviour
     [Header("Dynamic Collider")]
     [SerializeField] private bool useDynamicCollider = true;
     [SerializeField] private S_PlayerDynamicCollider dynamicCollider;
+    [Header("Camera Control")]
+    [SerializeField] private S_CameraMove cameraController;
 
 
     private float moveSpeed;
@@ -51,6 +53,7 @@ public class S_Player : MonoBehaviour
     private InputAction m_PlayerJump;
     private InputAction m_PlayerSprint;
     private InputAction m_PlayerGrep;
+    private InputAction m_PlayerCameraControl;
 
 
     private bool facingRight = true;
@@ -70,6 +73,27 @@ public class S_Player : MonoBehaviour
     private bool sprintMomentum = false;
 
     public void SetSprintMomentum(bool value) => sprintMomentum = value;
+
+    public bool IsSprintMomentumActive => sprintMomentum || isSprinting;
+
+    private float sprintBreakthroughTimer;
+    private float sprintBreakthroughDirection;
+    private float sprintBreakthroughMinimumSpeed;
+
+    public void ForceSprintBreakthrough(float direction, float minimumHorizontalSpeed, float duration)
+    {
+        if (!IsSprintMomentumActive)
+            return;
+
+        if (Mathf.Approximately(direction, 0f))
+            direction = facingRight ? 1f : -1f;
+
+        sprintBreakthroughDirection = Mathf.Sign(direction);
+        sprintBreakthroughMinimumSpeed = Mathf.Max(0f, minimumHorizontalSpeed);
+        sprintBreakthroughTimer = Mathf.Max(sprintBreakthroughTimer, Mathf.Max(0f, duration));
+
+        ApplySprintBreakthroughVelocity();
+    }
 
 
     public enum form
@@ -92,6 +116,11 @@ public class S_Player : MonoBehaviour
     private S_Soild_sprint sprintSkill;
     private float sprintCooldownRemaining;
     private bool chargeVisualsActive;
+
+    private bool isCameraControlActive;
+    private S_CameraControlSkill cameraControlSkill;
+    private float timeScaleBeforeCameraControl = 1f;
+    private float fixedDeltaTimeBeforeCameraControl = 0.02f;
 
     public bool IsSprintCharging => isSprintCharging;
 
@@ -134,6 +163,7 @@ public class S_Player : MonoBehaviour
         m_PlayerJump = actions.Player.Jump;
         m_PlayerSprint = actions.Player.Sprint;
         m_PlayerGrep = actions.Player.grep;
+        m_PlayerCameraControl = actions.Player.CameraControl;
 
         b_Sprite.sprite = sprites[0];
         b_Rig.gravityScale = solidGravityScale;
@@ -142,6 +172,9 @@ public class S_Player : MonoBehaviour
         b_Rig.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         SetupProceduralRenderer();
         SetupDynamicCollider();
+
+        if (cameraController == null)
+            cameraController = FindAnyObjectByType<S_CameraMove>();
 
         inkform = form.fluid;
         SetForm(inkform);
@@ -153,6 +186,13 @@ public class S_Player : MonoBehaviour
 
     void Update()
     {
+        HandleCameraControlInput();
+        if (isCameraControlActive)
+        {
+            CameraControlTick();
+            return;
+        }
+
         Jump();
         StateRunner();
 
@@ -171,7 +211,7 @@ public class S_Player : MonoBehaviour
     }
     void StateRunner()
     {
-        if (movementLocked)
+        if (movementLocked || isCameraControlActive)
         {
             gripping = false;
             return;
@@ -181,6 +221,7 @@ public class S_Player : MonoBehaviour
 
     void Jump()
     {
+        if (isCameraControlActive) return;
         if (movementLocked) return;
 
         if (inkform == form.solid || (inkform == form.fluid && !gripping))
@@ -210,6 +251,12 @@ public class S_Player : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (isCameraControlActive)
+        {
+            UpdateDynamicCollider();
+            return;
+        }
+
         if (movementLocked)
         {
             b_Rig.linearVelocity = Vector2.zero;
@@ -226,6 +273,7 @@ public class S_Player : MonoBehaviour
         if (isSprintCharging)
             UpdateSprintCharge();
 
+        UpdateSprintBreakthrough();
         UpdateDynamicCollider();
     }
 
@@ -443,6 +491,75 @@ public class S_Player : MonoBehaviour
         paralyzeCoroutine = null;
     }
 
+    private void HandleCameraControlInput()
+    {
+        if (m_PlayerCameraControl == null)
+            return;
+
+        if (!isCameraControlActive && m_PlayerCameraControl.WasPerformedThisFrame())
+        {
+            S_CameraControlSkill skill = S_SkillTree.Instance != null
+                ? S_SkillTree.Instance.GetCameraControlSkill()
+                : null;
+
+            if (skill != null)
+                skill.Activate(this);
+        }
+
+        if (isCameraControlActive && m_PlayerCameraControl.WasReleasedThisFrame())
+        {
+            EndCameraControl();
+        }
+    }
+
+    public void BeginCameraControl(S_CameraControlSkill skill)
+    {
+        if (isCameraControlActive || skill == null)
+            return;
+
+        if (isParalyzed || movementLocked || isSprintCharging || Mathf.Approximately(Time.timeScale, 0f))
+            return;
+
+        cameraControlSkill = skill;
+        isCameraControlActive = true;
+        gripping = false;
+
+        if (cameraController == null)
+            cameraController = FindAnyObjectByType<S_CameraMove>();
+
+        timeScaleBeforeCameraControl = Time.timeScale;
+        fixedDeltaTimeBeforeCameraControl = Time.fixedDeltaTime;
+
+        float bulletScale = cameraControlSkill.BulletTimeScale;
+        Time.timeScale = timeScaleBeforeCameraControl * bulletScale;
+        Time.fixedDeltaTime = fixedDeltaTimeBeforeCameraControl * bulletScale;
+
+        if (cameraController != null)
+            cameraController.BeginManualControl();
+    }
+
+    private void CameraControlTick()
+    {
+        if (cameraController != null)
+            cameraController.ManualControlTick(m_PlayerMove.ReadValue<Vector2>());
+    }
+
+    private void EndCameraControl()
+    {
+        if (!isCameraControlActive)
+            return;
+
+        isCameraControlActive = false;
+
+        Time.timeScale = timeScaleBeforeCameraControl;
+        Time.fixedDeltaTime = fixedDeltaTimeBeforeCameraControl;
+
+        if (cameraController != null)
+            cameraController.EndManualControl();
+
+        cameraControlSkill = null;
+    }
+
     void OnEnable()
     {
         S_InputBindingManager.Instance.Actions.Player.Enable();
@@ -451,6 +568,7 @@ public class S_Player : MonoBehaviour
 
     void OnDisable()
     {
+        EndCameraControl();
         S_InputBindingManager.Instance.Actions.Player.Disable();
     }
 
@@ -562,6 +680,36 @@ public class S_Player : MonoBehaviour
 
         if (useDynamicCollider && dynamicCollider != null)
             dynamicCollider.SetChargeOverride(false, 1f);
+    }
+
+    private void UpdateSprintBreakthrough()
+    {
+        if (sprintBreakthroughTimer <= 0f)
+            return;
+
+        if (!IsSprintMomentumActive)
+        {
+            sprintBreakthroughTimer = 0f;
+            return;
+        }
+
+        ApplySprintBreakthroughVelocity();
+        sprintBreakthroughTimer -= Time.fixedDeltaTime;
+    }
+
+    private void ApplySprintBreakthroughVelocity()
+    {
+        if (sprintBreakthroughMinimumSpeed <= 0f)
+            return;
+
+        Vector2 currentVelocity = b_Rig.linearVelocity;
+        float currentHorizontalSpeed = Mathf.Abs(currentVelocity.x);
+        bool movingAgainstBreakthrough = Mathf.Sign(currentVelocity.x) != sprintBreakthroughDirection && currentHorizontalSpeed > 0.01f;
+
+        if (movingAgainstBreakthrough || currentHorizontalSpeed < sprintBreakthroughMinimumSpeed)
+        {
+            b_Rig.linearVelocity = new Vector2(sprintBreakthroughDirection * sprintBreakthroughMinimumSpeed, currentVelocity.y);
+        }
     }
 
 }

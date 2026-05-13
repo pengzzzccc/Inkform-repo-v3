@@ -26,6 +26,7 @@ public class S_SkillTree : MonoBehaviour
             AddSkillPoints(5);
             TryUnlock("Sprint");
             TryUnlock("FluidClimb");
+            EnsureCameraControlSkill();
         }
     }
 
@@ -91,6 +92,32 @@ public class S_SkillTree : MonoBehaviour
     {
         S_SkillBase skill = FindSkill("Sprint");
         return skill as S_Soild_sprint;
+    }
+
+    public S_CameraControlSkill GetCameraControlSkill()
+    {
+        EnsureCameraControlSkill();
+        return unlockedMap.TryGetValue("CameraControl", out S_SkillBase skill)
+            ? skill as S_CameraControlSkill
+            : null;
+    }
+
+    private void EnsureCameraControlSkill()
+    {
+        if (unlockedMap.ContainsKey("CameraControl"))
+            return;
+
+        S_CameraControlSkill skill = FindSkill("CameraControl") as S_CameraControlSkill;
+        if (skill == null)
+        {
+            skill = ScriptableObject.CreateInstance<S_CameraControlSkill>();
+            skill.skillName = "CameraControl";
+            skill.requiredPoints = 0;
+        }
+
+        skill.isUnlocked = true;
+        unlockedMap[skill.skillName] = skill;
+        skill.OnUnlocked(S_Player.Instance);
     }
 
     private S_SkillBase FindSkill(string name)

@@ -198,6 +198,15 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""CameraControl"",
+                    ""type"": ""Button"",
+                    ""id"": ""bddf6100-1d17-4d9d-8a0b-69c4f891a1fd"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -649,6 +658,28 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""groups"": """",
                     ""action"": ""Hide"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""9f4f6f3c-c7df-44f2-8d6a-73688e89361a"",
+                    ""path"": ""<Keyboard>/q"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""CameraControl"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""91fda633-0d68-49cb-83e0-68593f03730c"",
+                    ""path"": ""<Gamepad>/leftShoulder"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Gamepad"",
+                    ""action"": ""CameraControl"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -1411,6 +1442,7 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         m_Player_Tranform = m_Player.FindAction("Tranform", throwIfNotFound: true);
         m_Player_grep = m_Player.FindAction("grep", throwIfNotFound: true);
         m_Player_Hide = m_Player.FindAction("Hide", throwIfNotFound: true);
+        m_Player_CameraControl = m_Player.FindAction("CameraControl", throwIfNotFound: true);
         // UI
         m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
         m_UI_Navigate = m_UI.FindAction("Navigate", throwIfNotFound: true);
@@ -1517,6 +1549,7 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Tranform;
     private readonly InputAction m_Player_grep;
     private readonly InputAction m_Player_Hide;
+    private readonly InputAction m_Player_CameraControl;
     /// <summary>
     /// Provides access to input actions defined in input action map "Player".
     /// </summary>
@@ -1576,6 +1609,10 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Player/Hide".
         /// </summary>
         public InputAction @Hide => m_Wrapper.m_Player_Hide;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/CameraControl".
+        /// </summary>
+        public InputAction @CameraControl => m_Wrapper.m_Player_CameraControl;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -1638,6 +1675,9 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
             @Hide.started += instance.OnHide;
             @Hide.performed += instance.OnHide;
             @Hide.canceled += instance.OnHide;
+            @CameraControl.started += instance.OnCameraControl;
+            @CameraControl.performed += instance.OnCameraControl;
+            @CameraControl.canceled += instance.OnCameraControl;
         }
 
         /// <summary>
@@ -1685,6 +1725,9 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
             @Hide.started -= instance.OnHide;
             @Hide.performed -= instance.OnHide;
             @Hide.canceled -= instance.OnHide;
+            @CameraControl.started -= instance.OnCameraControl;
+            @CameraControl.performed -= instance.OnCameraControl;
+            @CameraControl.canceled -= instance.OnCameraControl;
         }
 
         /// <summary>
@@ -2080,6 +2123,13 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnHide(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "CameraControl" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnCameraControl(InputAction.CallbackContext context);
     }
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "UI" which allows adding and removing callbacks.
