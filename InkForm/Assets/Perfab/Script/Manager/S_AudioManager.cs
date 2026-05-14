@@ -65,6 +65,7 @@ public class S_AudioManager : MonoBehaviour
     void OnEnable()
     {
         S_GameEvent.OnPlaySFX += PlaySFX;
+        S_GameEvent.OnPlaySFXPitched += PlaySFX;
         S_GameEvent.OnBGMChange += PlayBGM;
         S_GameEvent.OnSectionDescentStarted += StartPlatformAlarm;
         S_GameEvent.OnSectionDescentCompleted += StopPlatformAlarm;
@@ -73,6 +74,7 @@ public class S_AudioManager : MonoBehaviour
     void OnDisable()
     {
         S_GameEvent.OnPlaySFX -= PlaySFX;
+        S_GameEvent.OnPlaySFXPitched -= PlaySFX;
         S_GameEvent.OnBGMChange -= PlayBGM;
         S_GameEvent.OnSectionDescentStarted -= StartPlatformAlarm;
         S_GameEvent.OnSectionDescentCompleted -= StopPlatformAlarm;
@@ -81,9 +83,18 @@ public class S_AudioManager : MonoBehaviour
     // Called via S_GameEvent.PlaySFX(clip)
     private void PlaySFX(AudioClip clip)
     {
+        PlaySFX(clip, 1f, 1f);
+    }
+
+    private void PlaySFX(AudioClip clip, float pitch, float volumeMultiplier)
+    {
         if (clip == null || sfxSource == null) return;
+
+        float previousPitch = sfxSource.pitch;
         sfxSource.volume = sfxVolume;
-        sfxSource.PlayOneShot(clip);
+        sfxSource.pitch = Mathf.Max(0.01f, pitch);
+        sfxSource.PlayOneShot(clip, Mathf.Max(0f, volumeMultiplier));
+        sfxSource.pitch = previousPitch;
     }
 
     // Called via S_GameEvent.BGMChange(clip)

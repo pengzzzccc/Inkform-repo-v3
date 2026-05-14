@@ -35,22 +35,15 @@ public class S_Soild_sprint : S_SkillBase
     [SerializeField] private PhysicsMaterial2D chargeBallMaterial;
     [SerializeField] private AudioClip chargeStartClip;
     [SerializeField] private AudioClip chargeStageClip;
+    [SerializeField] private AudioClip chargeStage3Clip;
+    [SerializeField] private AudioClip chargeReleaseClip;
 
     public float MaxChargeTime => maxChargeTime;
     public float MaxSprintSpeed => maxSprintSpeed;
     public float MinSprintSpeed => minSprintSpeed;
-    public float Stage1Scale => stage1Scale;
-    public float Stage2Scale => stage2Scale;
-    public float Stage3Scale => stage3Scale;
-    public float Stage2Time => stage2Time;
-    public float Stage3Time => stage3Time;
-    public float Stage1Cooldown => stage1Cooldown;
-    public float Stage2Cooldown => stage2Cooldown;
-    public float Stage3Cooldown => stage3Cooldown;
     public float BufferTime => bufferTime;
     public PhysicsMaterial2D ChargeBallMaterial => chargeBallMaterial;
     public AudioClip ChargeStartClip => chargeStartClip;
-    public AudioClip ChargeStageClip => chargeStageClip;
 
     public int GetStage(float timer)
     {
@@ -71,6 +64,28 @@ public class S_Soild_sprint : S_SkillBase
         if (stage >= 2) return stage3Cooldown;
         if (stage >= 1) return stage2Cooldown;
         return stage1Cooldown;
+    }
+
+    public AudioClip GetChargeStageClip(int stage)
+    {
+        if (stage >= 2 && chargeStage3Clip != null)
+            return chargeStage3Clip;
+
+        return chargeStageClip;
+    }
+
+    public float GetChargeStagePitch(int stage)
+    {
+        if (stage >= 2) return GetInversePitch(stage3Scale);
+        if (stage >= 1) return GetInversePitch(stage2Scale);
+        return GetInversePitch(stage1Scale);
+    }
+
+    public AudioClip GetChargeReleaseClip() => chargeReleaseClip;
+
+    private float GetInversePitch(float scale)
+    {
+        return 1f / Mathf.Max(0.01f, scale);
     }
 
     public float GetShakeOffset(float shakeTimer)

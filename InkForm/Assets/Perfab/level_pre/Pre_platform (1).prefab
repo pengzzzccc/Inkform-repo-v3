@@ -139,7 +139,7 @@ MonoBehaviour:
   topAnchor: {fileID: 1703426158199420164}
   platformAttachPoint: {fileID: 7181170179603955935}
   cacheTopAnchorOnStart: 1
-  cableOffset: 0.81
+  cableOffset: 0.99
   cableWidth: 0.05
   cableMaterial: {fileID: 0}
   sortingLayerName: 
@@ -332,8 +332,8 @@ LineRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 4
   m_Positions:
-  - {x: -5.77, y: 2.445, z: 0}
-  - {x: -5.77, y: 0, z: 0}
+  - {x: -5.95, y: 2.445, z: 0}
+  - {x: -5.95, y: 0, z: 0}
   m_Parameters:
     serializedVersion: 3
     widthMultiplier: 1
@@ -480,8 +480,8 @@ LineRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 4
   m_Positions:
-  - {x: -4.15, y: 2.445, z: 0}
-  - {x: -4.15, y: 0, z: 0}
+  - {x: -3.97, y: 2.445, z: 0}
+  - {x: -3.97, y: 0, z: 0}
   m_Parameters:
     serializedVersion: 3
     widthMultiplier: 1

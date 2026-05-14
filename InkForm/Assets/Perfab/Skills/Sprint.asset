@@ -43,4 +43,6 @@ MonoBehaviour:
   bufferTime: 0.15
   chargeBallMaterial: {fileID: 0}
   chargeStartClip: {fileID: 0}
-  chargeStageClip: {fileID: 0}
+  chargeStageClip: {fileID: 8300000, guid: a55d6ffab9e5d084695967680e647e59, type: 3}
+  chargeStage3Clip: {fileID: 0}
+  chargeReleaseClip: {fileID: 0}
