@@ -1,12 +1,13 @@
 using UnityEngine;
 
 [ExecuteAlways]
+[DefaultExecutionOrder(100)]
 public class S_PlatformCableVisual : MonoBehaviour
 {
     [Header("Cable Anchors")]
     [SerializeField] private Transform topAnchor;
     [SerializeField] private Transform platformAttachPoint;
-    [SerializeField] private bool cacheTopAnchorOnStart = true;
+    [SerializeField] private bool cacheTopAnchorOnStart = false;
 
     [Header("Cable Layout")]
     [SerializeField, Min(0f)] private float cableOffset = 0.3f;

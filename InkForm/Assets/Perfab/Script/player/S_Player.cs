@@ -107,7 +107,6 @@ public class S_Player : MonoBehaviour
     private bool isSprintCharging;
     private float sprintChargeTimer;
     private int sprintChargeStage;
-    private float sprintChargeDirection;
     private float chargeScaleMultiplier = 1f;
     private float chargeShakeTimer;
     private int previousChargeStage;
@@ -116,6 +115,7 @@ public class S_Player : MonoBehaviour
     private S_Soild_sprint sprintSkill;
     private float sprintCooldownRemaining;
     private bool chargeVisualsActive;
+    private AudioSource sprintChargeSource;
 
     private bool isCameraControlActive;
     private S_CameraControlSkill cameraControlSkill;
@@ -157,6 +157,7 @@ public class S_Player : MonoBehaviour
         b_Sprite = body.GetComponent<SpriteRenderer>();
         b_CircleCol = body.GetComponent<CircleCollider2D>();
         b_Col = b_CircleCol;
+        SetupSprintChargeAudioSource();
 
         InputSystem_Actions actions = S_InputBindingManager.Instance.Actions;
         m_PlayerMove = actions.Player.Move;
@@ -568,6 +569,7 @@ public class S_Player : MonoBehaviour
 
     void OnDisable()
     {
+        StopSprintChargeSfx();
         EndCameraControl();
         S_InputBindingManager.Instance.Actions.Player.Disable();
     }
@@ -591,7 +593,6 @@ public class S_Player : MonoBehaviour
         chargeShakeTimer = 0f;
         chargeScaleMultiplier = 1f;
         chargeVisualsActive = false;
-        sprintChargeDirection = facingRight ? 1f : -1f;
     }
 
     private void UpdateSprintCharge()
@@ -614,6 +615,7 @@ public class S_Player : MonoBehaviour
                 proceduralRenderer.SetChargeOverride(true);
 
             S_GameEvent.PlaySFX(sprintSkill.ChargeStartClip);
+            PlaySprintChargeStageSfx(0);
         }
 
         if (!chargeVisualsActive) return;
@@ -624,7 +626,7 @@ public class S_Player : MonoBehaviour
         {
             chargeShakeTimer = 0f;
             previousChargeStage = sprintChargeStage;
-            S_GameEvent.PlaySFX(sprintSkill.ChargeStageClip);
+            PlaySprintChargeStageSfx(sprintChargeStage);
         }
 
         chargeShakeTimer += Time.fixedDeltaTime;
@@ -647,7 +649,9 @@ public class S_Player : MonoBehaviour
         if (!chargeVisualsActive)
         {
             sprintCooldownRemaining = sprintSkill.GetCooldown(0);
+            StopSprintChargeSfx();
             sprintSkill.ActivateCharge(this, sprintSkill.MinSprintSpeed, releaseDirection);
+            PlaySprintReleaseSfx();
             isSprintCharging = false;
             sprintChargeTimer = 0f;
             return;
@@ -657,7 +661,9 @@ public class S_Player : MonoBehaviour
         float finalSpeed = Mathf.Lerp(sprintSkill.MinSprintSpeed, sprintSkill.MaxSprintSpeed, charge01);
 
         sprintCooldownRemaining = sprintSkill.GetCooldown(sprintChargeStage);
+        StopSprintChargeSfx();
         sprintSkill.ActivateCharge(this, finalSpeed, releaseDirection);
+        PlaySprintReleaseSfx();
 
         isSprintCharging = false;
         chargeVisualsActive = false;
@@ -680,6 +686,54 @@ public class S_Player : MonoBehaviour
 
         if (useDynamicCollider && dynamicCollider != null)
             dynamicCollider.SetChargeOverride(false, 1f);
+    }
+
+    private void PlaySprintChargeStageSfx(int stage)
+    {
+        if (sprintSkill == null || sprintChargeSource == null)
+            return;
+
+        AudioClip clip = sprintSkill.GetChargeStageClip(stage);
+        if (clip == null)
+            return;
+
+        float pitch = sprintSkill.GetChargeStagePitch(stage);
+        StopSprintChargeSfx();
+
+        sprintChargeSource.clip = clip;
+        sprintChargeSource.pitch = Mathf.Max(0.01f, pitch);
+        sprintChargeSource.loop = true;
+        sprintChargeSource.Play();
+    }
+
+    private void PlaySprintReleaseSfx()
+    {
+        if (sprintSkill == null)
+            return;
+
+        S_GameEvent.PlaySFX(sprintSkill.GetChargeReleaseClip());
+    }
+
+    private void StopSprintChargeSfx()
+    {
+        if (sprintChargeSource == null)
+            return;
+
+        if (sprintChargeSource.isPlaying)
+            sprintChargeSource.Stop();
+
+        sprintChargeSource.clip = null;
+        sprintChargeSource.pitch = 1f;
+    }
+
+    private void SetupSprintChargeAudioSource()
+    {
+        GameObject sourceHost = body != null ? body : gameObject;
+        sprintChargeSource = sourceHost.AddComponent<AudioSource>();
+        sprintChargeSource.playOnAwake = false;
+        sprintChargeSource.loop = true;
+        sprintChargeSource.spatialBlend = 0f;
+        sprintChargeSource.pitch = 1f;
     }
 
     private void UpdateSprintBreakthrough()
