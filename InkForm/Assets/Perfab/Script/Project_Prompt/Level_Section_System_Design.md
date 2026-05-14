@@ -416,3 +416,18 @@ To reuse: drag the Prefab into a new scene, position it, and add to the new Leve
 | Player slides off platform during section movement | This is normal — delta transfer is frame-based, ensure Rigidbody2D interpolation is enabled |
 | EndTrigger fires before player completes challenge | Reposition EndTrigger further along the challenge path |
 | Multiple sections activate at once | Ensure each section has a unique sectionIndex, and triggers have correct indices |
+
+---
+
+## 8. Section Descent Events
+
+When a section starts or finishes descending, two additional events are fired:
+
+| Event | Parameter | When Fired | Consumers |
+|-------|-----------|------------|-----------|
+| `OnSectionDescentStarted` | int sectionIndex | Section begins descending (Reveal called) | S_AudioManager (alarm), S_SectionAlarmEffect |
+| `OnSectionDescentCompleted` | int sectionIndex | Section reaches bottom | S_AudioManager (stop alarm), S_SectionAlarmEffect |
+
+These events trigger:
+- **S_AudioManager**: Plays looping platform alarm during descent (see Manager_Systems_Design §9)
+- **S_SectionAlarmEffect**: Activates visual alarm effect during descent (see Manager_Systems_Design §10)

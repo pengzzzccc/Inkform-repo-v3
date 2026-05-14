@@ -38,8 +38,17 @@ Producer (invokes event)          Consumer (subscribes to event)
 | reNewSpwnPoint | Transform | S_Checkpoint | S_GameManager |
 | OnSectionStart | int index | S_SectionGoal (Start trigger) | S_LevelSectionController |
 | OnSectionEnd | int index | S_SectionGoal (End trigger) | S_LevelSectionController |
+| OnSectionDescentStarted | int index | S_LevelSectionController | S_AudioManager, S_SectionAlarmEffect |
+| OnSectionDescentCompleted | int index | S_LevelSectionController | S_AudioManager, S_SectionAlarmEffect |
 | OnPlaySFX | AudioClip clip | S_Player, any system | S_AudioManager |
 | OnBGMChange | AudioClip clip | Any system | S_AudioManager |
+| OnNPCInteract | string npcID | S_NPCEnemy, S_NPCStory | (future UI) |
+| OnSuspicionChanged | float value | S_SuspicionSystem | (future UI) |
+| OnAlertTriggered | Transform npc | S_SuspicionSystem | S_LevelSectionController |
+| OnArrestTriggered | none | S_SuspicionSystem | S_GameManager |
+| OnStoryTrigger | string triggerID | S_NPCStory | (future systems) |
+| OnKeyCollected | none | S_Key | S_ExitGate |
+| OnKeyCountChanged | int collected, int total | S_Key | S_ExitGate, S_UIManager |
 
 ### 2.3 Event Flow Diagrams
 
@@ -95,10 +104,23 @@ public static event Action<Transform> reNewSpwnPoint;
 // Section events
 public static event Action<int> OnSectionStart;
 public static event Action<int> OnSectionEnd;
+public static event Action<int> OnSectionDescentStarted;
+public static event Action<int> OnSectionDescentCompleted;
 
 // Audio events
 public static event Action<AudioClip> OnPlaySFX;
 public static event Action<AudioClip> OnBGMChange;
+
+// NPC & Story events
+public static event Action<string> OnNPCInteract;
+public static event Action<float> OnSuspicionChanged;
+public static event Action<Transform> OnAlertTriggered;
+public static event Action OnArrestTriggered;
+public static event Action<string> OnStoryTrigger;
+
+// Key & Gate events
+public static event Action OnKeyCollected;
+public static event Action<int, int> OnKeyCountChanged;
 ```
 
 **Invocation Methods**:
@@ -113,8 +135,17 @@ public static event Action<AudioClip> OnBGMChange;
 | `SkillUsed(string)` | string | `OnSkillUsed` | Skill activated (future) |
 | `SectionStart(int)` | int sectionIndex | `OnSectionStart` | Player entered section Start trigger |
 | `SectionEnd(int)` | int sectionIndex | `OnSectionEnd` | Player entered section End trigger |
+| `SectionDescentStarted(int)` | int sectionIndex | `OnSectionDescentStarted` | Section platform started descending |
+| `SectionDescentCompleted(int)` | int sectionIndex | `OnSectionDescentCompleted` | Section platform finished descending |
 | `PlaySFX(AudioClip)` | AudioClip clip | `OnPlaySFX` | Play a one-shot sound effect |
 | `BGMChange(AudioClip)` | AudioClip clip | `OnBGMChange` | Switch background music clip |
+| `NPCInteract(string)` | string npcID | `OnNPCInteract` | Player interacted with NPC |
+| `SuspicionChanged(float)` | float value | `OnSuspicionChanged` | Suspicion meter value changed |
+| `AlertTriggered(Transform)` | Transform npc | `OnAlertTriggered` | NPC triggered alert |
+| `ArrestTriggered()` | none | `OnArrestTriggered` | Player was arrested |
+| `StoryTrigger(string)` | string triggerID | `OnStoryTrigger` | Story event triggered |
+| `KeyCollected()` | none | `OnKeyCollected` | Player collected a key |
+| `KeyCountChanged(int, int)` | int collected, int total | `OnKeyCountChanged` | Key count updated |
 
 All methods use null-conditional invocation (`?.Invoke()`) for safety — no null reference exceptions if no subscribers.
 
@@ -221,6 +252,14 @@ These events manage level section progression. They are consumed by `S_LevelSect
 |-------------|---------------|
 | Player enters section StartTrigger | `S_GameEvent.SectionStart(sectionIndex)` |
 | Player enters section EndTrigger | `S_GameEvent.SectionEnd(sectionIndex)` |
+
+### 5.5 Key & Gate Events
+These events manage the key collection and exit gate system. Keys are produced by `S_Key`, consumed by `S_ExitGate` and `S_UIManager`.
+
+| When to use | Event to fire |
+|-------------|---------------|
+| Player collects a key | `S_GameEvent.KeyCollected()` |
+| Key count UI needs update | `S_GameEvent.KeyCountChanged(collected, total)` |
 
 ---
 

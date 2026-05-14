@@ -40,10 +40,18 @@ public static class S_GameEvent
     public static void PlaySFX(AudioClip clip, float pitch, float volumeMultiplier = 1f) => OnPlaySFXPitched?.Invoke(clip, pitch, volumeMultiplier);
     public static void BGMChange(AudioClip clip) => OnBGMChange?.Invoke(clip);
 
+    // Key & Gate Events
+    public static event Action OnKeyCollected;
+    public static event Action<int, int> OnKeyCountChanged;
+
     // NPC & Story Invokers
     public static void NPCInteract(string npcID) => OnNPCInteract?.Invoke(npcID);
     public static void SuspicionChanged(float value) => OnSuspicionChanged?.Invoke(value);
     public static void AlertTriggered(Transform npc) => OnAlertTriggered?.Invoke(npc);
     public static void ArrestTriggered() => OnArrestTriggered?.Invoke();
     public static void StoryTrigger(string triggerID) => OnStoryTrigger?.Invoke(triggerID);
+
+    // Key & Gate Invokers
+    public static void KeyCollected() => OnKeyCollected?.Invoke();
+    public static void KeyCountChanged(int collected, int total) => OnKeyCountChanged?.Invoke(collected, total);
 }

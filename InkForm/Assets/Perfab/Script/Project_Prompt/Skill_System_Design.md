@@ -5,8 +5,9 @@
 The skill system allows players to unlock and activate abilities using skill points. It uses ScriptableObject-based skill definitions for data-driven design, with a centralized `S_SkillTree` manager for unlocking and activation.
 
 ### Supported Skills
-- **Sprint** (`S_Soild_sprint`) — Burst of forward momentum with cooldown
+- **Sprint** (`S_Soild_sprint`) — Hold-to-charge sprint with buffer, stage scaling, and cooldown
 - **Fluid Climb** (`S_fluid_climb`) — Wall/ceiling climbing in fluid form
+- **Camera Control** (`S_CameraControlSkill`) — Bullet time + manual camera pan
 
 ---
 
@@ -16,8 +17,9 @@ The skill system allows players to unlock and activate abilities using skill poi
 
 ```
 S_SkillBase (ScriptableObject, abstract)
-|-- S_Soild_sprint (concrete: sprint skill)
+|-- S_Soild_sprint (concrete: sprint charge skill)
 |-- S_fluid_climb  (concrete: wall climb skill)
+|-- S_CameraControlSkill (concrete: camera control skill)
 `-- (future skills extend this base)
 
 S_SkillTree (MonoBehaviour, Singleton)
@@ -289,7 +291,7 @@ The surface state machine also allows direct `None/Floor -> Ceiling` entry while
 
 ---
 
-## 8. Sprint Charge System (v0.7.0)
+## 8. Sprint Charge System
 
 The sprint skill (`S_Soild_sprint`) now supports a hold-to-charge sprint mechanism. The player holds the sprint key to accumulate charge, and releases to dash.
 
@@ -343,3 +345,54 @@ Quick-tap sprint (press and release within `bufferTime`) bypasses all visual/phy
 ### 8.5 S_SkillTree Integration
 
 `S_SkillTree.GetSprintSkill()` returns the `S_Soild_sprint` instance so `S_Player` can access charge parameters without holding a direct reference.
+
+---
+
+## 9. Camera Control Skill
+
+The camera control skill (`S_CameraControlSkill`) allows the player to enter a bullet-time state and manually pan the camera to survey the level.
+
+### 9.1 Behavior
+
+```
+Activate(S_Player player)
+    |-- Calls player.BeginCameraControl(this)
+    |-- S_Player enters camera control mode:
+    |   |-- Time.timeScale *= bulletTimeScale (default 0.2x)
+    |   |-- S_CameraMove.BeginManualControl()
+    |   `-- Player movement continues at reduced time scale
+    |
+Player holds CameraControl input
+    |-- Move input (WASD) feeds to S_CameraMove.ManualControlTick()
+    |-- Camera pans around player (clamped to manualMaxDistanceFromTarget)
+    `-- Uses Time.unscaledDeltaTime so panning is smooth during bullet time
+    |
+Player releases CameraControl input
+    |-- Time.timeScale restored to original
+    |-- S_CameraMove.EndManualControl()
+    `-- Camera smoothly returns to follow mode
+```
+
+### 9.2 Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `bulletTimeScale` | 0.2f | Time scale multiplier (0.01–1.0). Lower = slower time |
+
+### 9.3 Form Availability
+
+- Available in both solid and fluid forms (`availableSolid = true`, `availableFluid = true`)
+- Set automatically in `OnEnable()`
+
+### 9.4 Blocking Conditions
+
+Camera control is blocked when:
+- Player is already in camera control mode
+- Player is paralyzed
+- Movement is locked
+- Sprint is charging
+- Time scale is 0 (paused)
+
+### 9.5 S_SkillTree Integration
+
+`S_SkillTree.GetCameraControlSkill()` returns the `S_CameraControlSkill` instance so `S_Player` can access camera control parameters.

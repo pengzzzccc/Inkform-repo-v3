@@ -19,6 +19,8 @@ public class S_UIManager : MonoBehaviour
     [Header("Suspicion UI")]
     [SerializeField] private Slider suspicionSlider;
     [SerializeField] private GameObject suspicionUI;
+    [Header("Key UI")]
+    [SerializeField] private TMP_Text keyCountText;
 
     private InputAction openMemu;
     private InputAction cancelAction;
@@ -32,6 +34,7 @@ public class S_UIManager : MonoBehaviour
     private readonly List<GameObject> mainMenuObjects = new List<GameObject>();
     private readonly List<Button> controlsPanelButtons = new List<Button>();
     private readonly List<BindingButtonView> bindingButtons = new List<BindingButtonView>();
+    private RectTransform bindingRowsScrollRoot;
 
     void Awake()
     {
@@ -105,12 +108,19 @@ public class S_UIManager : MonoBehaviour
                 HideUI();
         }
 
-        if (menuOpen && !S_InputBindingManager.Instance.IsRebinding && EventSystem.current != null && EventSystem.current.currentSelectedGameObject == null)
+        if (menuOpen && !S_InputBindingManager.Instance.IsRebinding)
         {
+            if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == null)
+            {
+                if (IsControlsPanelVisible())
+                    SelectControlsDefault();
+                else
+                    SelectMainMenuDefault();
+            }
+
+            // Auto-scroll when selected button is outside viewport
             if (IsControlsPanelVisible())
-                SelectControlsDefault();
-            else
-                SelectMainMenuDefault();
+                ScrollToSelected();
         }
     }
 
@@ -120,6 +130,7 @@ public class S_UIManager : MonoBehaviour
         S_GameEvent.OnGameRestart += HideUI;
         S_GameEvent.OnPlayerDied += ShowUI;
         S_GameEvent.OnSuspicionChanged += UpdateSuspicionBar;
+        S_GameEvent.OnKeyCountChanged += UpdateKeyCount;
 
         if (S_InputBindingManager.HasInstance)
             S_InputBindingManager.Instance.BindingsChanged += RefreshBindingLabels;
@@ -131,6 +142,7 @@ public class S_UIManager : MonoBehaviour
         S_GameEvent.OnGameRestart -= HideUI;
         S_GameEvent.OnPlayerDied -= ShowUI;
         S_GameEvent.OnSuspicionChanged -= UpdateSuspicionBar;
+        S_GameEvent.OnKeyCountChanged -= UpdateKeyCount;
 
         if (S_InputBindingManager.HasInstance)
             S_InputBindingManager.Instance.BindingsChanged -= RefreshBindingLabels;
@@ -161,6 +173,12 @@ public class S_UIManager : MonoBehaviour
         Time.timeScale = 1f;
     }
 
+    private void UpdateKeyCount(int collected, int total)
+    {
+        if (keyCountText != null)
+            keyCountText.text = collected + " / " + total;
+    }
+
     private void UpdateSuspicionBar(float value)
     {
         if (suspicionUI != null)
@@ -186,7 +204,8 @@ public class S_UIManager : MonoBehaviour
         controlsPanel.SetActive(false);
 
         CreateTitle("controls", controlsPanel.transform);
-        CreateHeaderRow(controlsPanel.transform);
+        bindingRowsScrollRoot = CreateControlsScrollRect(controlsPanel.transform);
+        CreateHeaderRow(bindingRowsScrollRoot.transform);
 
         AddBindingRow(
             "Move Up",
@@ -220,6 +239,14 @@ public class S_UIManager : MonoBehaviour
             "Grip",
             BindingTarget.Keyboard("grep", null, "Button"),
             BindingTarget.Gamepad("grep", null, "Button"));
+        AddBindingRow(
+            "Hide",
+            BindingTarget.Keyboard("Hide", null, "Button"),
+            BindingTarget.Gamepad("Hide", null, "Button"));
+        AddBindingRow(
+            "Camera Control",
+            BindingTarget.Keyboard("CameraControl", null, "Button"),
+            BindingTarget.Gamepad("CameraControl", null, "Button"));
         AddBindingRow(
             "Open Menu",
             BindingTarget.Keyboard("OpenMenu", null, "Button", "<Keyboard>"),
@@ -255,27 +282,18 @@ public class S_UIManager : MonoBehaviour
 
     private GameObject CreateControlsPanel(Transform parent)
     {
-        GameObject panel = new GameObject("ControlsPanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(VerticalLayoutGroup));
+        GameObject panel = new GameObject("ControlsPanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
         panel.transform.SetParent(parent, false);
 
         RectTransform rect = panel.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = new Vector2(700f, 520f);
+        rect.anchorMin = new Vector2(0.12f, 0.08f);
+        rect.anchorMax = new Vector2(0.88f, 0.92f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
 
         Image image = panel.GetComponent<Image>();
         image.color = new Color(0.04f, 0.06f, 0.08f, 0.92f);
-
-        VerticalLayoutGroup layout = panel.GetComponent<VerticalLayoutGroup>();
-        layout.padding = new RectOffset(18, 18, 12, 12);
-        layout.spacing = 4f;
-        layout.childAlignment = TextAnchor.UpperCenter;
-        layout.childControlWidth = true;
-        layout.childControlHeight = true;
-        layout.childForceExpandWidth = true;
-        layout.childForceExpandHeight = false;
+        image.raycastTarget = false;
 
         return panel;
     }
@@ -283,7 +301,12 @@ public class S_UIManager : MonoBehaviour
     private void CreateTitle(string text, Transform parent)
     {
         TMP_Text title = CreateText("Title", parent, text, 26f, TextAlignmentOptions.Center);
-        AddLayoutElement(title.gameObject, -1f, 34f);
+        RectTransform titleRect = title.GetComponent<RectTransform>();
+        titleRect.anchorMin = new Vector2(0f, 1f);
+        titleRect.anchorMax = new Vector2(1f, 1f);
+        titleRect.pivot = new Vector2(0.5f, 1f);
+        titleRect.anchoredPosition = new Vector2(0f, -10f);
+        titleRect.sizeDelta = new Vector2(-40f, 36f);
     }
 
     private void CreateHeaderRow(Transform parent)
@@ -300,7 +323,7 @@ public class S_UIManager : MonoBehaviour
 
     private void AddBindingRow(string label, BindingTarget keyboardTarget, BindingTarget gamepadTarget)
     {
-        GameObject row = CreateRow(label.Replace(" ", string.Empty) + "Row", controlsPanel.transform, 32f);
+        GameObject row = CreateRow(label.Replace(" ", string.Empty) + "Row", bindingRowsScrollRoot.transform, 32f);
 
         TMP_Text labelText = CreateText("Label", row.transform, label, 16f, TextAlignmentOptions.Left);
         AddLayoutElement(labelText.gameObject, 180f, -1f);
@@ -332,12 +355,30 @@ public class S_UIManager : MonoBehaviour
     private void CreateFooterRow(Transform parent)
     {
         rebindStatusText = CreateText("RebindStatus", parent, string.Empty, 15f, TextAlignmentOptions.Center);
-        AddLayoutElement(rebindStatusText.gameObject, -1f, 22f);
+        RectTransform statusRect = rebindStatusText.GetComponent<RectTransform>();
+        statusRect.anchorMin = new Vector2(0f, 0f);
+        statusRect.anchorMax = new Vector2(1f, 0f);
+        statusRect.pivot = new Vector2(0.5f, 0f);
+        statusRect.anchoredPosition = new Vector2(0f, 32f);
+        statusRect.sizeDelta = new Vector2(-40f, 22f);
 
-        GameObject row = CreateRow("FooterRow", parent, 32f);
-        AddFlexibleSpace(row.transform);
+        GameObject footerContainer = new GameObject("FooterContainer", typeof(RectTransform));
+        footerContainer.transform.SetParent(parent, false);
+        RectTransform footerRect = footerContainer.GetComponent<RectTransform>();
+        footerRect.anchorMin = new Vector2(0f, 0f);
+        footerRect.anchorMax = new Vector2(1f, 0f);
+        footerRect.pivot = new Vector2(0.5f, 0f);
+        footerRect.anchoredPosition = new Vector2(0f, 6f);
+        footerRect.sizeDelta = new Vector2(-40f, 30f);
 
-        Button resetButton = CreateButton("ResetAllButton", row.transform, "reset all");
+        HorizontalLayoutGroup hlg = footerContainer.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing = 14f;
+        hlg.childAlignment = TextAnchor.MiddleCenter;
+        hlg.childControlWidth = false;
+        hlg.childControlHeight = true;
+        hlg.childForceExpandWidth = false;
+
+        Button resetButton = CreateButton("ResetAllButton", footerContainer.transform, "reset all");
         resetButton.onClick.AddListener(() =>
         {
             S_InputBindingManager.Instance.CancelRebind();
@@ -347,12 +388,12 @@ public class S_UIManager : MonoBehaviour
         AddLayoutElement(resetButton.gameObject, 150f, 28f);
         controlsPanelButtons.Add(resetButton);
 
-        cancelRebindButton = CreateButton("CancelRebindButton", row.transform, "cancel");
+        cancelRebindButton = CreateButton("CancelRebindButton", footerContainer.transform, "cancel");
         cancelRebindButton.onClick.AddListener(() => S_InputBindingManager.Instance.CancelRebind());
-        AddLayoutElement(cancelRebindButton.gameObject, 150f, 28f);
+        AddLayoutElement(cancelRebindButton.gameObject, 170f, 28f);
         cancelRebindButton.interactable = false;
 
-        Button backButton = CreateButton("BackButton", row.transform, "back");
+        Button backButton = CreateButton("BackButton", footerContainer.transform, "back");
         backButton.onClick.AddListener(CloseControlsPanel);
         AddLayoutElement(backButton.gameObject, 150f, 28f);
         controlsPanelButtons.Add(backButton);
@@ -364,8 +405,8 @@ public class S_UIManager : MonoBehaviour
         row.transform.SetParent(parent, false);
 
         HorizontalLayoutGroup layout = row.GetComponent<HorizontalLayoutGroup>();
-        layout.spacing = 10f;
-        layout.childAlignment = TextAnchor.MiddleCenter;
+        layout.spacing = 8f;
+        layout.childAlignment = TextAnchor.MiddleLeft;
         layout.childControlWidth = true;
         layout.childControlHeight = true;
         layout.childForceExpandWidth = false;
@@ -375,6 +416,109 @@ public class S_UIManager : MonoBehaviour
         layoutElement.preferredHeight = height;
 
         return row;
+    }
+
+    private RectTransform CreateControlsScrollRect(Transform parent)
+    {
+        GameObject scrollObject = new GameObject("BindingsScroll", typeof(RectTransform), typeof(ScrollRect));
+        scrollObject.transform.SetParent(parent, false);
+
+        RectTransform scrollRect = scrollObject.GetComponent<RectTransform>();
+        scrollRect.anchorMin = new Vector2(0f, 0f);
+        scrollRect.anchorMax = new Vector2(1f, 1f);
+        scrollRect.offsetMin = new Vector2(18f, 58f);
+        scrollRect.offsetMax = new Vector2(-18f, -46f);
+
+        GameObject viewport = new GameObject("Viewport", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Mask));
+        viewport.transform.SetParent(scrollObject.transform, false);
+        RectTransform viewportRect = viewport.GetComponent<RectTransform>();
+        viewportRect.anchorMin = Vector2.zero;
+        viewportRect.anchorMax = Vector2.one;
+        viewportRect.offsetMin = Vector2.zero;
+        viewportRect.offsetMax = Vector2.zero;
+        viewport.GetComponent<Image>().color = Color.clear;
+        viewport.GetComponent<Mask>().showMaskGraphic = false;
+
+        GameObject content = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+        content.transform.SetParent(viewport.transform, false);
+        RectTransform contentRect = content.GetComponent<RectTransform>();
+        contentRect.anchorMin = new Vector2(0f, 1f);
+        contentRect.anchorMax = new Vector2(1f, 1f);
+        contentRect.pivot = new Vector2(0.5f, 1f);
+        contentRect.anchoredPosition = Vector2.zero;
+        contentRect.sizeDelta = Vector2.zero;
+
+        VerticalLayoutGroup vlg = content.GetComponent<VerticalLayoutGroup>();
+        vlg.spacing = 3f;
+        vlg.padding = new RectOffset(4, 4, 4, 4);
+        vlg.childAlignment = TextAnchor.UpperCenter;
+        vlg.childControlWidth = true;
+        vlg.childControlHeight = true;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        ContentSizeFitter fitter = content.GetComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        ScrollRect sr = scrollObject.GetComponent<ScrollRect>();
+        sr.viewport = viewportRect;
+        sr.content = contentRect;
+        sr.horizontal = false;
+        sr.vertical = true;
+        sr.scrollSensitivity = 28f;
+        sr.movementType = ScrollRect.MovementType.Elastic;
+
+        return contentRect;
+    }
+
+    private void ScrollToSelected()
+    {
+        if (bindingRowsScrollRoot == null) return;
+
+        GameObject selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+        if (selected == null) return;
+
+        ScrollRect scroll = bindingRowsScrollRoot.GetComponentInParent<ScrollRect>();
+        if (scroll == null || scroll.viewport == null) return;
+
+        RectTransform selectedRect = selected.GetComponent<RectTransform>();
+        if (selectedRect == null) return;
+
+        RectTransform content = scroll.content;
+        RectTransform viewport = scroll.viewport;
+
+        // selected position relative to content
+        Vector3 selectedWorldPos = selectedRect.position;
+        Vector3 contentWorldPos = content.position;
+
+        float viewportHeight = viewport.rect.height;
+        float contentHeight = content.rect.height;
+
+        if (contentHeight <= viewportHeight) return;
+
+        // convert to content-local Y
+        float selectedLocalY = content.InverseTransformPoint(selectedWorldPos).y;
+        // selectedLocalY is negative (content pivot top), so selected is at -selectedLocalY from top
+
+        float selectedFromTop = -selectedLocalY;
+        float selectedFromBottom = contentHeight - selectedFromTop;
+
+        float currentScrollPos = content.anchoredPosition.y;
+        float visibleTop = currentScrollPos;
+        float visibleBottom = currentScrollPos + viewportHeight;
+        float padding = 40f;
+
+        // check if selected is outside visible area
+        if (selectedFromTop < visibleTop + padding)
+        {
+            float newY = Mathf.Max(0f, selectedFromTop - padding);
+            content.anchoredPosition = new Vector2(content.anchoredPosition.x, newY);
+        }
+        else if (selectedFromBottom < (contentHeight - visibleBottom) + padding)
+        {
+            float newY = Mathf.Min(contentHeight - viewportHeight, selectedFromTop - viewportHeight + padding);
+            content.anchoredPosition = new Vector2(content.anchoredPosition.x, newY);
+        }
     }
 
     private TMP_Text CreateText(string name, Transform parent, string text, float fontSize, TextAlignmentOptions alignment)

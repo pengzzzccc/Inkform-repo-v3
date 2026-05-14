@@ -18,6 +18,11 @@ public class S_NPCEnemy : S_NPCbase
     [SerializeField] private float arrestRange = 1.5f;
     [SerializeField] private float stunDuration = 3f;
 
+    [Header("Vision Detection")]
+    [SerializeField] private float detectionViewDistance = 30f;
+    [SerializeField] private Vector2 visionOriginOffset = new Vector2(0f, 0.5f);
+    [SerializeField] private bool drawVisionGizmos = true;
+
     [Header("Aim (Sniper Shot)")]
     [SerializeField] private float attackWindupTime = 0.5f;
     [SerializeField] private float aimCooldownTime = 2f;
@@ -29,6 +34,13 @@ public class S_NPCEnemy : S_NPCbase
     [SerializeField] private Color aimColor = new Color(1f, 0.65f, 0f, 1f);
     [SerializeField] private Color arrestColor = Color.red;
     [SerializeField] private Color defaultColor = Color.white;
+
+    [Header("Facing Visual")]
+    [SerializeField] private bool showFacingIndicator = true;
+    [SerializeField] private Color facingIndicatorColor = new Color(0.1f, 0.95f, 1f, 1f);
+    [SerializeField] private Vector2 facingIndicatorOffset = new Vector2(0.35f, 0.25f);
+    [SerializeField] private float facingIndicatorSize = 0.18f;
+    [SerializeField] private float facingIndicatorLineWidth = 0.035f;
 
     [Header("Health")]
     [SerializeField, Min(1)] private int hitsToDie = 2;
@@ -90,6 +102,7 @@ public class S_NPCEnemy : S_NPCbase
     [SerializeField] private float airControlFactor = 0.5f;
     [SerializeField] private float playerAboveThreshold = 1f;
     [SerializeField] private float playerAboveMaxHeight = 4f;
+    [SerializeField] private float maxJumpHorizontalBoost = 3f;
     [SerializeField] private LayerMask jumpObstacleLayer = ~0;
 
     private enum State
@@ -145,6 +158,7 @@ public class S_NPCEnemy : S_NPCbase
     private RigidbodyType2D originalBodyType = RigidbodyType2D.Dynamic;
     private RigidbodyConstraints2D originalConstraints = RigidbodyConstraints2D.None;
     private float originalGravityScale = 0f;
+    private LineRenderer facingIndicatorLine;
 
     public bool IsStunned => currentState == State.Stunned;
     private bool UseRigidbodyMovement => npcRig != null && useRigidbodyMovement;
@@ -185,6 +199,8 @@ public class S_NPCEnemy : S_NPCbase
         }
 
         ValidatePlayerReference();
+        EnsureFacingIndicator();
+        UpdateFacingIndicator();
     }
 
     protected override void OnEnable()
@@ -235,6 +251,7 @@ public class S_NPCEnemy : S_NPCbase
         ExecuteMovement();
         UpdateTransformVerticalMovement();
         UpdateHitVisual();
+        UpdateFacingIndicator();
     }
 
     /// <summary>
@@ -277,13 +294,7 @@ public class S_NPCEnemy : S_NPCbase
 
     private void UpdatePatrolTransitions()
     {
-        if (S_SuspicionSystem.PlayerHidden)
-        {
-            return;
-        }
-
-        float dist = DistanceToPlayer();
-        if (dist <= chaseRange)
+        if (CanSeePlayer(detectionViewDistance))
         {
             EnterState(State.Chase);
         }
@@ -291,19 +302,14 @@ public class S_NPCEnemy : S_NPCbase
 
     private void UpdateChaseTransitions()
     {
-        if (S_SuspicionSystem.PlayerHidden)
+        bool canSeePlayer = CanSeePlayer(detectionViewDistance);
+        if (!canSeePlayer)
         {
             EnterState(State.Patrol);
             return;
         }
 
         float dist = DistanceToPlayer();
-
-        if (dist > loseRange)
-        {
-            EnterState(State.Patrol);
-            return;
-        }
 
         // Aim: stop, wind up 0.5s, fire one shot (only if cooldown elapsed)
         if (dist <= attackRange && aimCooldownTimer <= 0f)
@@ -316,7 +322,7 @@ public class S_NPCEnemy : S_NPCbase
 
     private void UpdateAimTransitions()
     {
-        if (S_SuspicionSystem.PlayerHidden)
+        if (!CanSeePlayer(detectionViewDistance))
         {
             EnterState(State.Patrol);
             return;
@@ -334,7 +340,7 @@ public class S_NPCEnemy : S_NPCbase
 
     private void UpdateArrestTransitions()
     {
-        if (S_SuspicionSystem.PlayerHidden)
+        if (!CanSeePlayer(detectionViewDistance))
         {
             EnterState(State.Patrol);
             return;
@@ -355,6 +361,64 @@ public class S_NPCEnemy : S_NPCbase
         {
             TriggerArrest();
         }
+    }
+
+    private bool CanSeePlayer(float maxViewDistance)
+    {
+        if (S_SuspicionSystem.PlayerHidden || playerTransform == null)
+            return false;
+
+        Vector2 origin = GetVisionOrigin();
+        Vector2 target = playerTransform.position;
+        Vector2 toPlayer = target - origin;
+
+        if (toPlayer.sqrMagnitude <= 0.0001f)
+            return true;
+
+        if (maxViewDistance > 0f && toPlayer.sqrMagnitude > maxViewDistance * maxViewDistance)
+            return false;
+
+        if (Mathf.Abs(toPlayer.x) > 0.01f)
+        {
+            bool playerOnRight = toPlayer.x > 0f;
+            if (playerOnRight != (GetFacingDirectionX() > 0f))
+                return false;
+        }
+
+        RaycastHit2D[] hits = Physics2D.LinecastAll(origin, target);
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider2D hitCollider = hits[i].collider;
+            if (hitCollider == null)
+                continue;
+
+            if (hitCollider == npcCol || hitCollider.transform == playerTransform || hitCollider.attachedRigidbody != null && hitCollider.attachedRigidbody.transform == playerTransform)
+                continue;
+
+            if (hitCollider.GetComponentInParent<S_Player>() != null)
+                continue;
+
+            if (hitCollider.isTrigger && hitCollider.GetComponentInParent<S_HideSpot>() == null)
+                continue;
+
+            if (hitCollider.GetComponentInParent<S_HideSpot>() != null)
+                return false;
+        }
+
+        return true;
+    }
+
+    private Vector2 GetVisionOrigin()
+    {
+        return transform.TransformPoint(visionOriginOffset);
+    }
+
+    private float GetFacingDirectionX()
+    {
+        if (Application.isPlaying)
+            return facingRight ? 1f : -1f;
+
+        return transform.localScale.x >= 0f ? 1f : -1f;
     }
 
     private void EnterState(State newState)
@@ -637,12 +701,6 @@ public class S_NPCEnemy : S_NPCbase
 
     private void ExecutePatrol()
     {
-        if (waypoints != null && waypoints.Length > 0)
-        {
-            ExecuteWaypointPatrol();
-            return;
-        }
-
         ExecuteIdleWandering();
     }
 
@@ -675,11 +733,15 @@ public class S_NPCEnemy : S_NPCbase
     {
         // Don't wander in the air 鈥?wait for ground
         if (!isGrounded)
+        {
+            StopHorizontalMovement();
             return;
+        }
 
         if (wanderPauseTimer > 0f)
         {
             wanderPauseTimer -= Time.deltaTime;
+            StopHorizontalMovement();
             return;
         }
 
@@ -687,25 +749,58 @@ public class S_NPCEnemy : S_NPCbase
         {
             wanderWalkTimer -= Time.deltaTime;
 
-            // Check boundary 鈥?if too far from spawn, turn around
+            // Check boundary 鈥?if close to the wander edge, return toward spawn.
             Vector2 toSpawn = spawnPosition - (Vector2)transform.position;
-            if (toSpawn.magnitude > wanderRadius)
-                wanderDirection = toSpawn.normalized;
+            float distanceFromSpawn = Mathf.Abs(transform.position.x - spawnPosition.x);
+            float returnThreshold = Mathf.Max(0f, wanderRadius * 0.85f);
+            if (wanderRadius > 0f && distanceFromSpawn >= returnThreshold && Mathf.Abs(toSpawn.x) > 0.01f)
+                wanderDirection = toSpawn.x > 0f ? Vector2.right : Vector2.left;
 
-            MoveHorizontally(wanderDirection.x * patrolSpeed);
-            FlipSprite(wanderDirection.x);
+            float moveDir = wanderDirection.x >= 0f ? 1f : -1f;
+            if (!HasGroundAhead(moveDir))
+            {
+                float oppositeDir = -moveDir;
+                if (HasGroundAhead(oppositeDir))
+                {
+                    moveDir = oppositeDir;
+                    wanderDirection = moveDir > 0f ? Vector2.right : Vector2.left;
+                }
+                else
+                {
+                    StopHorizontalMovement();
+                    wanderWalkTimer = 0f;
+                    wanderPauseTimer = Random.Range(wanderPauseTimeMin, wanderPauseTimeMax);
+                    return;
+                }
+            }
+
+            MoveHorizontally(moveDir * patrolSpeed);
+            FlipSprite(moveDir);
 
             if (wanderWalkTimer <= 0f)
             {
+                StopHorizontalMovement();
                 wanderPauseTimer = Random.Range(wanderPauseTimeMin, wanderPauseTimeMax);
             }
             return;
         }
 
-        // Start new walk cycle 鈥?pick random direction
-        float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
-        wanderDirection = new Vector2(Mathf.Cos(angle), 0f).normalized;
+        // Start new walk cycle 鈥?pick a 2D side-scroller direction.
+        wanderDirection = Random.value < 0.5f ? Vector2.left : Vector2.right;
         wanderWalkTimer = Random.Range(wanderWalkTimeMin, wanderWalkTimeMax);
+    }
+
+    private bool HasGroundAhead(float directionX)
+    {
+        if (npcCol == null)
+            return true;
+
+        float dir = directionX >= 0f ? 1f : -1f;
+        float probeDistance = Mathf.Max(0.1f, gapDetectDistance);
+        Vector2 origin = (Vector2)transform.position + Vector2.right * dir * probeDistance + Vector2.up * gapDetectHeight;
+        float rayDistance = gapDetectHeight * 2f + 1f;
+        RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, rayDistance, groundLayer);
+        return hit.collider != null;
     }
 
     private void ExecuteChase()
@@ -903,6 +998,8 @@ public class S_NPCEnemy : S_NPCbase
 
         if (disableColliderOnDeath && npcCol != null)
             npcCol.enabled = false;
+
+        UpdateFacingIndicator();
     }
 
     private void RestoreAliveState()
@@ -928,6 +1025,8 @@ public class S_NPCEnemy : S_NPCbase
             npcRig.linearVelocity = Vector2.zero;
             npcRig.angularVelocity = 0f;
         }
+
+        UpdateFacingIndicator();
     }
 
     protected override void HandleGameStart()
@@ -967,7 +1066,7 @@ public class S_NPCEnemy : S_NPCbase
             return;
         }
 
-        if (currentState != State.Chase && currentState != State.Arrest && currentState != State.Patrol)
+        if (currentState != State.Chase && currentState != State.Arrest)
         {
             shouldJump = false;
             return;
@@ -1067,6 +1166,7 @@ public class S_NPCEnemy : S_NPCbase
             outJumpForce += dy * 2f;
 
         outHorizBoost = dx > gapDetectDistance ? dx * 1.5f : 0f;
+        outHorizBoost = Mathf.Clamp(outHorizBoost, 0f, maxJumpHorizontalBoost);
     }
 
     private void ExecuteJump()
@@ -1078,6 +1178,7 @@ public class S_NPCEnemy : S_NPCbase
 
         if (UseRigidbodyMovement)
         {
+            cachedHorizBoost = Mathf.Clamp(cachedHorizBoost, 0f, maxJumpHorizontalBoost);
             npcRig.linearVelocity = new Vector2(npcRig.linearVelocity.x, 0f);
             npcRig.AddForce(Vector2.up * cachedJumpForce, ForceMode2D.Impulse);
 
@@ -1106,15 +1207,76 @@ public class S_NPCEnemy : S_NPCbase
         Debug.Log($"[{npcName}] state={currentState} ground={isGrounded} {pathStr} {posStr}");
     }
 
+    private void EnsureFacingIndicator()
+    {
+        if (facingIndicatorLine != null)
+            return;
+
+        Transform existing = transform.Find("FacingIndicator");
+        GameObject indicatorObject = existing != null ? existing.gameObject : new GameObject("FacingIndicator");
+        indicatorObject.transform.SetParent(transform, false);
+
+        facingIndicatorLine = indicatorObject.GetComponent<LineRenderer>();
+        if (facingIndicatorLine == null)
+            facingIndicatorLine = indicatorObject.AddComponent<LineRenderer>();
+
+        facingIndicatorLine.useWorldSpace = false;
+        facingIndicatorLine.loop = false;
+        facingIndicatorLine.positionCount = 4;
+        facingIndicatorLine.textureMode = LineTextureMode.Stretch;
+        facingIndicatorLine.alignment = LineAlignment.View;
+        facingIndicatorLine.startWidth = facingIndicatorLineWidth;
+        facingIndicatorLine.endWidth = facingIndicatorLineWidth;
+        facingIndicatorLine.startColor = facingIndicatorColor;
+        facingIndicatorLine.endColor = facingIndicatorColor;
+        facingIndicatorLine.material = new Material(Shader.Find("Sprites/Default"));
+
+        if (npcSprite != null)
+        {
+            facingIndicatorLine.sortingLayerID = npcSprite.sortingLayerID;
+            facingIndicatorLine.sortingOrder = npcSprite.sortingOrder + 1;
+        }
+    }
+
+    private void UpdateFacingIndicator()
+    {
+        EnsureFacingIndicator();
+        if (facingIndicatorLine == null)
+            return;
+
+        bool shouldShow = showFacingIndicator && isActive && currentState != State.Disabled;
+        facingIndicatorLine.enabled = shouldShow;
+        if (!shouldShow)
+            return;
+
+        float dir = facingRight ? 1f : -1f;
+        Vector2 basePos = new Vector2(Mathf.Abs(facingIndicatorOffset.x) * dir, facingIndicatorOffset.y);
+        float size = Mathf.Max(0.01f, facingIndicatorSize);
+
+        facingIndicatorLine.startWidth = facingIndicatorLineWidth;
+        facingIndicatorLine.endWidth = facingIndicatorLineWidth;
+        facingIndicatorLine.startColor = facingIndicatorColor;
+        facingIndicatorLine.endColor = facingIndicatorColor;
+
+        facingIndicatorLine.SetPosition(0, basePos + new Vector2(-dir * size, size * 0.6f));
+        facingIndicatorLine.SetPosition(1, basePos + new Vector2(dir * size, 0f));
+        facingIndicatorLine.SetPosition(2, basePos + new Vector2(-dir * size, -size * 0.6f));
+        facingIndicatorLine.SetPosition(3, basePos + new Vector2(-dir * size * 0.35f, 0f));
+    }
+
     private void OnDrawGizmosSelected()
     {
         // Draw ranges in editor
         Gizmos.color = Color.green;
         Gizmos.DrawWireSphere(transform.position, chaseRange);
+        Gizmos.color = new Color(0.35f, 0.8f, 1f, 0.7f);
+        Gizmos.DrawWireSphere(transform.position, loseRange);
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRange);
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, arrestRange);
+
+        DrawVisionGizmos();
 
         // Draw waypoint path
         if (waypoints != null && waypoints.Length > 1)
@@ -1132,5 +1294,81 @@ public class S_NPCEnemy : S_NPCbase
             }
         }
     }
-}
 
+    private void DrawVisionGizmos()
+    {
+        if (!drawVisionGizmos)
+            return;
+
+        Vector2 origin = GetVisionOrigin();
+        float dir = GetFacingDirectionX();
+        Vector2 forward = Vector2.right * dir;
+        Vector2 end = origin + forward * Mathf.Max(0f, detectionViewDistance);
+
+        Gizmos.color = new Color(0.1f, 0.85f, 1f, 0.9f);
+        Gizmos.DrawLine(origin, end);
+        Gizmos.DrawWireSphere(origin, 0.08f);
+
+        Vector2 arrowBack = end - forward * 0.45f;
+        Gizmos.DrawLine(end, arrowBack + Vector2.up * 0.18f);
+        Gizmos.DrawLine(end, arrowBack + Vector2.down * 0.18f);
+
+        Transform playerBody = playerTransform;
+        if (playerBody == null && S_Player.Instance != null)
+            playerBody = S_Player.Instance.GetBodyTransform();
+
+        if (playerBody == null)
+            return;
+
+        bool canSee = Application.isPlaying
+            ? CanSeePlayer(detectionViewDistance)
+            : CanSeePointForGizmos(origin, playerBody.position, detectionViewDistance);
+
+        Gizmos.color = canSee
+            ? new Color(0.2f, 1f, 0.25f, 0.9f)
+            : new Color(1f, 0.25f, 0.2f, 0.75f);
+        Gizmos.DrawLine(origin, playerBody.position);
+    }
+
+    private bool CanSeePointForGizmos(Vector2 origin, Vector2 target, float maxViewDistance)
+    {
+        if (S_SuspicionSystem.PlayerHidden)
+            return false;
+
+        Vector2 toTarget = target - origin;
+        if (toTarget.sqrMagnitude <= 0.0001f)
+            return true;
+
+        if (maxViewDistance > 0f && toTarget.sqrMagnitude > maxViewDistance * maxViewDistance)
+            return false;
+
+        if (Mathf.Abs(toTarget.x) > 0.01f)
+        {
+            bool targetOnRight = toTarget.x > 0f;
+            if (targetOnRight != (GetFacingDirectionX() > 0f))
+                return false;
+        }
+
+        RaycastHit2D[] hits = Physics2D.LinecastAll(origin, target);
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider2D hitCollider = hits[i].collider;
+            if (hitCollider == null)
+                continue;
+
+            if (hitCollider == npcCol)
+                continue;
+
+            if (hitCollider.GetComponentInParent<S_Player>() != null)
+                continue;
+
+            if (hitCollider.isTrigger && hitCollider.GetComponentInParent<S_HideSpot>() == null)
+                continue;
+
+            if (hitCollider.GetComponentInParent<S_HideSpot>() != null)
+                return false;
+        }
+
+        return true;
+    }
+}

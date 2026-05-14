@@ -63,6 +63,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   scene: 
+  startMenuSceneName: Start
+  levelSceneNames:
+  - Playtest1
+  - Playtest1
+  currentLevelIndex: -1
 --- !u!114 &4200383022092285922
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -96,7 +101,7 @@ MonoBehaviour:
   npcPrefab: {fileID: 0}
   spawnInterval: 30
   npcsPerSide: 2
-  maxAliveNpcs: 20
+  maxAliveNpcs: 4
   sideOffset: 2
   groundDetectDistance: 10
   groundLayer:

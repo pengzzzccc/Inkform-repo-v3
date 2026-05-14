@@ -28,8 +28,14 @@ S_GameManager (per-scene)
 S_AudioManager (per-scene)
 |-- BGM playback (loop)
 |-- SFX playback (one-shot)
-|-- Listens: OnPlaySFX, OnBGMChange
+|-- Platform Alarm (loop, triggered by section descent)
+|-- Listens: OnPlaySFX, OnBGMChange, OnSectionDescentStarted, OnSectionDescentCompleted
 `-- Volume control via Inspector Range sliders
+
+S_SectionAlarmEffect (per-scene)
+|-- Visual alarm effect during section descent
+|-- Listens: OnSectionDescentStarted, OnSectionDescentCompleted
+`-- Screen flash + tint effect
 
 S_InputBindingManager (DontDestroyOnLoad)
 |-- Owns one shared InputSystem_Actions instance
@@ -46,6 +52,7 @@ S_InputBindingManager (DontDestroyOnLoad)
 | S_InputBindingManager | DontDestroyOnLoad (survives scene loads) | Auto-created on first access |
 | S_GameManager | Per-scene (destroyed on scene load) | Create in each gameplay scene |
 | S_AudioManager | Per-scene (destroyed on scene load) | Create in each gameplay scene |
+| S_SectionAlarmEffect | Per-scene (destroyed on scene load) | Create in each gameplay scene |
 
 ### 2.3 Game Flow Diagram
 
@@ -84,6 +91,7 @@ Game Exit:
 | Field | Type | Description |
 |-------|------|-------------|
 | scene | string | Scene name to load on game start |
+| loadScene | bool | Whether to load a scene on GameStart (default false) |
 
 **Runtime State**:
 | Field | Type | Description |
@@ -294,3 +302,47 @@ This keeps the singleton stable across scene loads and protects against accident
 ### 8.3 Integration with S_HideSpot
 
 `S_HideSpot` calls `player.SetMovementLocked(true)` when hiding and `player.SetMovementLocked(false)` when exiting. This replaces the fallback Rigidbody freeze approach.
+
+---
+
+## 9. S_AudioManager Platform Alarm
+
+`S_AudioManager` supports a looping platform alarm sound that plays during section descent events.
+
+### 9.1 Serialized Fields
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| platformAlarmClip | - | AudioClip for the looping alarm |
+| platformAlarmVolumeMultiplier | 1f | Volume multiplier applied on top of sfxVolume |
+
+### 9.2 Behavior
+
+```
+OnSectionDescentStarted(int)
+    |-- If not already playing: set clip, loop=true, volume = sfxVolume * multiplier, Play()
+
+OnSectionDescentCompleted(int)
+    |-- Stop alarm, clear clip
+```
+
+### 9.3 Volume
+
+Alarm volume = `sfxVolume * platformAlarmVolumeMultiplier`. Adjusting `sfxVolume` in Inspector affects both SFX and alarm proportionally.
+
+---
+
+## 10. S_SectionAlarmEffect
+
+`S_SectionAlarmEffect` provides a visual alarm effect (screen flash/tint) during section descent.
+
+### 10.1 Event Subscriptions
+
+| Event | Handler |
+|-------|---------|
+| `OnSectionDescentStarted` | Activate visual alarm effect |
+| `OnSectionDescentCompleted` | Deactivate visual alarm effect |
+
+### 10.2 Setup
+
+Attach to a GameObject in the scene. The effect activates automatically when section descent begins.

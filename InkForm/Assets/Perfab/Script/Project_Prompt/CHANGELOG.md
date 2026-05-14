@@ -1,5 +1,63 @@
 # InkForm — Changelog
 
+## v0.7.2 - Key & Exit Gate System, UI Fixes (2026-05-15)
+
+### New Features
+- **Key & Exit Gate System**: Collect keys to unlock the exit gate and load the next level
+  - `S_Key`: Collectible key items with trigger-based collection, persists across deaths within same level, resets on scene load
+  - `S_ExitGate`: Locked gate that unlocks when `collectedKeys >= requiredKeys`, player contact loads next level via `S_GameManager.LoadNextLevel()`
+  - `S_GameEvent`: Added `OnKeyCollected` and `OnKeyCountChanged` events
+  - `S_UIManager`: Added `keyCountText` field for displaying "collected / total" HUD
+  - Keys use `HashSet<S_Key>` static tracking, `SceneManager.sceneLoaded` hook for auto-reset
+
+### Bug Fixes
+- **Controls Mapping Panel**: Fixed panel not displaying binding rows (only footer buttons visible)
+  - Root cause: `VerticalLayoutGroup` on ControlsPanel conflicted with `ScrollRect` height allocation
+  - Fix: Replaced VLG with pure anchor-based positioning for Title, ScrollRect, and Footer
+  - ScrollRect now uses anchor offsets (top: -46px for Title, bottom: +58px for Footer)
+  - FooterContainer uses anchor-bottom + HorizontalLayoutGroup for button arrangement
+  - All previous improvements preserved: ScrollRect scroll support, ScrollToSelected, raycastTarget=false, Hide/Camera Control mapping rows
+
+### Documentation
+- **Level_Objects_Design.md**: Added §11 Key & Exit Gate System with full S_Key and S_ExitGate documentation
+- **Game_Event_System_Design.md**: Added OnKeyCollected and OnKeyCountChanged to event inventory, invocation methods, and §5.5 Key & Gate Events category
+
+---
+
+## v0.7.1 - Documentation Sync & Platform Cable (2026-05-15)
+
+### New Features
+- **Dual Platform Cable** (`S_PlatformCableVisual`): Platform cables now render two lines instead of one
+  - New `cableOffset` parameter controls horizontal spacing from platform center
+  - Cable Y follows `topAnchor` height, X stays at platform center (no horizontal drift)
+  - Cable length dynamically adjusts as platform moves up/down
+  - Auto-creates `CableLeft` and `CableRight` child objects with LineRenderers
+  - Removes legacy single LineRenderer on main object
+  - `[DefaultExecutionOrder(100)]` ensures cables update after platform movement
+
+### Documentation (Full Sync)
+Comprehensive audit of all 9 design documents against 40+ source files:
+
+- **Player_Controller_Design.md**: Added §10 Camera Control System, §11 Movement Lock System. Updated §1 overview, §2.1 dependencies (CameraControl, procedural renderer, dynamic collider), §3.1 fields (cameraController), §3.2 CameraMove fields (manualMoveSpeed, manualMaxDistanceFromTarget, returnSmoothSpeed, followDeadZoneRadius), §3.1 public/private methods (SetMovementLocked, BeginCameraControl, ReleaseSprintCharge, ApplyParalyze, ForceSprintBreakthrough, etc.), §4 input table (CameraControl action), §4 input flow diagram
+
+- **Skill_System_Design.md**: Added §9 Camera Control Skill. Updated §1 overview (CameraControl skill), §2.1 class hierarchy (S_CameraControlSkill)
+
+- **Level_Objects_Design.md**: Added §7 Button Door System, §8 Hide Spot, §9 Section Goal, §10 Platform Cable Visual. Updated §2 object inventory with 6 new entries
+
+- **Manager_Systems_Design.md**: Added §9 S_AudioManager Platform Alarm, §10 S_SectionAlarmEffect. Updated §2.1 architecture (S_SectionAlarmEffect), §2.2 lifecycle table, §3.1 S_GameManager (loadScene field)
+
+- **Game_Event_System_Design.md**: Expanded from 11 to 19 events. Added OnSectionDescentStarted, OnSectionDescentCompleted, OnNPCInteract, OnSuspicionChanged, OnAlertTriggered, OnArrestTriggered, OnStoryTrigger. Updated §2.2 inventory, §3.1 declarations, §3.1 invocation methods
+
+- **NPC_System_Design.md**: Added §10 NPC Story System, §11 NPC Camera System
+
+- **Moving_Platform_Component_Design.md**: Added §9 S_PlatformCableVisual quick reference
+
+- **Level_Section_System_Design.md**: Added §8 Section Descent Events
+
+- **Suspicion_System_Design.md**: No changes needed (already complete)
+
+---
+
 ## v0.7.0 - Sprint Charge, NPC Jumping & Wave Spawner (2026-05-13)
 
 ### New Features
