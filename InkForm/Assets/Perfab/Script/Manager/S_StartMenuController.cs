@@ -22,6 +22,8 @@ public class S_StartMenuController : MonoBehaviour
     private Button cancelRebindButton;
     private Coroutine rebindStartCoroutine;
     private BindingButtonView activeRebind;
+    private InputAction cancelAction;
+    private Button startButton;
 
     private readonly List<BindingButtonView> bindingButtons = new List<BindingButtonView>();
     private readonly List<Button> settingsButtons = new List<Button>();
@@ -65,6 +67,7 @@ public class S_StartMenuController : MonoBehaviour
     {
         EnsurePersistentManagers();
         EnsureEventSystem();
+        cancelAction = S_InputBindingManager.Instance.Actions.UI.Cancel;
         BuildStartMenu();
         Time.timeScale = 1f;
     }
@@ -89,8 +92,8 @@ public class S_StartMenuController : MonoBehaviour
         if (settingsPanel != null
             && settingsPanel.gameObject.activeSelf
             && !S_InputBindingManager.Instance.IsRebinding
-            && Keyboard.current != null
-            && Keyboard.current.escapeKey.wasPressedThisFrame)
+            && cancelAction != null
+            && cancelAction.WasPressedThisFrame())
         {
             ShowMainMenu();
         }
@@ -126,7 +129,7 @@ public class S_StartMenuController : MonoBehaviour
 
         StandaloneInputModule legacyModule = eventSystem.GetComponent<StandaloneInputModule>();
         if (legacyModule != null)
-            legacyModule.enabled = false;
+            Destroy(legacyModule);
 
         InputSystemUIInputModule inputModule = eventSystem.GetComponent<InputSystemUIInputModule>();
         if (inputModule == null)
@@ -162,7 +165,7 @@ public class S_StartMenuController : MonoBehaviour
 
         CreateInkformMascot(mainMenuRoot);
 
-        Button startButton = CreateMenuButton(mainMenuRoot, "start", new Vector2(350f, 145f), new Vector2(300f, 58f));
+        startButton = CreateMenuButton(mainMenuRoot, "start", new Vector2(350f, 145f), new Vector2(300f, 58f));
         Button settingsButton = CreateMenuButton(mainMenuRoot, "Setting", new Vector2(455f, 0f), new Vector2(330f, 64f));
         Button exitButton = CreateMenuButton(mainMenuRoot, "Exit", new Vector2(305f, -155f), new Vector2(310f, 58f));
 
@@ -311,6 +314,7 @@ public class S_StartMenuController : MonoBehaviour
         colors.disabledColor = new Color(0.35f, 0.39f, 0.42f, 0.55f);
         button.colors = colors;
         button.targetGraphic = image;
+        ApplyAutomaticNavigation(button);
 
         TMP_Text text = CreateText("Label", buttonObject.transform, label, 22f, TextAlignmentOptions.Center);
         RectTransform textRect = text.GetComponent<RectTransform>();
@@ -609,6 +613,7 @@ public class S_StartMenuController : MonoBehaviour
         colors.disabledColor = new Color(0.24f, 0.28f, 0.33f, 0.65f);
         button.colors = colors;
         button.targetGraphic = image;
+        ApplyAutomaticNavigation(button);
 
         TMP_Text text = CreateText("Text", buttonObject.transform, label, 14f, TextAlignmentOptions.Center);
         Stretch(text.GetComponent<RectTransform>());
@@ -633,6 +638,7 @@ public class S_StartMenuController : MonoBehaviour
         mainMenuRoot.gameObject.SetActive(true);
         activeRebind = null;
         SetSettingsInteractable(true);
+        SelectButton(startButton);
     }
 
     private void BeginRebind(BindingButtonView view)
@@ -751,6 +757,14 @@ public class S_StartMenuController : MonoBehaviour
 
         EventSystem.current.SetSelectedGameObject(null);
         EventSystem.current.SetSelectedGameObject(button.gameObject);
+    }
+
+    private void ApplyAutomaticNavigation(Selectable selectable)
+    {
+        if (selectable == null) return;
+        Navigation nav = selectable.navigation;
+        nav.mode = Navigation.Mode.Automatic;
+        selectable.navigation = nav;
     }
 
     private TMP_Text CreateText(string name, Transform parent, string text, float size, TextAlignmentOptions alignment)
