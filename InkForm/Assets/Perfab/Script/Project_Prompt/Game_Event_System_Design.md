@@ -47,6 +47,8 @@ Producer (invokes event)          Consumer (subscribes to event)
 | OnAlertTriggered | Transform npc | S_SuspicionSystem | S_LevelSectionController |
 | OnArrestTriggered | none | S_SuspicionSystem | S_GameManager |
 | OnStoryTrigger | string triggerID | S_NPCStory | (future systems) |
+| OnKeyCollected | none | S_Key | S_ExitGate |
+| OnKeyCountChanged | int collected, int total | S_Key | S_ExitGate, S_UIManager |
 
 ### 2.3 Event Flow Diagrams
 
@@ -115,6 +117,10 @@ public static event Action<float> OnSuspicionChanged;
 public static event Action<Transform> OnAlertTriggered;
 public static event Action OnArrestTriggered;
 public static event Action<string> OnStoryTrigger;
+
+// Key & Gate events
+public static event Action OnKeyCollected;
+public static event Action<int, int> OnKeyCountChanged;
 ```
 
 **Invocation Methods**:
@@ -138,6 +144,8 @@ public static event Action<string> OnStoryTrigger;
 | `AlertTriggered(Transform)` | Transform npc | `OnAlertTriggered` | NPC triggered alert |
 | `ArrestTriggered()` | none | `OnArrestTriggered` | Player was arrested |
 | `StoryTrigger(string)` | string triggerID | `OnStoryTrigger` | Story event triggered |
+| `KeyCollected()` | none | `OnKeyCollected` | Player collected a key |
+| `KeyCountChanged(int, int)` | int collected, int total | `OnKeyCountChanged` | Key count updated |
 
 All methods use null-conditional invocation (`?.Invoke()`) for safety — no null reference exceptions if no subscribers.
 
@@ -244,6 +252,14 @@ These events manage level section progression. They are consumed by `S_LevelSect
 |-------------|---------------|
 | Player enters section StartTrigger | `S_GameEvent.SectionStart(sectionIndex)` |
 | Player enters section EndTrigger | `S_GameEvent.SectionEnd(sectionIndex)` |
+
+### 5.5 Key & Gate Events
+These events manage the key collection and exit gate system. Keys are produced by `S_Key`, consumed by `S_ExitGate` and `S_UIManager`.
+
+| When to use | Event to fire |
+|-------------|---------------|
+| Player collects a key | `S_GameEvent.KeyCollected()` |
+| Key count UI needs update | `S_GameEvent.KeyCountChanged(collected, total)` |
 
 ---
 

@@ -1,5 +1,29 @@
 # InkForm — Changelog
 
+## v0.7.2 - Key & Exit Gate System, UI Fixes (2026-05-15)
+
+### New Features
+- **Key & Exit Gate System**: Collect keys to unlock the exit gate and load the next level
+  - `S_Key`: Collectible key items with trigger-based collection, persists across deaths within same level, resets on scene load
+  - `S_ExitGate`: Locked gate that unlocks when `collectedKeys >= requiredKeys`, player contact loads next level via `S_GameManager.LoadNextLevel()`
+  - `S_GameEvent`: Added `OnKeyCollected` and `OnKeyCountChanged` events
+  - `S_UIManager`: Added `keyCountText` field for displaying "collected / total" HUD
+  - Keys use `HashSet<S_Key>` static tracking, `SceneManager.sceneLoaded` hook for auto-reset
+
+### Bug Fixes
+- **Controls Mapping Panel**: Fixed panel not displaying binding rows (only footer buttons visible)
+  - Root cause: `VerticalLayoutGroup` on ControlsPanel conflicted with `ScrollRect` height allocation
+  - Fix: Replaced VLG with pure anchor-based positioning for Title, ScrollRect, and Footer
+  - ScrollRect now uses anchor offsets (top: -46px for Title, bottom: +58px for Footer)
+  - FooterContainer uses anchor-bottom + HorizontalLayoutGroup for button arrangement
+  - All previous improvements preserved: ScrollRect scroll support, ScrollToSelected, raycastTarget=false, Hide/Camera Control mapping rows
+
+### Documentation
+- **Level_Objects_Design.md**: Added §11 Key & Exit Gate System with full S_Key and S_ExitGate documentation
+- **Game_Event_System_Design.md**: Added OnKeyCollected and OnKeyCountChanged to event inventory, invocation methods, and §5.5 Key & Gate Events category
+
+---
+
 ## v0.7.1 - Documentation Sync & Platform Cable (2026-05-15)
 
 ### New Features

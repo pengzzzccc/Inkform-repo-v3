@@ -129,7 +129,7 @@ public class S_StartMenuController : MonoBehaviour
 
         StandaloneInputModule legacyModule = eventSystem.GetComponent<StandaloneInputModule>();
         if (legacyModule != null)
-            Destroy(legacyModule);
+            DestroyImmediate(legacyModule);
 
         InputSystemUIInputModule inputModule = eventSystem.GetComponent<InputSystemUIInputModule>();
         if (inputModule == null)

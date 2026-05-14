@@ -22,6 +22,8 @@ Level objects are interactive elements placed in gameplay scenes. They include b
 | Hide Spot | S_HideSpot | Allows player to hide (locks movement, triggers suspicion system) |
 | Section Goal | S_SectionGoal | Trigger zone that signals section completion |
 | Platform Cable | S_PlatformCableVisual | Visual dual-cable rendering for moving platforms |
+| Key | S_Key | Collectible key for unlocking exit gate |
+| Exit Gate | S_ExitGate | Locked gate that loads next level when unlocked by keys |
 
 ---
 
@@ -399,3 +401,104 @@ The color updates in edit mode via `OnValidate()` and at runtime via `Awake()`. 
 3. Set `platformAttachPoint` to the platform's Transform
 4. Adjust `cableOffset` to control cable spacing
 5. Two child objects (`CableLeft`, `CableRight`) are auto-created with LineRenderers
+
+---
+
+## 11. Key & Exit Gate System
+
+### 11.1 S_Key.cs
+
+**Type**: MonoBehaviour (attach to key collectible)
+
+**Behavior**: When the player enters the key's trigger area, the key is collected (hidden via `SetActive(false)`). Fires `S_GameEvent.KeyCollected()` and `S_GameEvent.KeyCountChanged(collected, total)`. Keys persist across deaths within the same level — they only reset when a new scene loads.
+
+**Serialized Fields**: None (auto-managed).
+
+**Static API**:
+| Property/Method | Returns | Description |
+|---|---|---|
+| `TotalKeys` | int | Total keys in current scene |
+| `CollectedKeys` | int | Number of collected keys |
+
+**Collection Flow**:
+```
+OnTriggerEnter2D(collision)
+    |-- isCollected ? → skip
+    |-- CompareTag("Player") ?
+    |   |-- YES:
+    |   |   |-- collectedCount++
+    |   |   |-- SetActive(false)
+    |   |   |-- S_GameEvent.KeyCollected()
+    |   |   `-- S_GameEvent.KeyCountChanged(collected, total)
+    |   `-- NO: do nothing
+```
+
+**Scene Reset**: On `SceneManager.sceneLoaded`, `collectedCount` resets to 0. `allKeys` HashSet is repopulated by each key's `Awake()`.
+
+**Setup Instructions**:
+1. Create a sprite GameObject for the key visual
+2. Add `CircleCollider2D` or `BoxCollider2D` — set **Is Trigger** = `true`
+3. Add `S_Key` component
+4. Place in scene (repeat for multiple keys)
+
+**Important Notes**:
+- Keys are disabled (`SetActive(false)`) on collection, not destroyed — safe for static tracking
+- Key count persists across player death within the same level
+- `allKeys` HashSet automatically cleans up via `OnDestroy()` when scene unloads
+
+---
+
+### 11.2 S_ExitGate.cs
+
+**Type**: MonoBehaviour (attach to exit gate trigger)
+
+**Behavior**: A locked gate that unlocks when enough keys are collected. When unlocked and the player enters its trigger, loads the next level via `S_GameManager.Instance.LoadNextLevel()`.
+
+**Serialized Fields**:
+| Field | Default | Description |
+|---|---|---|
+| requiredKeys | 1 | Number of keys needed to unlock |
+| gateSprite | (auto-find) | SpriteRenderer for visual feedback |
+| lockedColor | (0.5, 0.5, 0.5, 1) | Color when locked |
+| unlockedColor | (0.3, 1.0, 0.4, 1) | Color when unlocked |
+
+**Unlock Flow**:
+```
+OnEnable()
+    |-- Subscribe to S_GameEvent.OnKeyCountChanged
+    |-- CheckUnlock() — immediate check if keys already collected
+
+HandleKeyCountChanged(collected, total)
+    |-- collected >= requiredKeys ?
+    |   |-- YES: SetUnlocked()
+    `-- NO: do nothing
+
+OnTriggerEnter2D(collision)
+    |-- isUnlocked ?
+    |   |-- YES:
+    |   |   |-- CompareTag("Player") ?
+    |   |   |   |-- YES: S_GameManager.Instance.LoadNextLevel()
+    |   |   |   `-- NO: do nothing
+    |   `-- NO: do nothing (locked, ignore contact)
+```
+
+**Setup Instructions**:
+1. Create a gate sprite GameObject
+2. Add `BoxCollider2D` — set **Is Trigger** = `true`
+3. Add `S_ExitGate` component
+4. Assign `gateSprite` (or auto-finds `SpriteRenderer` in children)
+5. Set `requiredKeys` in Inspector (e.g., 3 for a 3-key gate)
+6. Place in scene — gate locks/unlocks automatically based on key collection
+
+**Hierarchy Example**:
+```
+ExitGate
+├── Gate_Sprite     (SpriteRenderer, visual gate art)
+├── Collider_Zone   (BoxCollider2D, isTrigger = true, S_ExitGate)
+└── Lock_Indicator  (optional child SpriteRenderer for lock icon)
+```
+
+**Important Notes**:
+- Gate auto-checks key count on `OnEnable()` in case keys were collected before gate was active
+- Only one exit gate per level recommended (multiple gates share the same key counter)
+- Level progression uses `S_GameManager.levelSceneNames[]` — ensure scenes are registered
