@@ -10,12 +10,18 @@ Level objects are interactive elements placed in gameplay scenes. They include b
 
 | Object | Script | Description |
 |--------|--------|-------------|
-| Breakable Block | S_BreakableBlock | Destructible block (broken by solid-form player) |
+| Breakable Block | S_BreakableBlock | Destructible block (broken by sprinting solid-form player) |
 | Checkpoint | S_Checkpoint | Saves respawn position on player contact |
 | Pipeline | S_Pipline | Teleports fluid-form player to output position |
 | Moveable Block | S_MoveBlock | Slides between two points on trigger |
 | Trigger Helper | S_setTrigger | Detects block-tagged objects for S_MoveBlock |
 | Collision Events | S_coleve | Ground detection + lava hazard detection |
+| JumpPad | S_JumpPad | Launches player upward with configurable force + color feedback |
+| Button Door | S_ButtonDoor | Trigger button that activates a linked S_Door |
+| Door | S_Door | Opens/closes with animation when activated |
+| Hide Spot | S_HideSpot | Allows player to hide (locks movement, triggers suspicion system) |
+| Section Goal | S_SectionGoal | Trigger zone that signals section completion |
+| Platform Cable | S_PlatformCableVisual | Visual dual-cable rendering for moving platforms |
 
 ---
 
@@ -316,3 +322,80 @@ The JumpPad visual color is driven by that force:
 - Intermediate values: linear gradient between green and red
 
 The color updates in edit mode via `OnValidate()` and at runtime via `Awake()`. The script auto-finds a `SpriteRenderer` on the JumpPad object, so prefab setup does not require an extra serialized renderer reference.
+
+---
+
+## 7. Button Door System
+
+### 7.1 S_ButtonDoor.cs
+
+**Type**: MonoBehaviour (attach to trigger button)
+
+**Behavior**: When the player enters its trigger collider, activates the linked `S_Door`. One-shot activation (only triggers once).
+
+**Serialized Fields**:
+| Field | Type | Description |
+|-------|------|-------------|
+| doorSystem | S_Door | Reference to the door to activate (auto-finds in parent if null) |
+
+**Setup**: Add `BoxCollider2D` with `isTrigger = true`. Assign `doorSystem` or place as child of door.
+
+### 7.2 S_Door.cs
+
+**Type**: MonoBehaviour (attach to door object)
+
+**Behavior**: Opens/closes a door (moves child transform between two positions). Triggered by `S_ButtonDoor` or external calls.
+
+---
+
+## 8. Hide Spot
+
+`S_HideSpot` allows the player to hide in a designated area. When hiding:
+- Player movement is locked via `S_Player.SetMovementLocked(true)`
+- Suspicion system is notified
+- Player can exit by re-pressing input
+
+**Setup**: Add trigger Collider2D (`isTrigger = true`). Assign to appropriate suspicion zone.
+
+---
+
+## 9. Section Goal
+
+`S_SectionGoal` is a trigger zone that signals section completion when the player enters. Fires `S_GameEvent.SectionEnd(sectionIndex)`.
+
+---
+
+## 10. Platform Cable Visual
+
+`S_PlatformCableVisual` renders two visual cables connecting a top anchor point to a moving platform, creating a winch/cable aesthetic.
+
+### 10.1 Behavior
+
+- Two cables rendered via child `LineRenderer` objects (`CableLeft`, `CableRight`)
+- Top Y position synced from `topAnchor` (height only, X stays at platform center)
+- Bottom position synced from `platformAttachPoint` (platform position)
+- Cable length dynamically adjusts as platform moves up/down
+- `[DefaultExecutionOrder(100)]` ensures cables update after platform movement
+
+### 10.2 Serialized Fields
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| topAnchor | - | Transform for cable top anchor (Y position only) |
+| platformAttachPoint | - | Transform for cable bottom (usually the platform) |
+| cacheTopAnchorOnStart | false | Whether to cache top Y at Start (set false if top moves) |
+| cableOffset | 0.3f | Horizontal distance from platform center to each cable |
+| cableWidth | 0.05f | LineRenderer width for cables |
+| cableMaterial | - | Material override (falls back to Sprites/Default) |
+| sortingLayerName | "" | LineRenderer sorting layer |
+| sortingOrder | 4 | LineRenderer sorting order |
+| cableColor | (0.55, 0.58, 0.6, 1) | Cable color |
+| drawGizmos | true | Show gizmo preview in Scene view |
+
+### 10.3 Setup
+
+1. Attach to a moving platform GameObject (child or sibling)
+2. Create an empty `topAnchor` GameObject positioned where cables originate (e.g., ceiling)
+3. Set `platformAttachPoint` to the platform's Transform
+4. Adjust `cableOffset` to control cable spacing
+5. Two child objects (`CableLeft`, `CableRight`) are auto-created with LineRenderers

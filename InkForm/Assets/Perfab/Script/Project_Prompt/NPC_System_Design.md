@@ -349,3 +349,40 @@ Every spawnInterval seconds:
 3. Drag NPC prefab into `npcPrefab`
 4. Drag scene camera into `targetCamera`
 5. Adjust parameters as needed
+
+---
+
+## 10. NPC Story System
+
+`S_NPCStory` extends `S_NPCbase` and provides NPC dialogue/story trigger behavior with waypoint-based movement.
+
+### 10.1 Behavior
+
+NPC walks between waypoints, triggers story events when player enters interact range.
+
+### 10.2 Key Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| waypoints | Transform[] | Waypoint path for NPC movement |
+| storyTriggerID | string | ID passed to `S_GameEvent.StoryTrigger()` |
+| interactRange | float | Distance to trigger interaction |
+
+---
+
+## 11. NPC Camera System
+
+`S_NPCCamera` extends `S_NPCbase` and provides NPC-driven camera movement (e.g., cutscene cameras).
+
+### 11.1 Behavior
+
+Camera follows waypoints at configurable speed with wait times at each point.
+
+### 11.2 Key Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| waypoints | Transform[] | Camera path points |
+| patrolSpeed | float | Movement speed between points |
+| waitTime | float | Wait duration at each waypoint |
+| loopMode | bool | Whether camera loops back to start |

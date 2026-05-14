@@ -305,7 +305,19 @@ MovingPlatform (GameObject)
 
 ---
 
-## 8. Common Issues & Solutions
+## 9. S_PlatformCableVisual
+
+`S_PlatformCableVisual` renders two visual cables connecting a top anchor to the platform. See `Level_Objects_Design.md` §10 for full documentation.
+
+### Quick Reference
+- Attach as sibling/child of the platform
+- Set `topAnchor` (ceiling point) and `platformAttachPoint` (platform)
+- `cableOffset` controls horizontal cable spacing (default 0.3)
+- Cables update in `LateUpdate` with `[DefaultExecutionOrder(100)]`
+
+---
+
+## 10. Common Issues & Solutions
 
 | Issue | Solution |
 |-------|----------|

@@ -2,9 +2,9 @@
 
 ## 1. Overview
 
-The player controller (`S_Player`) is the core gameplay component managing movement, jumping, form switching, and integration with the skill system. It uses Unity's new Input System for input handling and Rigidbody2D for physics.
+The player controller (`S_Player`) is the core gameplay component managing movement, jumping, form switching, paralyze effects, sprint charging, camera control, and integration with the skill system. It uses Unity's new Input System for input handling and Rigidbody2D for physics.
 
-`S_CameraMove` provides smooth camera tracking that follows the player.
+`S_CameraMove` provides smooth camera tracking that follows the player, with support for manual camera control via the Camera Control skill.
 
 ### Core Gameplay Loop
 
@@ -12,8 +12,9 @@ The player controller (`S_Player`) is the core gameplay component managing movem
 Player starts in SOLID form
     |-- Move horizontally (WASD/Left Stick)
     |-- Jump (Space) with cooldown + max jump count
-    |-- Sprint skill (Left Shift) — burst of forward momentum
+    |-- Sprint skill (Left Shift) — hold-to-charge, release to dash
     |-- Break breakable blocks on contact
+    |-- Camera Control (C) — bullet time + manual camera pan
     |
 Form Switch (toggle)
     |
@@ -32,12 +33,13 @@ Player switches to FLUID form
 
 ```
 S_Player (Singleton)
-|-- Input System: S_InputBindingManager shared InputSystem_Actions (Move, Jump, Sprint, Grip)
+|-- Input System: S_InputBindingManager shared InputSystem_Actions (Move, Jump, Sprint, Grip, CameraControl)
 |-- Physics: Rigidbody2D, CircleCollider2D, PhysicsMaterial2D
-|-- Rendering: SpriteRenderer, Sprite[]
-|-- Skills: S_fluid_climb (wall climbing integration)
-|-- Audio: S_GameEvent.PlaySFX() (jump, form switch SFX)
-`-- Events: S_SkillTree (sprint activation)
+|-- Rendering: SpriteRenderer, Sprite[], S_PlayerProceduralRenderer, S_PlayerDynamicCollider
+|-- Skills: S_fluid_climb (wall climbing), S_Soild_sprint (sprint charge), S_CameraControlSkill (camera control)
+|-- Audio: S_GameEvent.PlaySFX() (jump, form switch, sprint charge SFX)
+|-- Events: S_SkillTree (sprint/camera skill access)
+`-- Camera: S_CameraMove (follow + manual control)
 ```
 
 ### 2.2 Form System
@@ -118,18 +120,29 @@ Player (S_Player component)
 | proceduralRenderer | - | Reference to Body S_PlayerProceduralRenderer |
 | useDynamicCollider | true | Enable dynamic circle/capsule collider path |
 | dynamicCollider | - | Reference to Body S_PlayerDynamicCollider |
+| cameraController | - | Reference to S_CameraMove for manual camera control |
 
 **Public Methods**:
 | Method | Parameters | Description |
 |--------|------------|-------------|
-| `SetForm(form)` | bool (false=solid, true=fluid) | Switch between forms, swap physics material. Fires `S_GameEvent.PlaySFX(formSwitchClip)` only when form actually changes |
+| `SetForm(form)` | `form` enum (solid/fluid) | Switch between forms, swap physics material. Fires `S_GameEvent.PlaySFX(formSwitchClip)` only when form actually changes |
 | `getForm()` | none → bool | Returns false=solid, true=fluid |
-| `SetSprinting(bool)` | bool | Lock/unlock movement during sprint |
+| `SetSprinting(bool)` | bool | Set sprinting state (blocked while paralyzed) |
 | `SetSprintMomentum(bool)` | bool | Track sprint momentum state |
+| `IsSprintMomentumActive` | property → bool | True if sprinting or sprint momentum is active |
+| `IsSprintCharging` | property → bool | True if currently charging sprint |
+| `IsParalyzed` | property → bool | True if player is paralyzed |
+| `IsMovementLocked` | property → bool | True if movement is locked |
+| `ForceSprintBreakthrough(float direction, float minSpeed, float duration)` | float, float, float | Preserve sprint momentum through obstacles |
+| `ApplyParalyze(float duration, float slowMultiplier)` | float, float | Apply paralyze effect with custom duration/multiplier |
+| `SetMovementLocked(bool locked)` | bool | Lock/unlock all movement (resets velocity on lock) |
+| `BeginCameraControl(S_CameraControlSkill)` | S_CameraControlSkill | Enter camera control mode (bullet time + manual pan) |
+| `ReleaseSprintCharge()` | none | Release charged sprint dash |
 | `GetRigidbody()` | none → Rigidbody2D | Returns player's Rigidbody2D |
-| `GetCollider()` | none → Collider2D | Returns player's Collider2D |
+| `GetCollider()` | none → Collider2D | Returns active Collider2D (dynamic or fallback) |
 | `GetMoveInput()` | none → float | Returns horizontal input (-1 to 1) |
 | `GetClimbInput()` | none → float | Returns vertical input (-1 to 1) |
+| `GetMoveVector()` | none → Vector2 | Returns full move input vector |
 | `GetMoveSpeed()` | none → float | Returns current move speed |
 | `GetBodyTransform()` | none → Transform | Returns body child Transform |
 | `SetFacingRight(bool)` | bool | Force facing direction |
@@ -140,10 +153,18 @@ Player (S_Player component)
 **Private Methods**:
 | Method | Description |
 |--------|-------------|
-| `SolidMovement()` | Horizontal movement + vertical input + surface classification |
+| `SolidMovement()` | Horizontal movement + surface classification |
 | `FluidMovement()` | Checks grip → delegates to S_fluid_climb or falls back to SolidMovement |
-| `UpdateSprite()` | Flips sprite based on facing direction |
+| `UpdateSprite()` | Delegates to procedural renderer or flips sprite |
 | `Jump()` | Applies jump impulse with cooldown and max jump count. Fires `S_GameEvent.PlaySFX(jumpClip)` |
+| `BeginSprintCharge()` | Start sprint charge (buffer → charge → release flow) |
+| `UpdateSprintCharge()` | Per-frame charge update (stage progression, visuals, shake) |
+| `ReleaseSprintCharge()` | Release charge → apply sprint impulse + cooldown |
+| `UpdateSprintBreakthrough()` | Preserve minimum horizontal speed during breakthrough |
+| `HandleCameraControlInput()` | Detect CameraControl input and activate/deactivate |
+| `CameraControlTick()` | Feed move input to camera during manual control |
+| `EndCameraControl()` | Restore time scale and camera state |
+| `ParalyzeRoutine(float, float)` | Coroutine: apply slow + jump reduction, restore after duration |
 
 ### 3.2 S_CameraMove.cs
 
@@ -153,9 +174,21 @@ Player (S_Player component)
 | Field | Default | Description |
 |-------|---------|-------------|
 | target | - | GameObject to follow (player body) |
-| minMoveSpeed | 50f | Interpolation speed |
+| minMoveSpeed | 50f | Base interpolation speed |
+| manualMoveSpeed | 8f | Camera pan speed during manual control |
+| manualMaxDistanceFromTarget | 8f | Maximum camera offset from target during manual control |
+| returnSmoothSpeed | 12f | Speed at which camera returns to target after manual control |
+| followDeadZoneRadius | 1.5f | Minimum distance before camera starts following target |
+| drawDeadZoneGizmo | true | Show dead zone gizmo in Scene view |
 
-**Movement**: Uses exponential decay interpolation `1 - exp(-speed * dt)` for frame-rate independent smooth following. Preserves camera Z position.
+**Public Methods**:
+| Method | Description |
+|--------|-------------|
+| `BeginManualControl()` | Switch to manual camera control mode |
+| `ManualControlTick(Vector2)` | Feed move input for camera panning (clamped to max distance) |
+| `EndManualControl()` | Return to automatic follow mode |
+
+**Movement**: In follow mode, uses exponential decay interpolation `1 - exp(-speed * dt)` with dead zone. In manual mode, moves camera via `Time.unscaledDeltaTime` (works during bullet time) and clamps distance from target. Preserves camera Z position.
 
 **Setup**: Attach to the Main Camera. Set `target` to the player's Body child GameObject.
 
@@ -169,21 +202,25 @@ Player (S_Player component)
 |--------|---------|-------|
 | Move | WASD / Left Stick | Horizontal movement, vertical climb input |
 | Jump | Space / South Button | Jump with cooldown |
-| Sprint | Left Shift / East Button | Activate sprint skill |
+| Sprint | Left Shift / East Button | Hold to charge sprint, release to dash |
 | Grip | G / West Button | Wall climbing in fluid form |
+| CameraControl | C / - | Hold for bullet time + manual camera pan |
 
 ### Input Flow
 
 ```
 Update()
-    |-- Read Move input (WASD/Left Stick)
+    |-- Handle CameraControl input (hold → activate, release → deactivate)
     |-- Read Jump input (Space) -> Call Jump()
-    |-- Read Sprint input (Left Shift) -> S_SkillTree.ActivateSkill("Sprint")
+    |-- Sprint: WasPerformedThisFrame() -> BeginSprintCharge()
+    |           WasReleasedThisFrame() -> ReleaseSprintCharge()
     `-- Read Grip input (G) -> Set gripping flag for S_fluid_climb
 
 FixedUpdate()
     |-- Apply movement based on form
-    `-- Update physics
+    |-- Update sprint charge visuals/physics
+    |-- Update sprint breakthrough
+    `-- Update dynamic collider
 ```
 
 ---
@@ -364,3 +401,64 @@ Sprint key pressed
 - **S_PlayerProceduralRenderer**: `SetChargeOverride(bool)` toggles perfect-circle rendering during charge
 - **S_PlayerDynamicCollider**: `SetChargeOverride(bool, float)` scales collider with charge stage
 - **S_SkillTree**: `GetSprintSkill()` returns the S_Soild_sprint instance for charge parameter access
+
+---
+
+## 10. Camera Control System
+
+The player can hold the CameraControl input to enter a bullet-time state with manual camera panning. This allows the player to survey the level ahead while slowing down time.
+
+### 10.1 Behavior
+
+```
+CameraControl pressed (hold)
+    |-- Time.timeScale scaled by bulletTimeScale (default 0.2x)
+    |-- Camera switches to manual control mode
+    |-- Player can pan camera with Move input (WASD/Left Stick)
+    |-- Camera clamped to manualMaxDistanceFromTarget from player
+    `-- Player movement still works (at reduced time scale)
+
+CameraControl released
+    |-- Time.timeScale restored to original value
+    |-- Camera smoothly returns to follow mode
+```
+
+### 10.2 S_CameraControlSkill Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `bulletTimeScale` | 0.2f | Time scale multiplier during camera control (0.01–1.0) |
+
+### 10.3 Blocking Conditions
+
+Camera control is blocked when:
+- Player is already in camera control mode
+- Player is paralyzed
+- Movement is locked
+- Sprint is charging
+- Time scale is already 0 (paused)
+
+---
+
+## 11. Movement Lock System
+
+`S_Player.SetMovementLocked(bool)` provides a way to freeze/unfreeze player movement from external systems (e.g., hiding spots, cutscenes).
+
+### 11.1 Behavior
+
+| Action | Effect |
+|--------|--------|
+| `SetMovementLocked(true)` | Sets `movementLocked = true`, zeroes velocity and angular velocity |
+| `SetMovementLocked(false)` | Sets `movementLocked = false`, player can move again |
+
+### 11.2 Blocked Actions While Locked
+
+- All horizontal movement (`SolidMovement`/`FluidMovement` skipped)
+- Jumping (early return in `Jump()`)
+- Grip/climb input (cleared in `StateRunner()`)
+- Sprint charge cannot begin (movement locked check in `BeginSprintCharge`)
+
+### 11.3 Callers
+
+- `S_HideSpot`: Locks movement when player enters a hide spot, unlocks when exiting
+- Any system requiring cutscene/pause behavior

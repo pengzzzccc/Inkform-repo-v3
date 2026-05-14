@@ -50,7 +50,7 @@ public class S_InputBindingManager : MonoBehaviour
     {
         if (instance != null && instance != this)
         {
-            Destroy(gameObject);
+            Destroy(this);
             return;
         }
 

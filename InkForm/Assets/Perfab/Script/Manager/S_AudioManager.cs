@@ -16,6 +16,8 @@ using UnityEngine;
 public class S_AudioManager : MonoBehaviour
 {
     public static S_AudioManager Instance { get; private set; }
+    private const string BgmVolumePrefsKey = "InkForm.Audio.BgmVolume";
+    private const string SfxVolumePrefsKey = "InkForm.Audio.SfxVolume";
 
     [Header("BGM")]
     [SerializeField] private AudioClip bgmClip;
@@ -32,10 +34,21 @@ public class S_AudioManager : MonoBehaviour
     private AudioSource sfxSource;
     private AudioSource platformAlarmSource;
 
+    public float BgmVolume => bgmVolume;
+    public float SfxVolume => sfxVolume;
+
     void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this)
+        {
+            Instance.ApplySceneAudioSettings(this);
+            Destroy(this);
+            return;
+        }
         Instance = this;
+
+        bgmVolume = PlayerPrefs.GetFloat(BgmVolumePrefsKey, bgmVolume);
+        sfxVolume = PlayerPrefs.GetFloat(SfxVolumePrefsKey, sfxVolume);
 
         // Add two AudioSources programmatically — no need to manually attach in Inspector
         bgmSource = gameObject.AddComponent<AudioSource>();
@@ -114,6 +127,48 @@ public class S_AudioManager : MonoBehaviour
     {
         if (bgmSource != null)
             bgmSource.Stop();
+    }
+
+    public void SetBgmVolume(float value)
+    {
+        bgmVolume = Mathf.Clamp01(value);
+        if (bgmSource != null)
+            bgmSource.volume = bgmVolume;
+
+        PlayerPrefs.SetFloat(BgmVolumePrefsKey, bgmVolume);
+        PlayerPrefs.Save();
+    }
+
+    public void SetSfxVolume(float value)
+    {
+        sfxVolume = Mathf.Clamp01(value);
+        if (sfxSource != null)
+            sfxSource.volume = sfxVolume;
+
+        if (platformAlarmSource != null)
+            platformAlarmSource.volume = sfxVolume * platformAlarmVolumeMultiplier;
+
+        PlayerPrefs.SetFloat(SfxVolumePrefsKey, sfxVolume);
+        PlayerPrefs.Save();
+    }
+
+    private void ApplySceneAudioSettings(S_AudioManager sceneAudio)
+    {
+        if (sceneAudio == null)
+            return;
+
+        if (sceneAudio.bgmClip != null && bgmClip != sceneAudio.bgmClip)
+        {
+            bgmClip = sceneAudio.bgmClip;
+            PlayBGM(bgmClip);
+        }
+
+        if (sceneAudio.platformAlarmClip != null)
+            platformAlarmClip = sceneAudio.platformAlarmClip;
+
+        platformAlarmVolumeMultiplier = sceneAudio.platformAlarmVolumeMultiplier;
+        if (platformAlarmSource != null)
+            platformAlarmSource.volume = sfxVolume * platformAlarmVolumeMultiplier;
     }
 
     private void StartPlatformAlarm(int sectionIndex)
