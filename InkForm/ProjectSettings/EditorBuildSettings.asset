@@ -14,7 +14,7 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/QA/CoreToyPrototype.unity
     guid: 73e0704b35959544390dd7254c75629c
-  - enabled: 0
+  - enabled: 1
     path: Assets/Scenes/For_test/CharacterTest.unity
     guid: 47c5a7c83af6b524cb9ffc3711c08db1
   - enabled: 0
