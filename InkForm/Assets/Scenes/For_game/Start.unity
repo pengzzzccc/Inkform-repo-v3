@@ -259,6 +259,7 @@ MonoBehaviour:
   startMenuSceneName: Start
   levelSceneNames:
   - Playtest1
+  - NPCPlayTestScene
   currentLevelIndex: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
