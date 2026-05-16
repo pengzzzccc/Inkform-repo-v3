@@ -369,14 +369,15 @@ The color updates in edit mode via `OnValidate()` and at runtime via `Awake()`. 
 
 ## 10. Platform Cable Visual
 
-`S_PlatformCableVisual` renders two visual cables connecting a top anchor point to a moving platform, creating a winch/cable aesthetic.
+`S_PlatformCableVisual` renders optional visual cables connecting a top anchor point to a moving platform, creating a winch/cable aesthetic.
 
 ### 10.1 Behavior
 
-- Two cables rendered via child `LineRenderer` objects (`CableLeft`, `CableRight`)
-- Top Y position synced from `topAnchor` (height only, X stays at platform center)
+- Cable generation can be disabled or limited to left, right, or both sides via `cableSideMode`
+- Active cables are rendered via child `LineRenderer` objects (`CableLeft`, `CableRight`)
+- Top Y position is read live from `topAnchor` every update (height only, X stays at platform center)
 - Bottom position synced from `platformAttachPoint` (platform position)
-- Cable length dynamically adjusts as platform moves up/down
+- Cable length dynamically adjusts as platform or top anchor moves
 - `[DefaultExecutionOrder(100)]` ensures cables update after platform movement
 
 ### 10.2 Serialized Fields
@@ -385,7 +386,7 @@ The color updates in edit mode via `OnValidate()` and at runtime via `Awake()`. 
 |-------|---------|-------------|
 | topAnchor | - | Transform for cable top anchor (Y position only) |
 | platformAttachPoint | - | Transform for cable bottom (usually the platform) |
-| cacheTopAnchorOnStart | false | Whether to cache top Y at Start (set false if top moves) |
+| cableSideMode | Both | Which cables are generated/rendered: Both, None, Left, or Right |
 | cableOffset | 0.3f | Horizontal distance from platform center to each cable |
 | cableWidth | 0.05f | LineRenderer width for cables |
 | cableMaterial | - | Material override (falls back to Sprites/Default) |
@@ -400,7 +401,7 @@ The color updates in edit mode via `OnValidate()` and at runtime via `Awake()`. 
 2. Create an empty `topAnchor` GameObject positioned where cables originate (e.g., ceiling)
 3. Set `platformAttachPoint` to the platform's Transform
 4. Adjust `cableOffset` to control cable spacing
-5. Two child objects (`CableLeft`, `CableRight`) are auto-created with LineRenderers
+5. Choose `cableSideMode`; active child objects (`CableLeft`, `CableRight`) are auto-created with LineRenderers
 
 ---
 
