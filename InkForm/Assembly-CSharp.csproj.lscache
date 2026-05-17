@@ -55,6 +55,8 @@ Assets/Perfab/Script/LevelCon/
  S_ButtonDoor.cs
  S_Checkpoint.cs
  S_Door.cs
+ S_DroppedResourceItem.cs
+ S_DropResourceCounter.cs
  S_ExitGate.cs
  S_HideSpot.cs
  S_JumpPad.cs
