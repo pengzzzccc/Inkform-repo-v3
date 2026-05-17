@@ -30,6 +30,7 @@ public class S_UIManager : MonoBehaviour
     private Button cancelRebindButton;
     private Coroutine rebindStartCoroutine;
     private BindingButtonView activeRebind;
+    private Coroutine resumeGameplayInputCoroutine;
 
     private readonly List<GameObject> mainMenuObjects = new List<GameObject>();
     private readonly List<Button> controlsPanelButtons = new List<Button>();
@@ -79,7 +80,7 @@ public class S_UIManager : MonoBehaviour
         ApplyAutomaticNavigation(ReStartButton);
         ApplyAutomaticNavigation(ExitButton);
 
-        BuildControlsUI();
+        EnsureControlsUIBuilt();
         HideUI();
     }
 
@@ -152,6 +153,8 @@ public class S_UIManager : MonoBehaviour
     {
         if (background == null) return;
 
+        EnsureControlsUIBuilt();
+        PauseGameplayInput();
         background.SetActive(true);
         menuOpen = true;
         SetControlsPanelVisible(false);
@@ -171,6 +174,7 @@ public class S_UIManager : MonoBehaviour
         SetControlsPanelVisible(false);
         ClearSelection();
         Time.timeScale = 1f;
+        ResumeGameplayInputNextFrame();
     }
 
     private void UpdateKeyCount(int collected, int total)
@@ -254,6 +258,12 @@ public class S_UIManager : MonoBehaviour
 
         CreateFooterRow(controlsPanel.transform);
         RefreshBindingLabels();
+    }
+
+    private void EnsureControlsUIBuilt()
+    {
+        if (controlsPanel == null)
+            BuildControlsUI();
     }
 
     private void CreateControlsButton()
@@ -404,6 +414,9 @@ public class S_UIManager : MonoBehaviour
         GameObject row = new GameObject(name, typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
         row.transform.SetParent(parent, false);
 
+        RectTransform rect = row.GetComponent<RectTransform>();
+        rect.sizeDelta = new Vector2(0f, height);
+
         HorizontalLayoutGroup layout = row.GetComponent<HorizontalLayoutGroup>();
         layout.spacing = 8f;
         layout.childAlignment = TextAnchor.MiddleLeft;
@@ -413,7 +426,9 @@ public class S_UIManager : MonoBehaviour
         layout.childForceExpandHeight = false;
 
         LayoutElement layoutElement = row.GetComponent<LayoutElement>();
+        layoutElement.minHeight = height;
         layoutElement.preferredHeight = height;
+        layoutElement.flexibleHeight = 0f;
 
         return row;
     }
@@ -429,15 +444,16 @@ public class S_UIManager : MonoBehaviour
         scrollRect.offsetMin = new Vector2(18f, 58f);
         scrollRect.offsetMax = new Vector2(-18f, -46f);
 
-        GameObject viewport = new GameObject("Viewport", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Mask));
+        GameObject viewport = new GameObject("Viewport", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(RectMask2D));
         viewport.transform.SetParent(scrollObject.transform, false);
         RectTransform viewportRect = viewport.GetComponent<RectTransform>();
         viewportRect.anchorMin = Vector2.zero;
         viewportRect.anchorMax = Vector2.one;
         viewportRect.offsetMin = Vector2.zero;
         viewportRect.offsetMax = Vector2.zero;
-        viewport.GetComponent<Image>().color = Color.clear;
-        viewport.GetComponent<Mask>().showMaskGraphic = false;
+        Image viewportImage = viewport.GetComponent<Image>();
+        viewportImage.color = new Color(0.02f, 0.025f, 0.06f, 0.08f);
+        viewportImage.raycastTarget = false;
 
         GameObject content = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
         content.transform.SetParent(viewport.transform, false);
@@ -453,7 +469,7 @@ public class S_UIManager : MonoBehaviour
         vlg.padding = new RectOffset(4, 4, 4, 4);
         vlg.childAlignment = TextAnchor.UpperCenter;
         vlg.childControlWidth = true;
-        vlg.childControlHeight = true;
+        vlg.childControlHeight = false;
         vlg.childForceExpandWidth = true;
         vlg.childForceExpandHeight = false;
 
@@ -592,8 +608,14 @@ public class S_UIManager : MonoBehaviour
 
     private void OpenControlsPanel()
     {
+        EnsureControlsUIBuilt();
         SetControlsPanelVisible(true);
+        if (controlsPanel != null)
+            controlsPanel.transform.SetAsLastSibling();
+
         Canvas.ForceUpdateCanvases();
+        RefreshControlsPanelLayout();
+        ResetControlsScrollPosition();
         SelectControlsDefault();
     }
 
@@ -614,6 +636,9 @@ public class S_UIManager : MonoBehaviour
 
         foreach (GameObject menuObject in mainMenuObjects)
         {
+            if (menuObject == controlsPanel)
+                continue;
+
             if (menuObject != null)
                 menuObject.SetActive(!visible);
         }
@@ -629,6 +654,67 @@ public class S_UIManager : MonoBehaviour
         {
             RefreshBindingLabels();
         }
+    }
+
+    private void RefreshControlsPanelLayout()
+    {
+        if (bindingRowsScrollRoot != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(bindingRowsScrollRoot);
+
+        RectTransform controlsPanelRect = controlsPanel != null ? controlsPanel.GetComponent<RectTransform>() : null;
+        if (controlsPanelRect != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(controlsPanelRect);
+
+        Canvas.ForceUpdateCanvases();
+    }
+
+    private void ResetControlsScrollPosition()
+    {
+        if (bindingRowsScrollRoot == null) return;
+
+        ScrollRect scroll = bindingRowsScrollRoot.GetComponentInParent<ScrollRect>();
+        if (scroll == null) return;
+
+        scroll.StopMovement();
+        scroll.verticalNormalizedPosition = 1f;
+
+        RectTransform content = scroll.content;
+        if (content != null)
+            content.anchoredPosition = new Vector2(content.anchoredPosition.x, 0f);
+    }
+
+    private void PauseGameplayInput()
+    {
+        if (resumeGameplayInputCoroutine != null)
+        {
+            StopCoroutine(resumeGameplayInputCoroutine);
+            resumeGameplayInputCoroutine = null;
+        }
+
+        if (S_Player.Instance != null)
+            S_Player.Instance.CancelSprintCharge();
+
+        if (S_InputBindingManager.HasInstance)
+            S_InputBindingManager.Instance.Actions.Player.Disable();
+    }
+
+    private void ResumeGameplayInputNextFrame()
+    {
+        if (resumeGameplayInputCoroutine != null)
+            StopCoroutine(resumeGameplayInputCoroutine);
+
+        resumeGameplayInputCoroutine = StartCoroutine(ResumeGameplayInputAfterFrame());
+    }
+
+    private IEnumerator ResumeGameplayInputAfterFrame()
+    {
+        yield return null;
+        resumeGameplayInputCoroutine = null;
+
+        if (menuOpen || S_InputBindingManager.HasInstance == false)
+            yield break;
+
+        S_InputBindingManager.Instance.Actions.Player.Enable();
     }
 
     private void BeginRebind(BindingButtonView view)

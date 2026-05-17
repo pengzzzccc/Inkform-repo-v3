@@ -4,10 +4,20 @@ using UnityEngine;
 [DefaultExecutionOrder(100)]
 public class S_PlatformCableVisual : MonoBehaviour
 {
+    public enum CableSideMode
+    {
+        Both = 0,
+        None = 1,
+        Left = 2,
+        Right = 3
+    }
+
     [Header("Cable Anchors")]
     [SerializeField] private Transform topAnchor;
     [SerializeField] private Transform platformAttachPoint;
-    [SerializeField] private bool cacheTopAnchorOnStart = false;
+
+    [Header("Cable Generation")]
+    [SerializeField] private CableSideMode cableSideMode = CableSideMode.Both;
 
     [Header("Cable Layout")]
     [SerializeField, Min(0f)] private float cableOffset = 0.3f;
@@ -25,14 +35,11 @@ public class S_PlatformCableVisual : MonoBehaviour
     private LineRenderer cableRight;
     private Transform cableLeftTransform;
     private Transform cableRightTransform;
-    private float cachedTopAnchorY;
-    private bool hasCachedTopAnchor;
 
     void Reset()
     {
         platformAttachPoint = transform;
         EnsureCableRenderers();
-        CacheTopAnchor();
         UpdateCable();
     }
 
@@ -44,13 +51,11 @@ public class S_PlatformCableVisual : MonoBehaviour
     void OnEnable()
     {
         EnsureCableRenderers();
-        CacheTopAnchor();
         UpdateCable();
     }
 
     void Start()
     {
-        CacheTopAnchor();
         UpdateCable();
     }
 
@@ -64,12 +69,9 @@ public class S_PlatformCableVisual : MonoBehaviour
         cableWidth = Mathf.Max(0.001f, cableWidth);
         cableOffset = Mathf.Max(0f, cableOffset);
         EnsureCableRenderers();
-        ConfigureLineRenderer(cableLeft);
-        ConfigureLineRenderer(cableRight);
 
         if (!Application.isPlaying)
         {
-            CacheTopAnchor();
             UpdateCable();
         }
     }
@@ -86,24 +88,36 @@ public class S_PlatformCableVisual : MonoBehaviour
                 DestroyImmediate(legacy);
         }
 
-        if (cableLeft == null || cableLeftTransform == null)
+        EnsureCableRenderer(ref cableLeftTransform, ref cableLeft, "CableLeft", ShouldRenderLeft());
+        EnsureCableRenderer(ref cableRightTransform, ref cableRight, "CableRight", ShouldRenderRight());
+    }
+
+    private void EnsureCableRenderer(ref Transform cableTransform, ref LineRenderer cable, string childName, bool shouldRender)
+    {
+        if (cableTransform == null)
+            cableTransform = transform.Find(childName);
+
+        if (shouldRender)
         {
-            cableLeftTransform = CreateOrGetChild("CableLeft");
-            cableLeft = cableLeftTransform.GetComponent<LineRenderer>();
-            if (cableLeft == null)
-                cableLeft = cableLeftTransform.gameObject.AddComponent<LineRenderer>();
+            if (cableTransform == null)
+                cableTransform = CreateOrGetChild(childName);
+
+            if (cable == null)
+                cable = cableTransform.GetComponent<LineRenderer>();
+
+            if (cable == null)
+                cable = cableTransform.gameObject.AddComponent<LineRenderer>();
+
+            ConfigureLineRenderer(cable);
+            cable.enabled = true;
+            return;
         }
 
-        if (cableRight == null || cableRightTransform == null)
-        {
-            cableRightTransform = CreateOrGetChild("CableRight");
-            cableRight = cableRightTransform.GetComponent<LineRenderer>();
-            if (cableRight == null)
-                cableRight = cableRightTransform.gameObject.AddComponent<LineRenderer>();
-        }
+        if (cable == null && cableTransform != null)
+            cable = cableTransform.GetComponent<LineRenderer>();
 
-        ConfigureLineRenderer(cableLeft);
-        ConfigureLineRenderer(cableRight);
+        if (cable != null)
+            cable.enabled = false;
     }
 
     private Transform CreateOrGetChild(string childName)
@@ -142,20 +156,18 @@ public class S_PlatformCableVisual : MonoBehaviour
         lr.sharedMaterial = cableMaterial != null ? cableMaterial : GetFallbackMaterial();
     }
 
-    private void CacheTopAnchor()
+    private bool ShouldRenderLeft()
     {
-        if (!cacheTopAnchorOnStart || topAnchor == null)
-            return;
+        return cableSideMode == CableSideMode.Both || cableSideMode == CableSideMode.Left;
+    }
 
-        cachedTopAnchorY = topAnchor.position.y;
-        hasCachedTopAnchor = true;
+    private bool ShouldRenderRight()
+    {
+        return cableSideMode == CableSideMode.Both || cableSideMode == CableSideMode.Right;
     }
 
     private float GetTopAnchorY()
     {
-        if (cacheTopAnchorOnStart && hasCachedTopAnchor)
-            return cachedTopAnchorY;
-
         return topAnchor != null ? topAnchor.position.y : transform.position.y;
     }
 
@@ -165,15 +177,13 @@ public class S_PlatformCableVisual : MonoBehaviour
         float topY = GetTopAnchorY();
         float centerX = bottomPos.x;
 
-        // Left cable
-        if (cableLeft != null)
+        if (ShouldRenderLeft() && cableLeft != null && cableLeft.enabled)
         {
             cableLeft.SetPosition(0, new Vector3(centerX - cableOffset, topY, 0f));
             cableLeft.SetPosition(1, new Vector3(centerX - cableOffset, bottomPos.y, 0f));
         }
 
-        // Right cable
-        if (cableRight != null)
+        if (ShouldRenderRight() && cableRight != null && cableRight.enabled)
         {
             cableRight.SetPosition(0, new Vector3(centerX + cableOffset, topY, 0f));
             cableRight.SetPosition(1, new Vector3(centerX + cableOffset, bottomPos.y, 0f));
@@ -217,14 +227,18 @@ public class S_PlatformCableVisual : MonoBehaviour
 
         Gizmos.color = cableColor;
 
-        // Left cable gizmo
-        Gizmos.DrawLine(topLeft, bottomLeft);
-        Gizmos.DrawWireSphere(topLeft, 0.08f);
-        Gizmos.DrawWireSphere(bottomLeft, 0.08f);
+        if (ShouldRenderLeft())
+        {
+            Gizmos.DrawLine(topLeft, bottomLeft);
+            Gizmos.DrawWireSphere(topLeft, 0.08f);
+            Gizmos.DrawWireSphere(bottomLeft, 0.08f);
+        }
 
-        // Right cable gizmo
-        Gizmos.DrawLine(topRight, bottomRight);
-        Gizmos.DrawWireSphere(topRight, 0.08f);
-        Gizmos.DrawWireSphere(bottomRight, 0.08f);
+        if (ShouldRenderRight())
+        {
+            Gizmos.DrawLine(topRight, bottomRight);
+            Gizmos.DrawWireSphere(topRight, 0.08f);
+            Gizmos.DrawWireSphere(bottomRight, 0.08f);
+        }
     }
 }

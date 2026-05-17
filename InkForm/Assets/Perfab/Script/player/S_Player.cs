@@ -688,6 +688,41 @@ public class S_Player : MonoBehaviour
             dynamicCollider.SetChargeOverride(false, 1f);
     }
 
+    public void CancelSprintCharge()
+    {
+        if (!isSprintCharging && !chargeVisualsActive)
+            return;
+
+        bool restoreChargeVisuals = chargeVisualsActive;
+
+        StopSprintChargeSfx();
+        isSprintCharging = false;
+        chargeVisualsActive = false;
+        chargeScaleMultiplier = 1f;
+        sprintChargeTimer = 0f;
+        sprintChargeStage = 0;
+        previousChargeStage = 0;
+        chargeShakeTimer = 0f;
+
+        if (chargeRotationUnlocked)
+        {
+            b_Rig.freezeRotation = true;
+            b_Rig.rotation = 0f;
+            chargeRotationUnlocked = false;
+        }
+
+        if (restoreChargeVisuals)
+        {
+            b_Rig.sharedMaterial = originalPhysicsMaterial;
+
+            if (proceduralRenderer != null)
+                proceduralRenderer.SetChargeOverride(false);
+
+            if (useDynamicCollider && dynamicCollider != null)
+                dynamicCollider.SetChargeOverride(false, 1f);
+        }
+    }
+
     private void PlaySprintChargeStageSfx(int stage)
     {
         if (sprintSkill == null || sprintChargeSource == null)

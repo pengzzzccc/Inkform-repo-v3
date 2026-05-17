@@ -10,7 +10,7 @@ Level objects are interactive elements placed in gameplay scenes. They include b
 
 | Object | Script | Description |
 |--------|--------|-------------|
-| Breakable Block | S_BreakableBlock | Destructible block (broken by sprinting solid-form player) |
+| Breakable Block | S_BreakableBlock | Destructible block with optional dropped resource item |
 | Checkpoint | S_Checkpoint | Saves respawn position on player contact |
 | Pipeline | S_Pipline | Teleports fluid-form player to output position |
 | Moveable Block | S_MoveBlock | Slides between two points on trigger |
@@ -35,12 +35,17 @@ Level objects are interactive elements placed in gameplay scenes. They include b
 
 **Behavior**: When the player collides with a breakable block while in **solid form**, the block is destroyed instantly. The block survives fluid-form player contact — only the solid form can break it.
 
+If `dropPrefab` is assigned, the block spawns one or more `S_DroppedResourceItem` pickups before it is destroyed. If `dropPrefab` is empty, the block follows the original behavior and is simply destroyed without spawning anything.
+
 **Collision Flow**:
 ```
 OnCollisionEnter2D(collision)
     |-- CompareTag("Player") ?
     |   |-- YES: Check S_Player.Instance.getForm()
-    |   |   |-- false (solid form) -> Destroy(gameObject)
+    |   |   |-- false (solid form):
+    |   |   |   |-- dropPrefab assigned ? SpawnDrops()
+    |   |   |   |-- Disable block colliders
+    |   |   |   `-- Destroy(gameObject)
     |   |   `-- true (fluid form)  -> do nothing (pass through visually)
     |   `-- NO: do nothing
     `-- (other objects): do nothing
@@ -51,12 +56,27 @@ OnCollisionEnter2D(collision)
 2. Add `BoxCollider2D` — **Is Trigger must be OFF** (this uses OnCollisionEnter2D, not trigger)
 3. Add `Rigidbody2D` — set **Body Type** = `Kinematic` (so it doesn't fall with gravity)
 4. Add `S_BreakableBlock` component
-5. Tag the player GameObject as `"Player"` (the script uses `CompareTag` for zero-allocation checks)
+5. Optional: assign a pickup prefab to `dropPrefab`
+6. Tag the player GameObject as `"Player"` (the script uses `CompareTag` for zero-allocation checks)
+
+**Drop Resource Fields**:
+| Field | Default | Description |
+|-------|---------|-------------|
+| dropPrefab | null | Prefab spawned when the block is destroyed; null means no drop |
+| resourceId | block_fragment | Counter key used by `S_DropResourceCounter` |
+| dropCount | 1 | Number of dropped pickup objects to spawn |
+| resourceAmountPerDrop | 1 | Amount added when each pickup is collected |
+| dropSpreadX | 1.2 | Horizontal launch spread for each pickup |
+| dropPopVelocityY | 3.5 | Upward pop velocity for MC-style pickup motion |
+| pickupDelay | 0.25 | Time before the spawned pickup can be collected |
+| dropLifetime | 12 | Seconds before an uncollected pickup destroys itself |
 
 **Important Notes**:
 - The block requires a non-trigger Collider2D because it uses `OnCollisionEnter2D`
 - The Rigidbody2D must be Kinematic — if set to Dynamic, the block will fall due to gravity
 - If blocks are placed inside a Section, they will move with the section root automatically
+- Dropped pickup prefabs should have a visible sprite or mesh; `S_DroppedResourceItem` supplies trigger pickup behavior and adds missing physics components at runtime
+- Picked resources are counted in `S_DropResourceCounter`; HUD display is not connected here
 
 ---
 
@@ -270,7 +290,8 @@ OnCollisionExit2D(collision)
 2. Add `BoxCollider2D` (Is Trigger = **OFF**)
 3. Add `Rigidbody2D` (Body Type = **Kinematic**)
 4. Add `S_BreakableBlock` component
-5. Tag the player as `"Player"`
+5. Optional: assign a pickup prefab to `dropPrefab`
+6. Tag the player as `"Player"`
 
 ### Checkpoint
 1. Create sprite GameObject
@@ -302,6 +323,8 @@ OnCollisionExit2D(collision)
 | Issue | Solution |
 |-------|----------|
 | Breakable block not breaking | Check player is in solid form (`getForm() == false`) AND Collider2D is NOT a trigger |
+| Breakable block drops nothing | Assign `dropPrefab`; leaving it null intentionally destroys the block with no drop |
+| Dropped item not picked up | Ensure the player GameObject is tagged `"Player"` and the item has `S_DroppedResourceItem` or lets `S_BreakableBlock` add it at spawn |
 | Block falls when game starts | Ensure Rigidbody2D Body Type = Kinematic |
 | Checkpoint not saving | Ensure trigger Collider2D has `isTrigger = true` |
 | Pipeline not teleporting | Check Output is assigned AND player is in fluid form |
@@ -369,14 +392,15 @@ The color updates in edit mode via `OnValidate()` and at runtime via `Awake()`. 
 
 ## 10. Platform Cable Visual
 
-`S_PlatformCableVisual` renders two visual cables connecting a top anchor point to a moving platform, creating a winch/cable aesthetic.
+`S_PlatformCableVisual` renders optional visual cables connecting a top anchor point to a moving platform, creating a winch/cable aesthetic.
 
 ### 10.1 Behavior
 
-- Two cables rendered via child `LineRenderer` objects (`CableLeft`, `CableRight`)
-- Top Y position synced from `topAnchor` (height only, X stays at platform center)
+- Cable generation can be disabled or limited to left, right, or both sides via `cableSideMode`
+- Active cables are rendered via child `LineRenderer` objects (`CableLeft`, `CableRight`)
+- Top Y position is read live from `topAnchor` every update (height only, X stays at platform center)
 - Bottom position synced from `platformAttachPoint` (platform position)
-- Cable length dynamically adjusts as platform moves up/down
+- Cable length dynamically adjusts as platform or top anchor moves
 - `[DefaultExecutionOrder(100)]` ensures cables update after platform movement
 
 ### 10.2 Serialized Fields
@@ -385,7 +409,7 @@ The color updates in edit mode via `OnValidate()` and at runtime via `Awake()`. 
 |-------|---------|-------------|
 | topAnchor | - | Transform for cable top anchor (Y position only) |
 | platformAttachPoint | - | Transform for cable bottom (usually the platform) |
-| cacheTopAnchorOnStart | false | Whether to cache top Y at Start (set false if top moves) |
+| cableSideMode | Both | Which cables are generated/rendered: Both, None, Left, or Right |
 | cableOffset | 0.3f | Horizontal distance from platform center to each cable |
 | cableWidth | 0.05f | LineRenderer width for cables |
 | cableMaterial | - | Material override (falls back to Sprites/Default) |
@@ -400,7 +424,7 @@ The color updates in edit mode via `OnValidate()` and at runtime via `Awake()`. 
 2. Create an empty `topAnchor` GameObject positioned where cables originate (e.g., ceiling)
 3. Set `platformAttachPoint` to the platform's Transform
 4. Adjust `cableOffset` to control cable spacing
-5. Two child objects (`CableLeft`, `CableRight`) are auto-created with LineRenderers
+5. Choose `cableSideMode`; active child objects (`CableLeft`, `CableRight`) are auto-created with LineRenderers
 
 ---
 

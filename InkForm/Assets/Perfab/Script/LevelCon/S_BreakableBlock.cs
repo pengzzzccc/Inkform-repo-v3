@@ -2,6 +2,17 @@ using UnityEngine;
 
 public class S_BreakableBlock : MonoBehaviour
 {
+    [Header("Drop Resource")]
+    [SerializeField] private GameObject dropPrefab;
+    [SerializeField] private string resourceId = "block_fragment";
+    [SerializeField, Min(0)] private int dropCount = 1;
+    [SerializeField, Min(1)] private int resourceAmountPerDrop = 1;
+    [SerializeField, Min(0f)] private float dropSpreadX = 1.2f;
+    [SerializeField, Min(0f)] private float dropPopVelocityY = 3.5f;
+    [SerializeField, Min(0f)] private float pickupDelay = 0.25f;
+    [SerializeField, Min(0f)] private float dropLifetime = 12f;
+
+    [Header("Sprint Breakthrough")]
     [SerializeField, Min(0f)] private float minimumSprintBreakExitSpeed = 8f;
     [SerializeField, Min(0f)] private float sprintBreakthroughPreserveTime = 0.08f;
 
@@ -19,8 +30,35 @@ public class S_BreakableBlock : MonoBehaviour
             PreserveSprintMomentum(player, collision);
         }
 
+        SpawnDrops();
         DisableColliders();
         Destroy(gameObject);
+    }
+
+    private void SpawnDrops()
+    {
+        if (dropPrefab == null || dropCount <= 0)
+            return;
+
+        Vector3 spawnPosition = transform.position;
+
+        for (int i = 0; i < dropCount; i++)
+        {
+            GameObject drop = Instantiate(dropPrefab, spawnPosition, Quaternion.identity);
+            S_DroppedResourceItem droppedItem = drop.GetComponent<S_DroppedResourceItem>();
+            if (droppedItem == null)
+                droppedItem = drop.AddComponent<S_DroppedResourceItem>();
+
+            Vector2 launchVelocity = CreateDropVelocity();
+            droppedItem.Initialize(resourceId, resourceAmountPerDrop, launchVelocity, pickupDelay, dropLifetime);
+        }
+    }
+
+    private Vector2 CreateDropVelocity()
+    {
+        float horizontalVelocity = dropSpreadX > 0f ? Random.Range(-dropSpreadX, dropSpreadX) : 0f;
+        float verticalBonus = dropPopVelocityY > 0f ? Random.Range(0f, dropPopVelocityY * 0.25f) : 0f;
+        return new Vector2(horizontalVelocity, dropPopVelocityY + verticalBonus);
     }
 
     private void PreserveSprintMomentum(S_Player player, Collision2D collision)

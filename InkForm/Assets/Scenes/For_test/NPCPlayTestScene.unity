@@ -1497,7 +1497,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4876914982737552647, guid: 4af7715e5a206154eb647b04bae191fd, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -5008,6 +5008,14 @@ PrefabInstance:
     - target: {fileID: 1515654825031196278, guid: 6c5659b1c25e6c24ba4e229cf6bcffad, type: 3}
       propertyPath: m_Name
       value: GameManager
+      objectReference: {fileID: 0}
+    - target: {fileID: 7185668272029566861, guid: 6c5659b1c25e6c24ba4e229cf6bcffad, type: 3}
+      propertyPath: scene
+      value: NPCPlayTestScene
+      objectReference: {fileID: 0}
+    - target: {fileID: 7185668272029566861, guid: 6c5659b1c25e6c24ba4e229cf6bcffad, type: 3}
+      propertyPath: currentLevelIndex
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 7685610171103954680, guid: 6c5659b1c25e6c24ba4e229cf6bcffad, type: 3}
       propertyPath: m_LocalPosition.x
