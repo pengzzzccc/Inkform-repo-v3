@@ -76,8 +76,8 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: -201461123
+  m_SortingLayer: 3
   m_SortingOrder: 0
   m_Sprite: {fileID: -9095717837082945937, guid: 207ee8102dd4143d288186ef0be518ee, type: 3}
   m_Color: {r: 0.6156863, g: 0, b: 0, a: 1}
@@ -112,12 +112,20 @@ MonoBehaviour:
   attackRange: 6
   arrestRange: 1.5
   stunDuration: 2
+  detectionViewDistance: 30
+  visionOriginOffset: {x: 0, y: 0.5}
+  drawVisionGizmos: 1
   attackWindupTime: 1
   aimCooldownTime: 2
   arrestDuration: 3
   aimColor: {r: 1, g: 0.65, b: 0, a: 1}
   arrestColor: {r: 1, g: 0, b: 0, a: 1}
   defaultColor: {r: 1, g: 1, b: 1, a: 1}
+  showFacingIndicator: 1
+  facingIndicatorColor: {r: 0.1, g: 0.95, b: 1, a: 1}
+  facingIndicatorOffset: {x: 0.35, y: 0.25}
+  facingIndicatorSize: 0.18
+  facingIndicatorLineWidth: 0.035
   hitsToDie: 2
   hitVisualColor: {r: 1, g: 0.35, b: 0.35, a: 1}
   hitVisualDuration: 0.15
@@ -165,6 +173,7 @@ MonoBehaviour:
   airControlFactor: 0.5
   playerAboveThreshold: 1
   playerAboveMaxHeight: 4
+  maxJumpHorizontalBoost: 3
   jumpObstacleLayer:
     serializedVersion: 2
     m_Bits: 4294967295

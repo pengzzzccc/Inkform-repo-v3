@@ -13,6 +13,13 @@ public class S_DroppedResourceItem : MonoBehaviour
     [SerializeField, Min(0f)] private float lifetime = 12f;
     [SerializeField, Min(0.01f)] private float pickupRadius = 0.25f;
 
+    [Header("Attraction")]
+    [SerializeField, Min(0f)] private float magnetStartBuffer = 0.35f;
+    [SerializeField, Min(0f)] private float attractRadius = 2.5f;
+    [SerializeField, Min(0f)] private float attractDelayInRange = 0.35f;
+    [SerializeField, Min(0f)] private float attractSpeed = 8f;
+    [SerializeField, Min(0f)] private float attractAcceleration = 20f;
+
     [Header("Motion")]
     [SerializeField] private Vector2 initialVelocity = new Vector2(0f, 3.5f);
     [SerializeField, Min(0f)] private float popDuration = 0.45f;
@@ -27,6 +34,10 @@ public class S_DroppedResourceItem : MonoBehaviour
     private float age;
     private bool settled;
     private bool collected;
+    private Transform attractTarget;
+    private float inRangeTimer;
+    private float currentAttractSpeed;
+    private bool attracting;
 
     private void Awake()
     {
@@ -55,7 +66,8 @@ public class S_DroppedResourceItem : MonoBehaviour
         if (collected)
             return;
 
-        age += Time.deltaTime;
+        float deltaTime = Time.deltaTime;
+        age += deltaTime;
 
         if (lifetime > 0f && age >= lifetime)
         {
@@ -63,12 +75,19 @@ public class S_DroppedResourceItem : MonoBehaviour
             return;
         }
 
-        if (settled)
-            UpdateHover();
+        if (attracting)
+            UpdateAttraction(deltaTime);
         else
-            UpdatePopMotion(Time.deltaTime);
+        {
+            if (settled)
+                UpdateHover();
+            else
+                UpdatePopMotion(deltaTime);
 
-        transform.Rotate(Vector3.forward, rotationSpeed * Time.deltaTime, Space.Self);
+            UpdateAttractDetection(deltaTime);
+        }
+
+        transform.Rotate(Vector3.forward, rotationSpeed * deltaTime, Space.Self);
     }
 
     private void OnTriggerEnter2D(Collider2D other)
@@ -86,6 +105,10 @@ public class S_DroppedResourceItem : MonoBehaviour
         age = 0f;
         settled = false;
         collected = false;
+        attracting = false;
+        attractTarget = null;
+        inRangeTimer = 0f;
+        currentAttractSpeed = 0f;
         velocity = launchVelocity;
         initialVelocity = launchVelocity;
         settledPosition = transform.position;
@@ -110,12 +133,87 @@ public class S_DroppedResourceItem : MonoBehaviour
         transform.position = new Vector3(settledPosition.x, settledPosition.y + bob, settledPosition.z);
     }
 
+    private void UpdateAttractDetection(float deltaTime)
+    {
+        if (age < pickupDelay + magnetStartBuffer)
+            return;
+
+        Transform target = ResolveAttractTarget();
+        if (target == null)
+        {
+            ResetAttractTimer();
+            return;
+        }
+
+        float radiusSqr = attractRadius * attractRadius;
+        float distanceSqr = ((Vector2)target.position - (Vector2)transform.position).sqrMagnitude;
+
+        if (distanceSqr > radiusSqr)
+        {
+            ResetAttractTimer();
+            return;
+        }
+
+        attractTarget = target;
+        inRangeTimer += deltaTime;
+
+        if (inRangeTimer >= attractDelayInRange)
+            BeginAttraction(target);
+    }
+
+    private void BeginAttraction(Transform target)
+    {
+        attracting = true;
+        attractTarget = target;
+        currentAttractSpeed = Mathf.Max(0.01f, attractSpeed);
+    }
+
+    private void UpdateAttraction(float deltaTime)
+    {
+        if (attractTarget == null)
+            attractTarget = ResolveAttractTarget();
+
+        if (attractTarget == null)
+            return;
+
+        currentAttractSpeed += attractAcceleration * deltaTime;
+
+        Vector3 targetPosition = attractTarget.position;
+        targetPosition.z = transform.position.z;
+        transform.position = Vector3.MoveTowards(transform.position, targetPosition, currentAttractSpeed * deltaTime);
+
+        if (Vector2.Distance(transform.position, targetPosition) <= pickupRadius)
+            Collect();
+    }
+
+    private Transform ResolveAttractTarget()
+    {
+        if (S_Player.Instance == null)
+            return null;
+
+        return S_Player.Instance.GetBodyTransform();
+    }
+
+    private void ResetAttractTimer()
+    {
+        attractTarget = null;
+        inRangeTimer = 0f;
+    }
+
     private void TryCollect(Collider2D other)
     {
         if (collected || age < pickupDelay)
             return;
 
-        if (!other.CompareTag("Player"))
+        if (!other.CompareTag("Player") && other.GetComponentInParent<S_Player>() == null)
+            return;
+
+        Collect();
+    }
+
+    private void Collect()
+    {
+        if (collected)
             return;
 
         collected = true;

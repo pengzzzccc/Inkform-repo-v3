@@ -106,6 +106,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b2c54dcfa9311546b9345a28b37c643, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  controlMode: 0
+  waitAtTop: 0.5
+  waitAtBottom: 0.5
+  autoStartsTowardBottom: 1
   topPoint: {fileID: 1703426158199420164}
   bottomPoint: {fileID: 7181170179603955935}
   moveSpeed: 2

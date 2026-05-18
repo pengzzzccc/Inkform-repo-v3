@@ -8,8 +8,20 @@ public enum PlatformState
     Ascending
 }
 
+public enum MovementControlMode
+{
+    EventDriven,
+    AutoLoop
+}
+
 public class S_MovingPlatform : MonoBehaviour
 {
+    [Header("Control Mode")]
+    [SerializeField] private MovementControlMode controlMode = MovementControlMode.EventDriven;
+    [SerializeField, Min(0f)] private float waitAtTop = 0.5f;
+    [SerializeField, Min(0f)] private float waitAtBottom = 0.5f;
+    [SerializeField] private bool autoStartsTowardBottom = true;
+
     [Header("Movement Settings")]
     [SerializeField] private Transform topPoint;
     [SerializeField] private Transform bottomPoint;
@@ -41,14 +53,17 @@ public class S_MovingPlatform : MonoBehaviour
     private Vector3 topWorldPos;
     private Vector3 bottomWorldPos;
     private Vector3 lastPosition;
+    private float autoWaitTimer;
 
     void Start()
     {
         topWorldPos = topPoint != null ? topPoint.position : transform.position;
         bottomWorldPos = bottomPoint != null ? bottomPoint.position : transform.position;
-        transform.position = bottomWorldPos;
         lastPosition = transform.position;
-        currentState = PlatformState.HiddenAtTop;
+        autoWaitTimer = 0f;
+
+        if (controlMode == MovementControlMode.AutoLoop)
+            InitializeAutoLoopState();
     }
 
     void Update()
@@ -70,12 +85,16 @@ public class S_MovingPlatform : MonoBehaviour
                 HandleAscending();
                 break;
         }
+
+        if (controlMode == MovementControlMode.AutoLoop)
+            HandleAutoLoop();
     }
 
     public void Reveal()
     {
         if (currentState != PlatformState.HiddenAtTop) return;
         currentState = PlatformState.Descending;
+        autoWaitTimer = 0f;
         PlayMotorStart();
     }
 
@@ -83,6 +102,7 @@ public class S_MovingPlatform : MonoBehaviour
     {
         if (currentState != PlatformState.VisibleAtBottom) return;
         currentState = PlatformState.Ascending;
+        autoWaitTimer = 0f;
         PlaySfx(ascendStartClip);
         PlayMotorLoop();
     }
@@ -104,6 +124,7 @@ public class S_MovingPlatform : MonoBehaviour
         if (Vector3.Distance(transform.position, bottomWorldPos) < 0.01f)
         {
             currentState = PlatformState.VisibleAtBottom;
+            autoWaitTimer = 0f;
 
             StopMotor();
             PlaySfx(landingClip);
@@ -122,7 +143,33 @@ public class S_MovingPlatform : MonoBehaviour
         if (Vector3.Distance(transform.position, topWorldPos) < 0.01f)
         {
             currentState = PlatformState.HiddenAtTop;
+            autoWaitTimer = 0f;
             StopMotor();
+        }
+    }
+
+    private void InitializeAutoLoopState()
+    {
+        // Auto mode keeps the scene-authored platform position and chooses only
+        // the first direction of travel.
+        currentState = autoStartsTowardBottom
+            ? PlatformState.HiddenAtTop
+            : PlatformState.VisibleAtBottom;
+    }
+
+    private void HandleAutoLoop()
+    {
+        if (currentState == PlatformState.HiddenAtTop)
+        {
+            autoWaitTimer += Time.deltaTime;
+            if (autoWaitTimer >= waitAtTop)
+                Reveal();
+        }
+        else if (currentState == PlatformState.VisibleAtBottom)
+        {
+            autoWaitTimer += Time.deltaTime;
+            if (autoWaitTimer >= waitAtBottom)
+                Hide();
         }
     }
 

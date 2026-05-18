@@ -428,10 +428,6 @@ PrefabInstance:
       value: Pre_platform (1)
       objectReference: {fileID: 0}
     - target: {fileID: 187135705606219367, guid: 52a8ac26e458a8f45bed0ac9928fcfb0, type: 3}
-      propertyPath: 'm_Materials.Array.data[0]'
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 187135705606219367, guid: 52a8ac26e458a8f45bed0ac9928fcfb0, type: 3}
       propertyPath: m_Positions.Array.data[0].x
       value: -5.6099997
       objectReference: {fileID: 0}
@@ -454,10 +450,6 @@ PrefabInstance:
     - target: {fileID: 1703426158199420164, guid: 52a8ac26e458a8f45bed0ac9928fcfb0, type: 3}
       propertyPath: m_LocalPosition.y
       value: 15.6
-      objectReference: {fileID: 0}
-    - target: {fileID: 4150759482729037993, guid: 52a8ac26e458a8f45bed0ac9928fcfb0, type: 3}
-      propertyPath: 'm_Materials.Array.data[0]'
-      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 4150759482729037993, guid: 52a8ac26e458a8f45bed0ac9928fcfb0, type: 3}
       propertyPath: m_Positions.Array.data[0].x
@@ -542,10 +534,6 @@ PrefabInstance:
       value: Pre_platform (2)
       objectReference: {fileID: 0}
     - target: {fileID: 187135705606219367, guid: 52a8ac26e458a8f45bed0ac9928fcfb0, type: 3}
-      propertyPath: 'm_Materials.Array.data[0]'
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 187135705606219367, guid: 52a8ac26e458a8f45bed0ac9928fcfb0, type: 3}
       propertyPath: m_Positions.Array.data[0].x
       value: -0.40999997
       objectReference: {fileID: 0}
@@ -568,10 +556,6 @@ PrefabInstance:
     - target: {fileID: 1703426158199420164, guid: 52a8ac26e458a8f45bed0ac9928fcfb0, type: 3}
       propertyPath: m_LocalPosition.y
       value: 15.6
-      objectReference: {fileID: 0}
-    - target: {fileID: 4150759482729037993, guid: 52a8ac26e458a8f45bed0ac9928fcfb0, type: 3}
-      propertyPath: 'm_Materials.Array.data[0]'
-      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 4150759482729037993, guid: 52a8ac26e458a8f45bed0ac9928fcfb0, type: 3}
       propertyPath: m_Positions.Array.data[0].x

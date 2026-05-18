@@ -86,7 +86,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   bgmClip: {fileID: 8300000, guid: 98b755b11828cf24fa307d6110c274fc, type: 3}
   bgmVolume: 0.313
-  sfxVolume: 0.851
+  sfxVolume: 0.742
   platformAlarmClip: {fileID: 8300000, guid: 840def16d3cfad04abd0cbed2a0cf2ed, type: 3}
   platformAlarmVolumeMultiplier: 1
 --- !u!114 &3608212668773405531

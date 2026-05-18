@@ -43,6 +43,7 @@ public class S_HideSpot : MonoBehaviour
     private bool fallbackRigidBodyLocked = false;
     private float fallbackGravityScale;
     private RigidbodyConstraints2D fallbackConstraints;
+    private float hiddenPlayerY;
 
     private void Awake()
     {
@@ -145,6 +146,7 @@ public class S_HideSpot : MonoBehaviour
 
         isHiding = true;
         S_SuspicionSystem.PlayerHidden = true;
+        hiddenPlayerY = playerBody.position.y;
 
         CacheRendererStates();
         MovePlayerTo(GetHidePosition());
@@ -184,7 +186,9 @@ public class S_HideSpot : MonoBehaviour
 
     private Vector2 GetHidePosition()
     {
-        return (Vector2)transform.position + hideOffset;
+        // Hide spots can pull the player horizontally into cover, but should
+        // not change the player's height and leave them hanging in the air.
+        return new Vector2(transform.position.x + hideOffset.x, hiddenPlayerY);
     }
 
     private void MovePlayerTo(Vector2 position)
