@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 4200383022092285922}
   - component: {fileID: 3608212668773405531}
   - component: {fileID: 2262371285160420937}
+  - component: {fileID: 8843116509347792201}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -68,6 +69,9 @@ MonoBehaviour:
   - Playtest1
   - NPCPlayTestScene
   currentLevelIndex: -1
+  unlockFrameRateOnStart: 1
+  lockedFrameRate: 120
+  allowRuntimeFrameRateToggle: 1
 --- !u!114 &4200383022092285922
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -130,3 +134,21 @@ MonoBehaviour:
   increasePerAlert: 20
   hiddenDecayRate: 5
   missionsToTriggerArrest: 3
+--- !u!114 &8843116509347792201
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1515654825031196278}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b57f86e2b4a94f01a4d7b58d5de3506f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  showOnStart: 0
+  sampleInterval: 0.25
+  sceneStatsInterval: 2
+  spikeThresholdMs: 33.3
+  logSpikesToConsole: 1
+  windowsCsvLogging: 0

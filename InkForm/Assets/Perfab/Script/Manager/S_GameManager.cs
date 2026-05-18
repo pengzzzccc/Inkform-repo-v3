@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
 public class S_GameManager : MonoBehaviour
@@ -13,8 +14,17 @@ public class S_GameManager : MonoBehaviour
     [SerializeField] private string[] levelSceneNames = { "Playtest1" };
     [SerializeField] private int currentLevelIndex = -1;
 
+    [Header("Frame Rate")]
+    [SerializeField] private bool unlockFrameRateOnStart = true;
+    [SerializeField, Min(1)] private int lockedFrameRate = 120;
+    [SerializeField] private bool allowRuntimeFrameRateToggle = true;
+
     private S_Player player;
     private Transform spwnPoint;
+    private bool isFrameRateUnlocked;
+
+    public bool IsFrameRateUnlocked => isFrameRateUnlocked;
+    public int LockedFrameRate => Mathf.Max(1, lockedFrameRate);
 
     void Awake()
     {
@@ -25,11 +35,22 @@ public class S_GameManager : MonoBehaviour
             transform.SetParent(null);
 
         DontDestroyOnLoad(gameObject);
+        ApplyFrameRateMode(unlockFrameRateOnStart, false);
     }
 
     void Start()
     {
         RefreshSceneReferences();
+    }
+
+    void Update()
+    {
+        if (!allowRuntimeFrameRateToggle)
+            return;
+
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard != null && keyboard.f4Key.wasPressedThisFrame)
+            SetFrameRateUnlocked(!isFrameRateUnlocked);
     }
 
     void OnEnable()
@@ -58,6 +79,26 @@ public class S_GameManager : MonoBehaviour
     void HandleGameRestart() => GameReStart();
     void HandleExit() => ExitGame();
     void HandlePlayerDied() => PlayerDied();
+
+    public void SetFrameRateUnlocked(bool unlocked)
+    {
+        ApplyFrameRateMode(unlocked, true);
+    }
+
+    private void ApplyFrameRateMode(bool unlocked, bool logChange)
+    {
+        isFrameRateUnlocked = unlocked;
+        QualitySettings.vSyncCount = 0;
+        Application.targetFrameRate = unlocked ? -1 : LockedFrameRate;
+
+        if (!logChange)
+            return;
+
+        if (unlocked)
+            Debug.Log("[GameManager] Frame rate unlocked");
+        else
+            Debug.Log($"[GameManager] Frame rate locked to {LockedFrameRate} FPS");
+    }
 
     private void HandleSceneLoaded(Scene loadedScene, LoadSceneMode mode)
     {
