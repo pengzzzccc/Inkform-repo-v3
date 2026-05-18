@@ -22,10 +22,10 @@ MonoBehaviour:
   stickyForce: 7.96
   climbSpeed: 8
   fluidGravityScale: 4
-  activeTime: 3
+  activeTime: 2
   surfaceLayer:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 511
   floorDotThreshold: 0.5
   ceilingDotThreshold: 0.5
   gripBufferDistance: 0.85
