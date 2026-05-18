@@ -4,12 +4,14 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class S_UIManager : MonoBehaviour
 {
     public static S_UIManager Instance { get; private set; }
     private const string DontDestroyOnLoadSceneName = "DontDestroyOnLoad";
+    private const string DefaultFirstLevelSceneName = "Playtest1";
 
     [SerializeField] private GameObject background;
     [SerializeField] private Button StartButton;
@@ -68,7 +70,15 @@ public class S_UIManager : MonoBehaviour
     void Start()
     {
         if (StartButton != null)
-            StartButton.onClick.AddListener(() => S_GameEvent.GameStart());
+        {
+            StartButton.onClick.AddListener(() =>
+            {
+                if (S_GameManager.Instance != null)
+                    S_GameManager.Instance.StartFreshGameFromMenu();
+                else
+                    SceneManager.LoadScene(DefaultFirstLevelSceneName);
+            });
+        }
 
         if (ReStartButton != null)
             ReStartButton.onClick.AddListener(() => S_GameEvent.GameReStart());

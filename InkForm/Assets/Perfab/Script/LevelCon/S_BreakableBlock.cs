@@ -11,10 +11,14 @@ public class S_BreakableBlock : MonoBehaviour
     [SerializeField, Min(0f)] private float dropPopVelocityY = 3.5f;
     [SerializeField, Min(0f)] private float pickupDelay = 0.25f;
     [SerializeField, Min(0f)] private float dropLifetime = 12f;
+    [SerializeField] private Vector2 dropSpawnOffset = new Vector2(0f, 0.35f);
 
     [Header("Sprint Breakthrough")]
     [SerializeField, Min(0f)] private float minimumSprintBreakExitSpeed = 8f;
     [SerializeField, Min(0f)] private float sprintBreakthroughPreserveTime = 0.08f;
+
+    [Header("Audio")]
+    [SerializeField] private AudioClip[] breakClips;
 
     void OnCollisionEnter2D(Collision2D collision)
     {
@@ -30,6 +34,7 @@ public class S_BreakableBlock : MonoBehaviour
             PreserveSprintMomentum(player, collision);
         }
 
+        PlayBreakSfx();
         SpawnDrops();
         DisableColliders();
         Destroy(gameObject);
@@ -40,11 +45,14 @@ public class S_BreakableBlock : MonoBehaviour
         if (dropPrefab == null || dropCount <= 0)
             return;
 
-        Vector3 spawnPosition = transform.position;
+        Vector3 spawnPosition = transform.position + (Vector3)dropSpawnOffset;
 
         for (int i = 0; i < dropCount; i++)
         {
             GameObject drop = Instantiate(dropPrefab, spawnPosition, Quaternion.identity);
+            if (drop.GetComponent<S_Key>() != null)
+                continue;
+
             S_DroppedResourceItem droppedItem = drop.GetComponent<S_DroppedResourceItem>();
             if (droppedItem == null)
                 droppedItem = drop.AddComponent<S_DroppedResourceItem>();
@@ -90,5 +98,45 @@ public class S_BreakableBlock : MonoBehaviour
         {
             blockCollider.enabled = false;
         }
+    }
+
+    private void PlayBreakSfx()
+    {
+        AudioClip clip = GetRandomBreakClip();
+        if (clip == null)
+            return;
+
+        S_GameEvent.PlaySFX(clip);
+    }
+
+    private AudioClip GetRandomBreakClip()
+    {
+        if (breakClips == null || breakClips.Length == 0)
+            return null;
+
+        int validClipCount = 0;
+        for (int i = 0; i < breakClips.Length; i++)
+        {
+            if (breakClips[i] != null)
+                validClipCount++;
+        }
+
+        if (validClipCount == 0)
+            return null;
+
+        int randomIndex = Random.Range(0, validClipCount);
+        for (int i = 0; i < breakClips.Length; i++)
+        {
+            AudioClip clip = breakClips[i];
+            if (clip == null)
+                continue;
+
+            if (randomIndex == 0)
+                return clip;
+
+            randomIndex--;
+        }
+
+        return null;
     }
 }

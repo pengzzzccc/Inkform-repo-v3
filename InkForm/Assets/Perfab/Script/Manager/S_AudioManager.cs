@@ -15,6 +15,13 @@ using UnityEngine;
 /// </summary>
 public class S_AudioManager : MonoBehaviour
 {
+    private enum PlatformAlarmFadeState
+    {
+        None,
+        FadingIn,
+        FadingOut
+    }
+
     public static S_AudioManager Instance { get; private set; }
     private const string BgmVolumePrefsKey = "InkForm.Audio.BgmVolume";
     private const string SfxVolumePrefsKey = "InkForm.Audio.SfxVolume";
@@ -29,10 +36,17 @@ public class S_AudioManager : MonoBehaviour
     [Header("Platform Alarm")]
     [SerializeField] private AudioClip platformAlarmClip;
     [SerializeField][Min(0f)] private float platformAlarmVolumeMultiplier = 1f;
+    [SerializeField][Min(0f)] private float platformAlarmFadeInTime = 0.25f;
+    [SerializeField][Min(0f)] private float platformAlarmFadeOutTime = 0.35f;
 
     private AudioSource bgmSource;
     private AudioSource sfxSource;
     private AudioSource platformAlarmSource;
+    private PlatformAlarmFadeState platformAlarmFadeState = PlatformAlarmFadeState.None;
+    private float platformAlarmFadeTimer;
+    private float platformAlarmFadeDuration;
+    private float platformAlarmFadeStartVolume;
+    private float platformAlarmFadeTargetVolume;
 
     public float BgmVolume => bgmVolume;
     public float SfxVolume => sfxVolume;
@@ -73,6 +87,11 @@ public class S_AudioManager : MonoBehaviour
         // Auto-play BGM if a clip is assigned
         if (bgmClip != null)
             PlayBGM(bgmClip);
+    }
+
+    void Update()
+    {
+        UpdatePlatformAlarmFade();
     }
 
     void OnEnable()
@@ -146,7 +165,7 @@ public class S_AudioManager : MonoBehaviour
             sfxSource.volume = sfxVolume;
 
         if (platformAlarmSource != null)
-            platformAlarmSource.volume = sfxVolume * platformAlarmVolumeMultiplier;
+            platformAlarmSource.volume = GetPlatformAlarmTargetVolume();
 
         PlayerPrefs.SetFloat(SfxVolumePrefsKey, sfxVolume);
         PlayerPrefs.Save();
@@ -167,8 +186,10 @@ public class S_AudioManager : MonoBehaviour
             platformAlarmClip = sceneAudio.platformAlarmClip;
 
         platformAlarmVolumeMultiplier = sceneAudio.platformAlarmVolumeMultiplier;
+        platformAlarmFadeInTime = sceneAudio.platformAlarmFadeInTime;
+        platformAlarmFadeOutTime = sceneAudio.platformAlarmFadeOutTime;
         if (platformAlarmSource != null)
-            platformAlarmSource.volume = sfxVolume * platformAlarmVolumeMultiplier;
+            platformAlarmSource.volume = GetPlatformAlarmTargetVolume();
     }
 
     private void StartPlatformAlarm(int sectionIndex)
@@ -176,13 +197,16 @@ public class S_AudioManager : MonoBehaviour
         if (platformAlarmClip == null || platformAlarmSource == null)
             return;
 
-        if (platformAlarmSource.isPlaying)
-            return;
-
         platformAlarmSource.clip = platformAlarmClip;
         platformAlarmSource.loop = true;
-        platformAlarmSource.volume = sfxVolume * platformAlarmVolumeMultiplier;
-        platformAlarmSource.Play();
+
+        if (!platformAlarmSource.isPlaying)
+        {
+            platformAlarmSource.volume = 0f;
+            platformAlarmSource.Play();
+        }
+
+        StartPlatformAlarmFade(PlatformAlarmFadeState.FadingIn, GetPlatformAlarmTargetVolume(), platformAlarmFadeInTime);
     }
 
     private void StopPlatformAlarm(int sectionIndex)
@@ -190,7 +214,68 @@ public class S_AudioManager : MonoBehaviour
         if (platformAlarmSource == null)
             return;
 
-        platformAlarmSource.Stop();
-        platformAlarmSource.clip = null;
+        if (!platformAlarmSource.isPlaying)
+        {
+            platformAlarmSource.clip = null;
+            platformAlarmFadeState = PlatformAlarmFadeState.None;
+            return;
+        }
+
+        StartPlatformAlarmFade(PlatformAlarmFadeState.FadingOut, 0f, platformAlarmFadeOutTime);
     }
+
+    private void StartPlatformAlarmFade(PlatformAlarmFadeState fadeState, float targetVolume, float duration)
+    {
+        platformAlarmFadeState = fadeState;
+        platformAlarmFadeTimer = 0f;
+        platformAlarmFadeDuration = Mathf.Max(0f, duration);
+        platformAlarmFadeStartVolume = platformAlarmSource != null ? platformAlarmSource.volume : 0f;
+        platformAlarmFadeTargetVolume = Mathf.Max(0f, targetVolume);
+
+        if (platformAlarmFadeDuration > 0f)
+            return;
+
+        CompletePlatformAlarmFade();
+    }
+
+    private void UpdatePlatformAlarmFade()
+    {
+        if (platformAlarmFadeState == PlatformAlarmFadeState.None || platformAlarmSource == null)
+            return;
+
+        platformAlarmFadeTimer += Time.unscaledDeltaTime;
+        float t = platformAlarmFadeDuration > 0f
+            ? Mathf.Clamp01(platformAlarmFadeTimer / platformAlarmFadeDuration)
+            : 1f;
+
+        platformAlarmSource.volume = Mathf.Lerp(platformAlarmFadeStartVolume, platformAlarmFadeTargetVolume, t);
+
+        if (t >= 1f)
+            CompletePlatformAlarmFade();
+    }
+
+    private void CompletePlatformAlarmFade()
+    {
+        if (platformAlarmSource == null)
+        {
+            platformAlarmFadeState = PlatformAlarmFadeState.None;
+            return;
+        }
+
+        platformAlarmSource.volume = platformAlarmFadeTargetVolume;
+
+        if (platformAlarmFadeState == PlatformAlarmFadeState.FadingOut)
+        {
+            platformAlarmSource.Stop();
+            platformAlarmSource.clip = null;
+        }
+
+        platformAlarmFadeState = PlatformAlarmFadeState.None;
+    }
+
+    private float GetPlatformAlarmTargetVolume()
+    {
+        return sfxVolume * platformAlarmVolumeMultiplier;
+    }
+
 }

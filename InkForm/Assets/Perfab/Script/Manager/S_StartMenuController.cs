@@ -13,6 +13,7 @@ public class S_StartMenuController : MonoBehaviour
 {
     private const string StartSceneName = "Start";
     private const string StartScenePathSuffix = "Assets/Scenes/For_game/Start.unity";
+    private const string DefaultFirstLevelSceneName = "Playtest1";
     private static bool sceneHookRegistered;
 
     private Canvas canvas;
@@ -172,9 +173,9 @@ public class S_StartMenuController : MonoBehaviour
         startButton.onClick.AddListener(() =>
         {
             if (S_GameManager.Instance != null)
-                S_GameManager.Instance.StartGameFromMenu();
+                S_GameManager.Instance.StartFreshGameFromMenu();
             else
-                S_GameEvent.GameStart();
+                SceneManager.LoadScene(DefaultFirstLevelSceneName);
         });
         settingsButton.onClick.AddListener(ShowSettings);
         exitButton.onClick.AddListener(() => S_GameEvent.ExitGame());

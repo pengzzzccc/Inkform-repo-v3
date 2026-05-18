@@ -157,6 +157,9 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   knockbackObstacleSkin: 0.02
+  allAudio:
+  - {fileID: 8300000, guid: 2e24d69778ee16546a217283dfa1c010, type: 3}
+  - {fileID: 8300000, guid: 035305e2f98667f438f1e8d040d184ce, type: 3}
   wanderRadius: 3
   wanderWalkTimeMin: 1
   wanderWalkTimeMax: 3

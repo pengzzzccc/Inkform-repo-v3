@@ -83,6 +83,9 @@ public class S_NPCEnemy : S_NPCbase
     [SerializeField] private LayerMask knockbackObstacleLayer = ~0;
     [SerializeField] private float knockbackObstacleSkin = 0.02f;
 
+    [Header("SFX for All")]
+    [SerializeField] private AudioClip[] allAudio;
+
     [Header("Idle Wandering")]
     [SerializeField] private float wanderRadius = 3f;
     [SerializeField] private float wanderWalkTimeMin = 1f;
@@ -945,6 +948,7 @@ public class S_NPCEnemy : S_NPCbase
     {
         currentHitCount++;
         ShowHitVisual();
+        PlaykSfx();
 
         if (currentHitCount >= Mathf.Max(1, hitsToDie))
             Die();
@@ -1370,5 +1374,45 @@ public class S_NPCEnemy : S_NPCbase
         }
 
         return true;
+    }
+
+    private void PlaykSfx()
+    {
+        AudioClip clip = GetRandomBreakClip();
+        if (clip == null)
+            return;
+
+        S_GameEvent.PlaySFX(clip);
+    }
+
+    private AudioClip GetRandomBreakClip()
+    {
+        if (allAudio == null || allAudio.Length == 0)
+            return null;
+
+        int validClipCount = 0;
+        for (int i = 0; i < allAudio.Length; i++)
+        {
+            if (allAudio[i] != null)
+                validClipCount++;
+        }
+
+        if (validClipCount == 0)
+            return null;
+
+        int randomIndex = Random.Range(0, validClipCount);
+        for (int i = 0; i < allAudio.Length; i++)
+        {
+            AudioClip clip = allAudio[i];
+            if (clip == null)
+                continue;
+
+            if (randomIndex == 0)
+                return clip;
+
+            randomIndex--;
+        }
+
+        return null;
     }
 }

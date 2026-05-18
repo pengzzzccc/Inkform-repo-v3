@@ -16,6 +16,11 @@ public class S_Player : MonoBehaviour
     [SerializeField] private S_fluid_climb fluidClimbSkill;
     [Header("Gravity Control")]
     [SerializeField] private float solidGravityScale = 4f;
+    [Header("Slope Movement")]
+    [SerializeField] private LayerMask groundLayer = ~0;
+    [SerializeField, Range(0.1f, 1f)] private float walkableSlopeMinDot = 0.55f;
+    [SerializeField, Min(0f)] private float maxSlopeVerticalSpeed = 5f;
+    [SerializeField, Min(0f)] private float slopeAssistDisableTime = 0.12f;
     [Header("Kick Force")]
     [SerializeField] private float kickForceMultiplier = 10f;
     [Header("SFX")]
@@ -121,6 +126,10 @@ public class S_Player : MonoBehaviour
     private S_CameraControlSkill cameraControlSkill;
     private float timeScaleBeforeCameraControl = 1f;
     private float fixedDeltaTimeBeforeCameraControl = 0.02f;
+    private bool isGroundedOnWalkableSurface;
+    private Vector2 groundNormal = Vector2.up;
+    private ContactPoint2D[] groundContacts;
+    private float slopeAssistDisabledTimer;
 
     public bool IsSprintCharging => isSprintCharging;
 
@@ -232,6 +241,7 @@ public class S_Player : MonoBehaviour
             if (m_PlayerJump.WasPerformedThisFrame() && jumpCount < maxJump && jumpCoolDownTimer <= 0 && !isParalyzed)
             {
                 S_GameEvent.PlaySFX(jumpClip);
+                slopeAssistDisabledTimer = slopeAssistDisableTime;
                 b_Rig.linearVelocity = new Vector2(b_Rig.linearVelocity.x, 0);
                 b_Rig.AddForce(new Vector2(0, jumpSpeed), ForceMode2D.Impulse);
                 jumpCount++;
@@ -265,6 +275,9 @@ public class S_Player : MonoBehaviour
             UpdateDynamicCollider();
             return;
         }
+
+        UpdateSlopeAssistTimer();
+        SampleWalkableGround();
 
         if (inkform == form.solid)
             SolidMovement();
@@ -302,9 +315,11 @@ public class S_Player : MonoBehaviour
 
         if (!isSprinting)
         {
-            moveV = m_PlayerMove.ReadValue<Vector2>().x;
+            moveV = input;
             float speed = isParalyzed ? moveSpeed * paralyzeSlowMultiplier : moveSpeed;
-            b_Rig.linearVelocity = new Vector2(moveV * speed, b_Rig.linearVelocity.y);
+            b_Rig.linearVelocity = ShouldUseSlopeMovement(moveV)
+                ? GetSlopeVelocity(moveV, speed)
+                : new Vector2(moveV * speed, b_Rig.linearVelocity.y);
         }
 
         if (moveV > 0 && !facingRight)
@@ -409,6 +424,78 @@ public class S_Player : MonoBehaviour
             return;
 
         dynamicCollider.DynamicColliderTick(this, fluidClimbSkill);
+    }
+
+    private void UpdateSlopeAssistTimer()
+    {
+        if (slopeAssistDisabledTimer > 0f)
+            slopeAssistDisabledTimer -= Time.fixedDeltaTime;
+    }
+
+    private void SampleWalkableGround()
+    {
+        isGroundedOnWalkableSurface = false;
+        groundNormal = Vector2.up;
+
+        Collider2D activeCollider = GetCollider();
+        if (activeCollider == null)
+            return;
+
+        if (groundContacts == null || groundContacts.Length == 0)
+            groundContacts = new ContactPoint2D[8];
+
+        int contactCount = activeCollider.GetContacts(groundContacts);
+        float bestDot = walkableSlopeMinDot;
+
+        for (int i = 0; i < contactCount; i++)
+        {
+            Collider2D contactCollider = groundContacts[i].collider;
+            if (contactCollider == null || contactCollider.isTrigger)
+                continue;
+
+            if (!IsInGroundLayer(contactCollider.gameObject.layer))
+                continue;
+
+            Vector2 normal = groundContacts[i].normal;
+            if (normal.sqrMagnitude <= 0.001f)
+                continue;
+
+            normal.Normalize();
+            float upDot = Vector2.Dot(normal, Vector2.up);
+            if (upDot < bestDot)
+                continue;
+
+            bestDot = upDot;
+            groundNormal = normal;
+            isGroundedOnWalkableSurface = true;
+        }
+    }
+
+    private bool ShouldUseSlopeMovement(float moveInput)
+    {
+        if (!isGroundedOnWalkableSurface || slopeAssistDisabledTimer > 0f)
+            return false;
+
+        if (Mathf.Abs(moveInput) <= 0.01f)
+            return false;
+
+        return Mathf.Abs(groundNormal.x) > 0.001f;
+    }
+
+    private Vector2 GetSlopeVelocity(float moveInput, float speed)
+    {
+        Vector2 tangent = new Vector2(groundNormal.y, -groundNormal.x).normalized;
+        if (Mathf.Sign(tangent.x) != Mathf.Sign(moveInput))
+            tangent = -tangent;
+
+        Vector2 slopeVelocity = tangent * (Mathf.Abs(moveInput) * speed);
+        slopeVelocity.y = Mathf.Clamp(slopeVelocity.y, -maxSlopeVerticalSpeed, maxSlopeVerticalSpeed);
+        return slopeVelocity;
+    }
+
+    private bool IsInGroundLayer(int layer)
+    {
+        return (groundLayer.value & (1 << layer)) != 0;
     }
 
     public Rigidbody2D GetRigidbody() => b_Rig;

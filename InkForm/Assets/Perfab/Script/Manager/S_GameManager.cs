@@ -168,6 +168,24 @@ public class S_GameManager : MonoBehaviour
         Debug.LogWarning("[GameManager] No level scenes configured.");
     }
 
+    public void StartFreshGameFromMenu()
+    {
+        string firstLevelScene = GetFreshStartSceneName();
+        if (string.IsNullOrWhiteSpace(firstLevelScene))
+        {
+            Debug.LogWarning("[GameManager] No first level scene configured.");
+            return;
+        }
+
+        Time.timeScale = 1f;
+        S_SuspicionSystem.PlayerHidden = false;
+        spwnPoint = null;
+        player = null;
+        currentLevelIndex = IsConfiguredLevel(firstLevelScene, 0) ? 0 : -1;
+        DestroyRuntimeUIManager();
+        LoadSceneByName(firstLevelScene);
+    }
+
     public void LoadLevel(int index)
     {
         if (levelSceneNames == null || index < 0 || index >= levelSceneNames.Length)
@@ -220,6 +238,30 @@ public class S_GameManager : MonoBehaviour
         }
 
         LoadSceneByName(startMenuSceneName);
+    }
+
+    private string GetFreshStartSceneName()
+    {
+        if (levelSceneNames != null && levelSceneNames.Length > 0 && !string.IsNullOrWhiteSpace(levelSceneNames[0]))
+            return levelSceneNames[0];
+
+        return scene;
+    }
+
+    private bool IsConfiguredLevel(string sceneName, int index)
+    {
+        return levelSceneNames != null
+            && index >= 0
+            && index < levelSceneNames.Length
+            && string.Equals(levelSceneNames[index], sceneName, System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void DestroyRuntimeUIManager()
+    {
+        if (S_UIManager.Instance == null)
+            return;
+
+        Destroy(S_UIManager.Instance.gameObject);
     }
 
     private void LoadSceneByName(string sceneName)
