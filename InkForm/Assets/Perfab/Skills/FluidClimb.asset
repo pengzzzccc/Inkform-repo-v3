@@ -22,7 +22,7 @@ MonoBehaviour:
   stickyForce: 7.96
   climbSpeed: 8
   fluidGravityScale: 4
-  activeTime: 2
+  activeTime: 3
   surfaceLayer:
     serializedVersion: 2
     m_Bits: 4294967295
