@@ -255,12 +255,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3830e727cc2c48c42be753e339033570, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  scene: 
+  scene: Start
   startMenuSceneName: Start
   levelSceneNames:
   - Playtest1
   - NPCPlayTestScene
+  - END
   currentLevelIndex: 0
+  unlockFrameRateOnStart: 1
+  lockedFrameRate: 120
+  allowRuntimeFrameRateToggle: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

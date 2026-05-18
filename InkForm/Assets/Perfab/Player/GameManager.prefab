@@ -68,6 +68,7 @@ MonoBehaviour:
   levelSceneNames:
   - Playtest1
   - NPCPlayTestScene
+  - END
   currentLevelIndex: -1
   unlockFrameRateOnStart: 1
   lockedFrameRate: 120
@@ -89,6 +90,8 @@ MonoBehaviour:
   sfxVolume: 0.742
   platformAlarmClip: {fileID: 8300000, guid: 840def16d3cfad04abd0cbed2a0cf2ed, type: 3}
   platformAlarmVolumeMultiplier: 1
+  platformAlarmFadeInTime: 0.25
+  platformAlarmFadeOutTime: 0.35
 --- !u!114 &3608212668773405531
 MonoBehaviour:
   m_ObjectHideFlags: 0
