@@ -55,12 +55,20 @@ public class S_Player : MonoBehaviour
     private InputAction m_PlayerGrep;
     private InputAction m_PlayerCameraControl;
 
-
     private bool facingRight = true;
-
     private bool gripping = false;
-
     private bool isSprinting = false;
+
+    // ── Cheat Code: Fly Mode ─────────────────────────────────────────
+    private string cheatInput = "";
+    private const string FlyCheatCode = "020405";
+    private bool flyModeActive = false;
+    private float originalGravityScale;
+    private float flySpeedMultiplier = 1f;
+    private const float FlySpeedStep = 0.5f;
+    private const float FlySpeedMin = 0.5f;
+    private const float FlySpeedMax = 10f;
+    // ─────────────────────────────────────────────────────────────────
 
     public void SetSprinting(bool value)
     {
@@ -138,7 +146,6 @@ public class S_Player : MonoBehaviour
 
     void Awake()
     {
-
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -180,7 +187,6 @@ public class S_Player : MonoBehaviour
         inkform = form.fluid;
         SetForm(inkform);
 
-
         if (fluidClimbSkill != null)
             fluidClimbSkill.SetSurface(S_fluid_climb.SurfaceType.None);
     }
@@ -188,6 +194,8 @@ public class S_Player : MonoBehaviour
     void Update()
     {
         HandleCameraControlInput();
+        HandleCheatCodeInput();
+
         if (isCameraControlActive)
         {
             CameraControlTick();
@@ -210,6 +218,7 @@ public class S_Player : MonoBehaviour
     {
         UpdateSprite();
     }
+
     void StateRunner()
     {
         if (movementLocked || isCameraControlActive)
@@ -224,6 +233,7 @@ public class S_Player : MonoBehaviour
     {
         if (isCameraControlActive) return;
         if (movementLocked) return;
+        if (flyModeActive) return;
 
         if (inkform == form.solid || (inkform == form.fluid && !gripping))
         {
@@ -265,6 +275,15 @@ public class S_Player : MonoBehaviour
             UpdateDynamicCollider();
             return;
         }
+
+        // ── Cheat Code: Fly Mode ─────────────────────────────────────────
+        if (flyModeActive)
+        {
+            ApplyFlyMovement();
+            UpdateDynamicCollider();
+            return;
+        }
+        // ─────────────────────────────────────────────────────────────────
 
         if (inkform == form.solid)
             SolidMovement();
@@ -424,27 +443,13 @@ public class S_Player : MonoBehaviour
         return b_Col;
     }
 
-
     public float GetMoveInput() => m_PlayerMove.ReadValue<Vector2>().x;
-
-
     public float GetClimbInput() => m_PlayerMove.ReadValue<Vector2>().y;
-
     public Vector2 GetMoveVector() => m_PlayerMove.ReadValue<Vector2>();
-
     public float GetMoveSpeed() => moveSpeed;
     public Transform GetBodyTransform() => body.transform;
-
-
     public void SetFacingRight(bool right) => facingRight = right;
-
-
     public bool GetFaceRight() => facingRight;
-
-
-
-
-
 
     public bool getForm()
     {
@@ -466,7 +471,6 @@ public class S_Player : MonoBehaviour
 
     public void ApplyParalyze(float duration, float slowMultiplier)
     {
-        // Use provided values or defaults
         float dur = duration > 0f ? duration : defaultParalyzeDuration;
         float mult = slowMultiplier > 0f ? slowMultiplier : paralyzeSlowMultiplier;
 
@@ -566,13 +570,102 @@ public class S_Player : MonoBehaviour
         S_InputBindingManager.Instance.Actions.Player.Enable();
     }
 
-
     void OnDisable()
     {
         StopSprintChargeSfx();
         EndCameraControl();
         S_InputBindingManager.Instance.Actions.Player.Disable();
     }
+
+    // ── Cheat Code: Fly Mode ─────────────────────────────────────────
+    private static readonly (Key key, char ch)[] CheatKeys = new[]
+    {
+        (Key.Digit0, '0'), (Key.Digit2, '2'), (Key.Digit4, '4'), (Key.Digit5, '5'),
+        (Key.Numpad0, '0'), (Key.Numpad2, '2'), (Key.Numpad4, '4'), (Key.Numpad5, '5'),
+    };
+
+    private void HandleCheatCodeInput()
+    {
+        var kb = Keyboard.current;
+        if (kb == null) return;
+
+        foreach (var (key, ch) in CheatKeys)
+        {
+            if (!kb[key].wasPressedThisFrame) continue;
+
+            cheatInput += ch;
+            if (cheatInput.Length > FlyCheatCode.Length)
+                cheatInput = cheatInput[^FlyCheatCode.Length..];
+
+            if (cheatInput == FlyCheatCode)
+            {
+                ToggleFlyMode();
+                cheatInput = "";
+            }
+        }
+    }
+
+    private void SetNoclip(bool enabled)
+    {
+        if (body != null)
+        {
+            foreach (Collider2D col in body.GetComponents<Collider2D>())
+                col.enabled = !enabled;
+        }
+
+        foreach (Collider2D col in GetComponents<Collider2D>())
+            col.enabled = !enabled;
+
+        b_Rig.bodyType = enabled ? RigidbodyType2D.Kinematic : RigidbodyType2D.Dynamic;
+    }
+
+    private void ToggleFlyMode()
+    {
+        flyModeActive = !flyModeActive;
+
+        if (flyModeActive)
+        {
+            originalGravityScale = solidGravityScale;
+            b_Rig.gravityScale = 0f;
+            b_Rig.linearVelocity = Vector2.zero;
+            flySpeedMultiplier = 1f;
+            SetNoclip(true);
+            Debug.Log("[Cheat] Fly mode ON — noclip enabled, speed x1.0");
+        }
+        else
+        {
+            b_Rig.gravityScale = solidGravityScale;
+            flySpeedMultiplier = 1f;
+            SetNoclip(false);
+            Debug.Log("[Cheat] Fly mode OFF — noclip disabled");
+        }
+    }
+
+    private void ApplyFlyMovement()
+    {
+        var kb = Keyboard.current;
+        if (kb != null)
+        {
+            if (kb[Key.NumpadPlus].wasPressedThisFrame || kb[Key.Equals].wasPressedThisFrame)
+            {
+                flySpeedMultiplier = Mathf.Min(flySpeedMultiplier + FlySpeedStep, FlySpeedMax);
+                Debug.Log($"[Cheat] Fly speed x{flySpeedMultiplier:F1}");
+            }
+            else if (kb[Key.NumpadMinus].wasPressedThisFrame || kb[Key.Minus].wasPressedThisFrame)
+            {
+                flySpeedMultiplier = Mathf.Max(flySpeedMultiplier - FlySpeedStep, FlySpeedMin);
+                Debug.Log($"[Cheat] Fly speed x{flySpeedMultiplier:F1}");
+            }
+        }
+
+        Vector2 input = m_PlayerMove.ReadValue<Vector2>();
+        float speed = isParalyzed ? moveSpeed * paralyzeSlowMultiplier : moveSpeed;
+        b_Rig.linearVelocity = input * speed * flySpeedMultiplier;
+
+        if (input.x > 0) facingRight = true;
+        else if (input.x < 0) facingRight = false;
+    }
+    // ─────────────────────────────────────────────────────────────────
 
     // Sprint Charge System
     private void BeginSprintCharge()
@@ -800,5 +893,4 @@ public class S_Player : MonoBehaviour
             b_Rig.linearVelocity = new Vector2(sprintBreakthroughDirection * sprintBreakthroughMinimumSpeed, currentVelocity.y);
         }
     }
-
 }
