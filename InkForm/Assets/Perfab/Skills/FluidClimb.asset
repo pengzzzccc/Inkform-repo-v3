@@ -28,8 +28,8 @@ MonoBehaviour:
     m_Bits: 511
   floorDotThreshold: 0.5
   ceilingDotThreshold: 0.5
-  gripBufferDistance: 0.85
-  gripSnapSkin: 0.01
-  gripInputThreshold: 0.1
+  gripBufferDistance: 1.17
+  gripSnapSkin: 0.0307
+  gripInputThreshold: 0.275
   drawGripBufferGizmos: 1
   gripBufferGizmoColor: {r: 0, g: 0.8, b: 1, a: 0.35}

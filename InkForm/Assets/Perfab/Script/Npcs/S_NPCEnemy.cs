@@ -1208,7 +1208,7 @@ public class S_NPCEnemy : S_NPCbase
             ? $"dist={Vector2.Distance(npcPos, playerTransform.position):F1}, npcPos=({npcPos.x:F1},{npcPos.y:F1}), playerPos=({playerTransform.position.x:F1},{playerTransform.position.y:F1})"
             : (S_Player.Instance != null ? "playerTransform null but S_Player.Instance != null" : "playerTransform & Instance both null");
 
-        Debug.Log($"[{npcName}] state={currentState} ground={isGrounded} {pathStr} {posStr}");
+        // Debug.Log($"[{npcName}] state={currentState} ground={isGrounded} {pathStr} {posStr}");
     }
 
     private void EnsureFacingIndicator()

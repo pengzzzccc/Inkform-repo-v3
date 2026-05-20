@@ -116,8 +116,8 @@ public class S_GameManager : MonoBehaviour
 
         spwnPoint = null;
         Scene activeScene = SceneManager.GetActiveScene();
-        if (!string.Equals(activeScene.name, startMenuSceneName, System.StringComparison.OrdinalIgnoreCase))
-            Debug.LogWarning($"[GameManager] S_Player not found in scene: {activeScene.name}");
+        // if (!string.Equals(activeScene.name, startMenuSceneName, System.StringComparison.OrdinalIgnoreCase))
+        //     // Debug.LogWarning($"[GameManager] S_Player not found in scene: {activeScene.name}");
     }
 
     void newSpwn(Transform trans)
