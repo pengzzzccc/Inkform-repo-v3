@@ -2,9 +2,11 @@
 
 ## 1. Overview
 
-The manager systems handle game flow, UI management, audio playback, and global state. They consist of `S_GameManager` (game flow control), `S_UIManager` (menu UI), and `S_AudioManager` (BGM + SFX). All systems communicate through `S_GameEvent` — they never reference each other directly.
+The manager systems handle game flow, UI management, audio playback, and global state. They consist of `S_ManagerRoot` (persistent container), `S_GameManager` (game flow control), `S_UIManager` (menu UI), and `S_AudioManager` (BGM + SFX). All systems communicate through `S_GameEvent` — they never reference each other directly.
 
 `S_InputBindingManager` is also part of the manager layer. It owns the shared `InputSystem_Actions` instance, saves runtime binding overrides with `PlayerPrefs`, and is used by both `S_Player` and `S_UIManager`.
+
+`S_ManagerRoot` (v0.8.0) is the persistent `DontDestroyOnLoad` container that manages the lifecycle of all manager singletons.
 
 ---
 
@@ -13,31 +15,37 @@ The manager systems handle game flow, UI management, audio playback, and global 
 ### 2.1 System Relationships
 
 ```
-S_UIManager (DontDestroyOnLoad)
+S_ManagerRoot (Singleton, DontDestroyOnLoad) — v0.8.0
+|-- Persistent container for all manager singletons
+|-- AttachPersistent(managerTransform) — parents managers under root
+|-- GetOrCreateChild(name) / GetOrCreateComponent<T>(name) — lazy creation
+`-- RuntimeInitializeOnLoadMethod reset for editor domain reload
+
+S_UIManager (DontDestroyOnLoad, child of S_ManagerRoot)
 |-- Buttons: Start, Restart, Exit
 |-- Toggle: OpenMenu input
-|-- Listens: OnGameStart, OnGameRestart, OnPlayerDied
+|-- Listens: OnGameStart, OnGameRestart, OnPlayerDied, OnKeyCountChanged
 `-- Controls: Time.timeScale, background visibility
 
-S_GameManager (per-scene)
+S_GameManager (DontDestroyOnLoad, child of S_ManagerRoot)
 |-- Player respawn management
-|-- Scene loading
-|-- Listens: OnPlayerDied, OnGameStart, OnGameRestart, OnExit, reNewSpwnPoint
+|-- Scene loading (via OnSceneLoadRequested)
+|-- Listens: OnPlayerDied, OnGameStart, OnGameRestart, OnExit, OnSpawnPointChanged
 `-- Spawn point tracking
 
-S_AudioManager (per-scene)
+S_AudioManager (DontDestroyOnLoad, child of S_ManagerRoot)
 |-- BGM playback (loop)
 |-- SFX playback (one-shot)
 |-- Platform Alarm (loop, triggered by section descent)
-|-- Listens: OnPlaySFX, OnBGMChange, OnSectionDescentStarted, OnSectionDescentCompleted
-`-- Volume control via Inspector Range sliders
+|-- Listens: OnPlaySFX, OnPlaySFXPitched, OnBGMChange, OnBgmVolumeChangeRequested, OnSfxVolumeChangeRequested, OnSectionDescentStarted, OnSectionDescentCompleted
+`-- Volume control via events and Inspector Range sliders
 
 S_SectionAlarmEffect (per-scene)
 |-- Visual alarm effect during section descent
 |-- Listens: OnSectionDescentStarted, OnSectionDescentCompleted
 `-- Screen flash + tint effect
 
-S_InputBindingManager (DontDestroyOnLoad)
+S_InputBindingManager (DontDestroyOnLoad, child of S_ManagerRoot)
 |-- Owns one shared InputSystem_Actions instance
 |-- Loads/saves binding overrides via PlayerPrefs
 |-- Provides interactive rebinding for keyboard/mouse and gamepad

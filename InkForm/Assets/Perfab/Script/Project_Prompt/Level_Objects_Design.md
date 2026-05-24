@@ -526,3 +526,50 @@ ExitGate
 - Gate auto-checks key count on `OnEnable()` in case keys were collected before gate was active
 - Only one exit gate per level recommended (multiple gates share the same key counter)
 - Level progression uses `S_GameManager.levelSceneNames[]` — ensure scenes are registered
+
+---
+
+## 12. S_SceneCheckpointTracker (v0.8.0)
+
+`S_SceneCheckpointTracker` is a per-scene checkpoint/respawn tracker that auto-creates itself via `[RuntimeInitializeOnLoadMethod]`. It listens for checkpoint and death events and handles player respawn using the `IPlayerActor` interface.
+
+### 12.1 Auto-Creation
+
+The tracker auto-creates per scene via `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]`. It registers a `SceneManager.sceneLoaded` hook to ensure every loaded scene has a tracker. If a tracker already exists in the scene, a new one is not created.
+
+### 12.2 Event Subscriptions
+
+| Event | Handler | Action |
+|-------|---------|--------|
+| `OnSpawnPointChanged` | `HandleSpawnPointChanged(Transform)` | Update tracked spawn position (only if checkpoint is in tracked scene) |
+| `OnPlayerDied` | `HandleRespawnRequested()` | Teleport player to last checkpoint, or reload scene |
+| `OnGameRestart` | `HandleRespawnRequested()` | Same as above |
+
+### 12.3 Respawn Flow
+
+```
+Player dies
+    → S_GameEvent.PlayerDied()
+    → S_SceneCheckpointTracker.HandleRespawnRequested()
+        → if hasSpawnPosition && player in tracked scene
+            → IPlayerActor.Teleport(spawnPosition)
+        → else
+            → ReloadTrackedScene()
+```
+
+### 12.4 Key Methods
+
+| Method | Description |
+|--------|-------------|
+| `HandleSpawnPointChanged(Transform)` | Cache spawn position from checkpoint (scene-scoped) |
+| `HandleRespawnRequested()` | Respawn player at last checkpoint or reload scene |
+| `CacheDefaultSpawnPosition()` | Store initial player position as default spawn |
+| `IsPlayerInTrackedScene(IPlayerActor)` | Check if player is in this tracker's scene |
+| `ReloadTrackedScene()` | Reload tracked scene via S_GameManager or SceneManager |
+
+### 12.5 Dependencies
+
+- **S_PlayerLookup**: Uses `S_PlayerLookup.TryGetActive()` to get IPlayerActor
+- **IPlayerActor**: Uses `IPlayerActor.Teleport()` for respawn
+- **S_GameEvent**: Subscribes to `OnSpawnPointChanged`, `OnPlayerDied`, `OnGameRestart`
+- **S_GameManager**: Falls back to `S_GameEvent.SceneLoadRequested()` if available

@@ -25,28 +25,49 @@ Producer (invokes event)          Consumer (subscribes to event)
            OnSectionStart += handler
 ```
 
-### 2.2 Event Inventory
+### 2.2 Event Inventory (30+ events as of v0.8.0)
 
 | Event | Parameter | Producer | Consumer |
 |-------|-----------|----------|----------|
-| OnPlayerDied | none | S_coleve (lava), hazards | S_GameManager, S_UIManager |
+| **Game Lifecycle** | | | |
+| OnPlayerDied | none | S_coleve (lava), hazards | S_GameManager, S_SceneCheckpointTracker |
 | OnGameStart | none | S_UIManager (Start button) | S_GameManager |
-| OnGameRestart | none | S_UIManager (Restart button) | S_GameManager |
+| OnGameRestart | none | S_UIManager (Restart button) | S_GameManager, S_SceneCheckpointTracker |
 | OnExit | none | S_UIManager (Exit button) | S_GameManager |
+| OnStartFreshGameRequested | none | S_StartMenuController | S_GameManager |
+| OnReturnToStartMenuRequested | none | S_StartMenuController | S_GameManager |
+| OnSceneLoadRequested | string sceneName | S_GameManager | S_GameManager |
+| OnGameplayInputEnabledRequested | bool enabled | S_UIManager | S_Player |
+| OnLevelExitRequested | none | S_ExitGate | S_GameManager |
+| **Data** | | | |
 | OnScoreChanged | int score | (future use) | (future UI) |
 | OnSkillUsed | string name | (future use) | (future UI) |
-| reNewSpwnPoint | Transform | S_Checkpoint | S_GameManager |
+| reNewSpwnPoint | Transform | S_Checkpoint | S_GameManager (legacy bridge) |
+| OnSpawnPointChanged | Transform | S_Checkpoint | S_SceneCheckpointTracker |
+| **Section** | | | |
 | OnSectionStart | int index | S_SectionGoal (Start trigger) | S_LevelSectionController |
 | OnSectionEnd | int index | S_SectionGoal (End trigger) | S_LevelSectionController |
 | OnSectionDescentStarted | int index | S_LevelSectionController | S_AudioManager, S_SectionAlarmEffect |
 | OnSectionDescentCompleted | int index | S_LevelSectionController | S_AudioManager, S_SectionAlarmEffect |
-| OnPlaySFX | AudioClip clip | S_Player, any system | S_AudioManager |
+| **Audio** | | | |
+| OnPlaySFX | AudioClip clip | S_Player, S_PlayerSkillController, any system | S_AudioManager |
+| OnPlaySFXPitched | AudioClip, float pitch, float vol | Any system | S_AudioManager |
 | OnBGMChange | AudioClip clip | Any system | S_AudioManager |
-| OnNPCInteract | string npcID | S_NPCEnemy, S_NPCStory | (future UI) |
-| OnSuspicionChanged | float value | S_SuspicionSystem | (future UI) |
-| OnAlertTriggered | Transform npc | S_SuspicionSystem | S_LevelSectionController |
+| OnBgmVolumeChangeRequested | float value | S_GameManager | S_AudioManager |
+| OnSfxVolumeChangeRequested | float value | S_GameManager | S_AudioManager |
+| **NPC & Story** | | | |
+| OnNPCInteract | string npcID | S_NPCEnemy, S_NPCDialogue | (future UI) |
+| OnSuspicionChanged | float value | S_SuspicionSystem | S_UIManager, S_NPCCamera |
+| OnSuspicionValueChanged | float current, float max | S_SuspicionSystem | S_UIManager |
+| OnSuspicionChangeRequested | float amount, Transform source | S_NPCEnemy | S_SuspicionSystem |
+| OnHiddenSuspicionDecayRequested | float deltaTime | S_HideSpot | S_SuspicionSystem |
+| OnPlayerHiddenChangeRequested | bool hidden | S_HideSpot | S_SuspicionSystem |
+| OnPlayerHiddenChanged | bool hidden | S_SuspicionSystem | S_HideSpot |
+| OnAlertTriggered | Transform npc | S_SuspicionSystem | S_NPCCamera |
 | OnArrestTriggered | none | S_SuspicionSystem | S_GameManager |
-| OnStoryTrigger | string triggerID | S_NPCStory | (future systems) |
+| OnSuspicionResetRequested | none | S_GameManager | S_SuspicionSystem |
+| OnStoryTrigger | string triggerID | S_NPCDialogue | S_NPCStory |
+| **Key & Gate** | | | |
 | OnKeyCollected | none | S_Key | S_ExitGate |
 | OnKeyCountChanged | int collected, int total | S_Key | S_ExitGate, S_UIManager |
 
@@ -88,18 +109,24 @@ Player enters Section 0 EndTrigger
 
 **Type**: Static class (no MonoBehaviour — does NOT need a GameObject in scene)
 
-**Event Declarations**:
+**Event Declarations** (30+ events):
 ```csharp
 // Game lifecycle events
 public static event Action OnPlayerDied;
 public static event Action OnGameStart;
 public static event Action OnGameRestart;
 public static event Action OnExit;
+public static event Action OnStartFreshGameRequested;       // v0.8.0
+public static event Action OnReturnToStartMenuRequested;    // v0.8.0
+public static event Action<string> OnSceneLoadRequested;    // v0.8.0
+public static event Action<bool> OnGameplayInputEnabledRequested; // v0.8.0
 
 // Data events
 public static event Action<int> OnScoreChanged;
 public static event Action<string> OnSkillUsed;
-public static event Action<Transform> reNewSpwnPoint;
+public static event Action<Transform> reNewSpwnPoint;       // legacy bridge
+public static event Action<Transform> OnSpawnPointChanged;  // v0.8.0
+public static event Action OnLevelExitRequested;            // v0.8.0
 
 // Section events
 public static event Action<int> OnSectionStart;
@@ -109,13 +136,22 @@ public static event Action<int> OnSectionDescentCompleted;
 
 // Audio events
 public static event Action<AudioClip> OnPlaySFX;
+public static event Action<AudioClip, float, float> OnPlaySFXPitched;
 public static event Action<AudioClip> OnBGMChange;
+public static event Action<float> OnBgmVolumeChangeRequested;  // v0.8.0
+public static event Action<float> OnSfxVolumeChangeRequested;  // v0.8.0
 
 // NPC & Story events
 public static event Action<string> OnNPCInteract;
 public static event Action<float> OnSuspicionChanged;
+public static event Action<float, float> OnSuspicionValueChanged;             // v0.8.0
+public static event Action<float, Transform> OnSuspicionChangeRequested;      // v0.8.0
+public static event Action<float> OnHiddenSuspicionDecayRequested;            // v0.8.0
+public static event Action<bool> OnPlayerHiddenChangeRequested;               // v0.8.0
+public static event Action<bool> OnPlayerHiddenChanged;                       // v0.8.0
 public static event Action<Transform> OnAlertTriggered;
 public static event Action OnArrestTriggered;
+public static event Action OnSuspicionResetRequested;                         // v0.8.0
 public static event Action<string> OnStoryTrigger;
 
 // Key & Gate events
@@ -130,17 +166,32 @@ public static event Action<int, int> OnKeyCountChanged;
 | `GameStart()` | none | `OnGameStart` | Start button pressed |
 | `GameReStart()` | none | `OnGameRestart` | Restart button pressed |
 | `ExitGame()` | none | `OnExit` | Exit button pressed |
-| `ReNewSpwnPoint(Transform)` | Transform | `reNewSpwnPoint` | New checkpoint reached |
+| `ReNewSpwnPoint(Transform)` | Transform | `reNewSpwnPoint` | Legacy bridge — also calls `SpawnPointChanged` |
+| `SpawnPointChanged(Transform)` | Transform | `OnSpawnPointChanged`, `reNewSpwnPoint` | New checkpoint reached (v0.8.0) |
 | `ScoreChanged(int)` | int | `OnScoreChanged` | Score updated (future) |
 | `SkillUsed(string)` | string | `OnSkillUsed` | Skill activated (future) |
+| `StartFreshGameRequested()` | none | `OnStartFreshGameRequested` | New game from start menu (v0.8.0) |
+| `ReturnToStartMenuRequested()` | none | `OnReturnToStartMenuRequested` | Return to start menu (v0.8.0) |
+| `SceneLoadRequested(string)` | string | `OnSceneLoadRequested` | Request scene load (v0.8.0) |
+| `GameplayInputEnabledRequested(bool)` | bool | `OnGameplayInputEnabledRequested` | Toggle gameplay input (v0.8.0) |
+| `LevelExitRequested()` | none | `OnLevelExitRequested` | Player exits level (v0.8.0) |
 | `SectionStart(int)` | int sectionIndex | `OnSectionStart` | Player entered section Start trigger |
 | `SectionEnd(int)` | int sectionIndex | `OnSectionEnd` | Player entered section End trigger |
 | `SectionDescentStarted(int)` | int sectionIndex | `OnSectionDescentStarted` | Section platform started descending |
 | `SectionDescentCompleted(int)` | int sectionIndex | `OnSectionDescentCompleted` | Section platform finished descending |
 | `PlaySFX(AudioClip)` | AudioClip clip | `OnPlaySFX` | Play a one-shot sound effect |
+| `PlaySFX(AudioClip, float, float)` | clip, pitch, vol | `OnPlaySFXPitched` | Play SFX with pitch/volume |
 | `BGMChange(AudioClip)` | AudioClip clip | `OnBGMChange` | Switch background music clip |
+| `BgmVolumeChangeRequested(float)` | float | `OnBgmVolumeChangeRequested` | Change BGM volume (v0.8.0) |
+| `SfxVolumeChangeRequested(float)` | float | `OnSfxVolumeChangeRequested` | Change SFX volume (v0.8.0) |
 | `NPCInteract(string)` | string npcID | `OnNPCInteract` | Player interacted with NPC |
 | `SuspicionChanged(float)` | float value | `OnSuspicionChanged` | Suspicion meter value changed |
+| `SuspicionValueChanged(float, float)` | current, max | `OnSuspicionValueChanged` | Suspicion value + max changed (v0.8.0) |
+| `SuspicionChangeRequested(float, Transform)` | amount, source | `OnSuspicionChangeRequested` | Request suspicion change (v0.8.0) |
+| `HiddenSuspicionDecayRequested(float)` | deltaTime | `OnHiddenSuspicionDecayRequested` | Hidden decay tick (v0.8.0) |
+| `PlayerHiddenChangeRequested(bool)` | hidden | `OnPlayerHiddenChangeRequested` | Request hide state change (v0.8.0) |
+| `PlayerHiddenChanged(bool)` | hidden | `OnPlayerHiddenChanged` | Hide state changed (v0.8.0) |
+| `SuspicionResetRequested()` | none | `OnSuspicionResetRequested` | Reset suspicion on restart (v0.8.0) |
 | `AlertTriggered(Transform)` | Transform npc | `OnAlertTriggered` | NPC triggered alert |
 | `ArrestTriggered()` | none | `OnArrestTriggered` | Player was arrested |
 | `StoryTrigger(string)` | string triggerID | `OnStoryTrigger` | Story event triggered |

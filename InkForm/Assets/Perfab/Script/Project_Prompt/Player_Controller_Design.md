@@ -2,7 +2,9 @@
 
 ## 1. Overview
 
-The player controller (`S_Player`) is the core gameplay component managing movement, jumping, form switching, paralyze effects, sprint charging, camera control, and integration with the skill system. It uses Unity's new Input System for input handling and Rigidbody2D for physics.
+The player controller (`S_Player`) is the core gameplay component managing movement, jumping, form switching, paralyze effects, sprint charging, camera control, and integration with the skill system. It uses Unity's new Input System for input handling and Rigidbody2D for physics. `S_Player` implements the `IPlayerActor` interface, which decouples player access from concrete class references throughout the codebase.
+
+`S_PlayerSkillController` owns the sprint charge state machine and camera control logic, extracted from `S_Player` in v0.8.0 to reduce monolithic complexity.
 
 `S_CameraMove` provides smooth camera tracking that follows the player, with support for manual camera control via the Camera Control skill.
 
@@ -32,11 +34,14 @@ Player switches to FLUID form
 ### 2.1 Script Dependencies
 
 ```
-S_Player (Singleton)
+S_Player (Singleton, implements IPlayerActor)
 |-- Input System: S_InputBindingManager shared InputSystem_Actions (Move, Jump, Sprint, Grip, CameraControl)
 |-- Physics: Rigidbody2D, CircleCollider2D, PhysicsMaterial2D
 |-- Rendering: SpriteRenderer, Sprite[], S_PlayerProceduralRenderer, S_PlayerDynamicCollider
 |-- Skills: S_fluid_climb (wall climbing), S_Soild_sprint (sprint charge), S_CameraControlSkill (camera control)
+|-- Skill Controller: S_PlayerSkillController (sprint charge + camera control logic, injected at Awake)
+|-- Contracts: IPlayerActor interface (decouples player from NPC/Level systems)
+|-- Player Lookup: S_PlayerLookup (static utility resolving IPlayerActor from colliders)
 |-- Audio: S_GameEvent.PlaySFX() (jump, form switch, sprint charge SFX)
 |-- Events: S_SkillTree (sprint/camera skill access)
 `-- Camera: S_CameraMove (follow + manual control)
@@ -94,9 +99,11 @@ Player (S_Player component)
 
 ### 3.1 S_Player.cs
 
-**Type**: MonoBehaviour (Singleton)
+**Type**: MonoBehaviour (Singleton, implements `IPlayerActor`)
 
 **Singleton Pattern**: Uses `Instance` static property. Set in `Awake()`.
+
+**Interface**: `S_Player` implements `IPlayerActor` which exposes `Rigidbody`, `Collider`, `BodyTransform`, `IsFluidForm`, `IsParalyzed`, `IsSprintMomentumActive`, `FacingRight`, `Teleport`, `SetMovementLocked`, `ApplyParalyze`, `ForceSprintBreakthrough`, and `CancelSprintCharge`. Other systems access the player through `S_PlayerLookup.TryGet()` instead of directly referencing `S_Player.Instance`.
 
 **Serialized Fields**:
 | Field | Default | Description |
@@ -336,6 +343,8 @@ When enabled, `S_PlayerProceduralRenderer` hides the fallback `SpriteRenderer` a
 
 The sprint skill has been replaced with a hold-to-charge sprint system. Instead of `WasPerformedThisFrame()` triggering an instant dash, the player now holds the sprint key to charge, and releases to dash.
 
+**v0.8.0 Note**: Sprint charge logic has been extracted from `S_Player` into `S_PlayerSkillController`. `S_Player` delegates `BeginSprintCharge()`, `ReleaseSprintCharge()`, and `CancelSprintCharge()` to the skill controller. The charge state machine, visual updates, and audio management all live in `S_PlayerSkillController`.
+
 ### 9.1 Behavior Overview
 
 ```
@@ -364,7 +373,9 @@ Sprint key pressed
     `-- Cooldown set based on release stage
 ```
 
-### 9.2 S_Player Sprint Charge Fields
+### 9.2 S_PlayerSkillController Sprint Charge Fields
+
+These fields now live in `S_PlayerSkillController` (previously in `S_Player`):
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -407,6 +418,8 @@ Sprint key pressed
 ## 10. Camera Control System
 
 The player can hold the CameraControl input to enter a bullet-time state with manual camera panning. This allows the player to survey the level ahead while slowing down time.
+
+**v0.8.0 Note**: Camera control logic has been extracted from `S_Player` into `S_PlayerSkillController`. `S_Player` delegates `HandleCameraControlInput()`, `BeginCameraControl()`, `EndCameraControl()`, and `CameraControlTick()` to the skill controller.
 
 ### 10.1 Behavior
 
@@ -460,5 +473,6 @@ Camera control is blocked when:
 
 ### 11.3 Callers
 
-- `S_HideSpot`: Locks movement when player enters a hide spot, unlocks when exiting
+- `S_HideSpot`: Locks movement when player enters a hide spot, unlocks when exiting (via `IPlayerActor.SetMovementLocked`)
+- `S_SceneCheckpointTracker`: Uses `IPlayerActor.Teleport()` for respawn after death
 - Any system requiring cutscene/pause behavior

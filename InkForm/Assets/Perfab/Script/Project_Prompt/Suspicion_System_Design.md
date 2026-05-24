@@ -133,3 +133,52 @@ Player presses `E` within trigger to toggle hide.
 - **Symptom**: `ArrestTriggered()` called, then suspicion changes trigger it again
 - **Cause**: Missing `arrestTriggered` guard in `AddSuspicion()` method
 - **Fix**: All mutation methods check `if (arrestTriggered) return;` at top
+
+---
+
+## v0.8.0: Event-Driven Suspicion Architecture
+
+The suspicion system has been refactored to use event-driven communication through `S_GameEvent`, decoupling it from direct NPC and HideSpot references.
+
+### New Events (v0.8.0)
+
+| Event | Parameter | Producer | Consumer | Description |
+|-------|-----------|----------|----------|-------------|
+| `OnSuspicionChangeRequested` | float amount, Transform source | S_NPCEnemy | S_SuspicionSystem | NPC requests suspicion increase |
+| `OnHiddenSuspicionDecayRequested` | float deltaTime | S_HideSpot | S_SuspicionSystem | HideSpot requests passive decay while hidden |
+| `OnPlayerHiddenChangeRequested` | bool hidden | S_HideSpot | S_SuspicionSystem | HideSpot requests hide state change |
+| `OnPlayerHiddenChanged` | bool hidden | S_SuspicionSystem | S_HideSpot | Suspicion system confirms hide state changed |
+| `OnSuspicionValueChanged` | float current, float max | S_SuspicionSystem | S_UIManager | Suspicion value + max changed (for UI display) |
+| `OnSuspicionResetRequested` | none | S_GameManager | S_SuspicionSystem | Reset all suspicion state on restart |
+
+### Migration from Static Bridge (v0.5.0 → v0.8.0)
+
+**Old pattern (pre-v0.8.0)**:
+```csharp
+// S_HideSpot directly sets static field
+S_SuspicionSystem.PlayerHidden = true;
+
+// S_NPCEnemy directly calls singleton
+S_SuspicionSystem.Instance.AddSuspicion(amount);
+```
+
+**New pattern (v0.8.0+)**:
+```csharp
+// S_HideSpot publishes event
+S_GameEvent.PlayerHiddenChangeRequested(true);
+
+// S_NPCEnemy publishes event
+S_GameEvent.SuspicionChangeRequested(amount, transform);
+
+// S_SuspicionSystem subscribes and processes
+void OnEnable() {
+    S_GameEvent.OnPlayerHiddenChangeRequested += HandleHiddenChangeRequested;
+    S_GameEvent.OnSuspicionChangeRequested += HandleSuspicionChangeRequested;
+    S_GameEvent.OnHiddenSuspicionDecayRequested += HandleHiddenDecay;
+    S_GameEvent.OnSuspicionResetRequested += HandleResetRequested;
+}
+```
+
+### IPlayerActor Integration
+
+`S_SuspicionSystem` now uses `S_PlayerLookup.TryGetActive()` to get `IPlayerActor` for distance checks and player state queries, instead of direct `S_Player.Instance` references.

@@ -26,6 +26,12 @@ S_SkillTree (MonoBehaviour, Singleton)
 |-- S_SkillBase[] allSkills (all registered skill assets)
 |-- Dictionary<string, S_SkillBase> unlockedMap
 `-- int skillPoints
+
+S_PlayerSkillController (MonoBehaviour, v0.8.0) — extracted from S_Player
+|-- Owns sprint charge state machine (BeginSprintCharge, FixedTick, Release, Cancel)
+|-- Owns camera control logic (BeginCameraControl, EndCameraControl, CameraControlTick)
+|-- Initialized via injection from S_Player.Initialize()
+`-- Delegates to S_SkillTree for skill parameter access
 ```
 
 ### 2.2 Why ScriptableObjects?
@@ -395,4 +401,49 @@ Camera control is blocked when:
 
 ### 9.5 S_SkillTree Integration
 
-`S_SkillTree.GetCameraControlSkill()` returns the `S_CameraControlSkill` instance so `S_Player` can access camera control parameters.
+`S_SkillTree.GetCameraControlSkill()` returns the `S_CameraControlSkill` instance so `S_PlayerSkillController` can access camera control parameters.
+
+---
+
+## 10. S_PlayerSkillController (v0.8.0)
+
+`S_PlayerSkillController` is a MonoBehaviour created and injected by `S_Player` during `Awake()`. It owns the sprint charge state machine and camera control logic, previously embedded directly in `S_Player`.
+
+### 10.1 Initialization
+
+```csharp
+// S_Player creates S_PlayerSkillController in Awake()
+skillController = gameObject.AddComponent<S_PlayerSkillController>();
+skillController.Initialize(this, moveAction, sprintAction, cameraControlAction,
+    cameraController, proceduralRenderer, dynamicCollider, body, bodyRigidbody,
+    solidGravityScale, useDynamicCollider);
+```
+
+### 10.2 Key Methods
+
+| Method | Description |
+|--------|-------------|
+| `BeginSprintCharge()` | Start sprint charge (buffer → charge → release flow) |
+| `FixedTickSprintCharge()` | Per-frame charge update (stage progression, visuals, shake) |
+| `ReleaseSprintCharge()` | Release charge → apply sprint impulse + cooldown |
+| `CancelSprintCharge()` | Cancel active sprint charge and restore visuals |
+| `HandleCameraControlInput()` | Detect CameraControl input and activate/deactivate |
+| `CameraControlTick()` | Feed move input to camera during manual control |
+| `BeginCameraControl(skill)` | Enter bullet-time + manual camera mode |
+| `EndCameraControl()` | Restore time scale and camera state |
+| `TickCooldown()` | Decrease sprint cooldown timer |
+
+### 10.3 Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `IsSprintCharging` | bool | Whether sprint charge is active |
+| `IsCameraControlActive` | bool | Whether camera control is active |
+
+### 10.4 Integration
+
+- `S_Player.Update()` → calls `skillController.HandleCameraControlInput()`, `skillController.TickCooldown()`
+- `S_Player.FixedUpdate()` → calls `skillController.FixedTickSprintCharge()`
+- `S_Player.BeginSprintCharge()` → delegates to `skillController.BeginSprintCharge()`
+- `S_Player.ReleaseSprintCharge()` → delegates to `skillController.ReleaseSprintCharge()`
+- Sprint/Camera skill parameters are fetched from `S_SkillTree` at runtime

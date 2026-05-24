@@ -386,3 +386,47 @@ Camera follows waypoints at configurable speed with wait times at each point.
 | patrolSpeed | float | Movement speed between points |
 | waitTime | float | Wait duration at each waypoint |
 | loopMode | bool | Whether camera loops back to start |
+
+---
+
+## 12. Player Reference Pattern (v0.8.0)
+
+NPC systems resolve the player through `S_PlayerLookup` instead of direct `S_Player.Instance` references. This decouples NPC code from the concrete player class.
+
+### 12.1 S_PlayerLookup
+
+`S_PlayerLookup` is a static utility class (in `Player/Core/S_PlayerContracts.cs`) that resolves `IPlayerActor` from colliders or the active player instance.
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `TryGet(Collider2D, out IPlayerActor)` | bool | Resolve IPlayerActor from a collider (component hierarchy + tag fallback) |
+| `TryGet(Collision2D, out IPlayerActor)` | bool | Resolve from a collision |
+| `TryGetActive(out IPlayerActor)` | bool | Get the current active player instance |
+| `IsPlayer(Collider2D)` | bool | Quick check if collider belongs to player |
+
+### 12.2 Migration Guide
+
+**Old pattern (pre-v0.8.0)**:
+```csharp
+S_Player player = S_Player.Instance;
+if (player != null) {
+    float dist = Vector2.Distance(transform.position, player.transform.position);
+}
+```
+
+**New pattern (v0.8.0+)**:
+```csharp
+if (S_PlayerLookup.TryGetActive(out IPlayerActor player)) {
+    float dist = Vector2.Distance(transform.position, player.BodyTransform.position);
+}
+```
+
+### 12.3 IPlayerActor Members Used by NPC Systems
+
+| IPlayerActor Member | NPC Usage |
+|---------------------|-----------|
+| `BodyTransform` | Distance checks, chase direction calculation |
+| `Rigidbody` | Position for projectile aim |
+| `Collider` | Physics overlap checks |
+| `IsParalyzed` | Skip detection if already paralyzed |
+| `IsFluidForm` | Adjust detection behavior | 
