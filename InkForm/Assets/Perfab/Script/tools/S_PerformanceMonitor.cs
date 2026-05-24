@@ -95,11 +95,12 @@ public class S_PerformanceMonitor : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
-            Destroy(this);
+            S_ManagerRoot.DestroyDuplicate(this);
             return;
         }
 
         Instance = this;
+        S_ManagerRoot.AttachPersistent(transform);
         isVisible = showOnStart;
         sceneName = SceneManager.GetActiveScene().name;
         BuildOverlayText();

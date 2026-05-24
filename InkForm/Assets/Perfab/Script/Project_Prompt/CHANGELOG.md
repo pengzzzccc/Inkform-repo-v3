@@ -1,5 +1,61 @@
 # InkForm — Changelog
 
+## v0.8.0 - Architecture Refactor: Modular Directory & Interface Abstraction (2026-05-25)
+
+### Architecture Overhaul
+- **Major directory restructure**: Flat `player/`, `Manager/`, `Npcs/`, `LevelCon/`, `tools/` → modular tree with `Player/Core/`, `Player/Skills/`, `Player/Body/`, `Player/Physics/`, `Managers/`, `NPCs/Core/`, `NPCs/Combat/`, `NPCs/Dialogue/`, `NPCs/Sensors/`, `NPCs/Spawning/`, `Level/Interactables/`, `Level/Platforms/`, `Level/Resources/`, `Level/Sections/`, `Level/Zones/`, `Camera/`, `Core/Events/`, `Input/`, `Systems/Suspicion/`, `Tools/`
+- All `.cs` and `.meta` files moved to new locations; Unity meta GUIDs preserved
+
+### New Files
+- **`S_PlayerContracts.cs`** (`Player/Core/`): `IPlayerActor` interface + `S_PlayerLookup` static utility
+  - `IPlayerActor`: abstracts player access (Rigidbody, Collider, BodyTransform, IsFluidForm, IsParalyzed, Teleport, SetMovementLocked, ApplyParalyze, ForceSprintBreakthrough, CancelSprintCharge)
+  - `S_PlayerLookup.TryGet(Collider2D/Collision2D, out IPlayerActor)`: resolves player from any collider
+  - `S_PlayerLookup.TryGetActive(out IPlayerActor)`: gets current active player
+  - `S_PlayerLookup.IsPlayer(Collider2D/Collision2D)`: quick tag + component check
+- **`S_PlayerSkillController.cs`** (`Player/Skills/`): Extracted sprint charge + camera control logic from `S_Player`
+  - Sprint charge state machine: `BeginSprintCharge`, `FixedTickSprintCharge`, `ReleaseSprintCharge`, `CancelSprintCharge`
+  - Camera control: `BeginCameraControl`, `EndCameraControl`, `CameraControlTick`, `HandleCameraControlInput`
+  - Initialized via `Initialize()` injection from `S_Player`
+- **`S_ManagerRoot.cs`** (`Managers/`): Persistent `DontDestroyOnLoad` manager container
+  - `EnsureExists()`: finds or creates the root GameObject
+  - `AttachPersistent(Transform)`: parents a manager under the root
+  - `GetOrCreateChild(string)` / `GetOrCreateComponent<T>(string)`: lazy child/component creation
+  - `RuntimeInitializeOnLoadMethod` reset for editor domain reload
+- **`S_SceneCheckpointTracker.cs`** (`Level/Interactables/`): Per-scene checkpoint/respawn tracker
+  - Auto-creates per scene via `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]`
+  - Listens to `OnSpawnPointChanged`, `OnPlayerDied`, `OnGameRestart`
+  - Uses `IPlayerActor.Teleport` for respawn; falls back to `SceneManager.LoadScene` if no player
+  - Tracks spawn position per scene to support multi-scene workflows
+
+### Interface Abstraction
+- `S_Player` now implements `IPlayerActor`
+- NPC systems (`S_NPCEnemy`), level systems (`S_HideSpot`, `S_LevelSection`, `S_SceneCheckpointTracker`), and suspicion system now resolve the player via `S_PlayerLookup.TryGet()` / `S_PlayerLookup.TryGetActive()` instead of directly referencing `S_Player.Instance`
+- This decouples gameplay systems from the concrete `S_Player` class
+
+### S_GameEvent Expansion (30+ events, up from 19)
+- **Scene management**: `OnStartFreshGameRequested`, `OnReturnToStartMenuRequested`, `OnSceneLoadRequested`, `OnGameplayInputEnabledRequested`, `OnLevelExitRequested`
+- **Spawn point**: `OnSpawnPointChanged` (replaces `reNewSpwnPoint` — old event kept as compatibility bridge)
+- **Volume control**: `OnBgmVolumeChangeRequested`, `OnSfxVolumeChangeRequested`
+- **Suspicion refinement**: `OnSuspicionValueChanged`, `OnSuspicionChangeRequested`, `OnHiddenSuspicionDecayRequested`, `OnPlayerHiddenChangeRequested`, `OnPlayerHiddenChanged`, `OnSuspicionResetRequested`
+
+### Skill Controller Extraction
+- Sprint charge logic moved from `S_Player` to `S_PlayerSkillController`
+- Camera control logic moved from `S_Player` to `S_PlayerSkillController`
+- `S_Player` now delegates to `S_PlayerSkillController` for sprint/camera operations
+- `S_PlayerSkillController` is created and injected by `S_Player` during `Awake()`
+
+### Manager Root
+- All persistent managers (`S_GameManager`, `S_UIManager`, `S_AudioManager`, `S_InputBindingManager`) now attach under `S_ManagerRoot` via `AttachPersistent()`
+- `S_ManagerRoot` provides `DontDestroyOnLoad` lifecycle management
+- `S_PerformanceMonitor` references `S_ManagerRoot` for dependency validation
+
+### Documentation
+- **Architecture.md**: Complete rewrite with 10 Mermaid diagrams reflecting new modular structure, IPlayerActor interface, S_ManagerRoot, S_PlayerSkillController, S_SceneCheckpointTracker, and 30+ events
+- **memory-bank/activeContext.md**: Updated to v0.8.0 with new directory tree and design decisions
+- **memory-bank/progress.md**: Updated to v0.8.0 with architecture refactor details
+
+---
+
 ## v0.7.2 - Key & Exit Gate System, UI Fixes (2026-05-15)
 
 ### New Features

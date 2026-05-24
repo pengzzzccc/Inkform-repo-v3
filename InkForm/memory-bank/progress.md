@@ -1,32 +1,105 @@
 # InkForm Project Progress
 
 ## Current Version
-v0.7.0 (Sprint Charge, NPC Jumping & Wave Spawner)
+v0.8.0 (Architecture Refactor — Modular Directory + Interface Abstraction)
 
 ## What Works
-- Player Controller (solid/fluid form switching, wall climb, wall jump, paralyze)
-- Sprint Charge System (hold-to-charge, buffer, three-stage scaling, stage-based cooldowns)
+- Player Controller (IPlayerActor interface, solid/fluid form switching, wall climb, wall jump, paralyze)
+- Sprint Charge System (hold-to-charge, buffer, three-stage scaling, stage-based cooldowns — now in S_PlayerSkillController)
+- Camera Control System (bullet-time manual camera, now in S_PlayerSkillController)
 - Procedural Slime Rendering (body, outline, eye glow, contact-plane fitting, hybrid tail mesh)
 - Dynamic Collider (CircleCollider2D default + CapsuleCollider2D for crouch/wall/ceiling)
-- Skill System (Sprint charge, FluidClimb, Skill Tree structure)
+- Skill System (Sprint charge, FluidClimb, CameraControl, Skill Tree structure)
 - Input Binding System (S_InputBindingManager with runtime rebinding + PlayerPrefs persistence)
-- Level Objects (breakable blocks, checkpoints, moving platforms, pipelines, jump pads, doors, button doors)
+- Level Objects (breakable blocks, checkpoints, moving platforms, pipelines, jump pads, doors, button doors, keys, exit gates)
 - Moving Platforms (delta displacement transfer)
-- Game Event Bus (all major events wired)
-- Manager Systems (GameManager, UIManager with runtime controls menu, AudioManager)
-- Level Section System (dual triggers, section-level movement)
+- Game Event Bus (30+ events including scene management, volume control, suspicion refinement)
+- Manager Systems (S_ManagerRoot persistent container, GameManager, UIManager, AudioManager, InputBindingManager)
+- Level Section System (dual triggers, section-level movement, alarm effects)
 - NPC Guard System (5-state: Patrol/Chase/Aim/Attack/Arrest/Stunned, Rigidbody2D optional)
 - NPC Jumping System (predictive jump with wall/gap/player-above detection)
 - NPC Spawner Tool (S_NPCSpawnerTool for inspector-driven spawning)
 - NPC Wave Spawner (S_NPCWaveSpawner for runtime camera-edge spawning)
 - NPC Camera (S_NPCCamera)
 - NPC Dialogue & Story (S_NPCDialogue, S_NPCStory)
-- Suspicion System (0-100 meter, 3-tier thresholds)
-- Hide Mechanic (S_HideSpot with static PlayerHidden bridge + SetMovementLocked)
+- Suspicion System (0-100 meter, 3-tier thresholds, event-driven)
+- Hide Mechanic (S_HideSpot with event-driven PlayerHidden bridge)
 - Sprint Stun (Physics2D.OverlapCircleAll on enemy layer)
 - Audio System (BGM/SFX via S_AudioManager + S_GameEvent events)
 - Narrative System (Characters, Story Outline, World Overview, Willard Protocol)
 - Player Movement Lock API (SetMovementLocked for S_HideSpot integration)
+- Player Contracts (IPlayerActor interface + S_PlayerLookup utility)
+- Manager Root (S_ManagerRoot persistent DontDestroyOnLoad container)
+- Scene Checkpoint Tracker (S_SceneCheckpointTracker per-scene auto-creation)
+- Key & Exit Gate System (collect keys to unlock exit, load next level)
+
+## v0.8.0 — Architecture Refactor (2026-05-25)
+
+### Architecture Overhaul
+- [x] Major directory restructure: flat structure → modular directory tree
+- [x] Player: `player/` → `Player/Core/`, `Player/Skills/`, `Player/Body/`, `Player/Physics/`
+- [x] Managers: `Manager/` → `Managers/` (plus new S_ManagerRoot)
+- [x] NPCs: `Npcs/` → `NPCs/Core/`, `NPCs/Combat/`, `NPCs/Dialogue/`, `NPCs/Sensors/`, `NPCs/Spawning/`
+- [x] Level: `LevelCon/` → `Level/Interactables/`, `Level/Platforms/`, `Level/Resources/`, `Level/Sections/`, `Level/Zones/`
+- [x] Tools: `tools/` → `Tools/`
+- [x] New: `Core/Events/`, `Camera/`, `Input/`, `Systems/Suspicion/`
+
+### Interface Abstraction
+- [x] IPlayerActor interface (Rigidbody, Collider, BodyTransform, IsFluidForm, IsParalyzed, Teleport, SetMovementLocked, etc.)
+- [x] S_PlayerLookup static utility (TryGet from Collider2D/Collision2D, TryGetActive, IsPlayer)
+- [x] S_Player implements IPlayerActor
+- [x] NPC/Level systems now use IPlayerActor instead of direct S_Player references
+
+### Skill Controller Extraction
+- [x] S_PlayerSkillController extracted from S_Player
+- [x] Owns sprint charge state machine (BeginSprintCharge, FixedTickSprintCharge, ReleaseSprintCharge, CancelSprintCharge)
+- [x] Owns camera control (BeginCameraControl, EndCameraControl, CameraControlTick)
+- [x] Initialized via injection from S_Player
+
+### Manager Root
+- [x] S_ManagerRoot: persistent DontDestroyOnLoad container
+- [x] AttachPersistent API for manager lifecycle
+- [x] GetOrCreateChild / GetOrCreateComponent helpers
+- [x] RuntimeInitializeOnLoadMethod reset for editor domain reload
+
+### Scene Checkpoint
+- [x] S_SceneCheckpointTracker: per-scene checkpoint/respawn tracker
+- [x] Auto-creates via [RuntimeInitializeOnLoadMethod]
+- [x] Listens to OnSpawnPointChanged, OnPlayerDied, OnGameRestart
+- [x] Uses IPlayerActor.Teleport for respawn
+
+### S_GameEvent Expansion
+- [x] Scene management: OnStartFreshGameRequested, OnReturnToStartMenuRequested, OnSceneLoadRequested, OnGameplayInputEnabledRequested, OnLevelExitRequested
+- [x] Spawn point: OnSpawnPointChanged (replaces reNewSpwnPoint)
+- [x] Volume: OnBgmVolumeChangeRequested, OnSfxVolumeChangeRequested
+- [x] Suspicion refinement: OnSuspicionValueChanged, OnSuspicionChangeRequested, OnHiddenSuspicionDecayRequested, OnPlayerHiddenChangeRequested, OnPlayerHiddenChanged, OnSuspicionResetRequested
+
+### Documentation
+- [x] Updated memory-bank/activeContext.md
+- [x] Updated memory-bank/progress.md
+- [ ] Updated Architecture.md (Mermaid diagrams)
+- [ ] Updated CHANGELOG.md
+
+## v0.7.2 — Key & Exit Gate System, UI Fixes (2026-05-15)
+
+### New Features
+- [x] Key & Exit Gate System (S_Key + S_ExitGate + S_GameEvent events)
+- [x] S_UIManager key count HUD
+
+### Bug Fixes
+- [x] Controls Mapping Panel layout fix (anchor-based positioning)
+
+### Documentation
+- [x] Level_Objects_Design.md: §11 Key & Exit Gate System
+- [x] Game_Event_System_Design.md: Key & Gate events
+
+## v0.7.1 — Documentation Sync & Platform Cable (2026-05-15)
+
+### New Features
+- [x] Dual Platform Cable (S_PlatformCableVisual)
+
+### Documentation
+- [x] Full sync of all 9 design documents against 40+ source files
 
 ## v0.7.0 — Sprint Charge, NPC Jumping & Wave Spawner (2026-05-13)
 
@@ -34,40 +107,14 @@ v0.7.0 (Sprint Charge, NPC Jumping & Wave Spawner)
 - [x] Hold-to-charge sprint with buffer (0.15s quick-tap for instant dash)
 - [x] Three-stage size scaling with shake transition effects
 - [x] Stage-based cooldowns (0.1s/0.5s/1.0s)
-- [x] Sprint direction uses release-time facing
-- [x] Eyes follow velocity during charge (not frozen)
-- [x] Procedural renderer freezes into perfect circle during charge
-- [x] Dynamic collider scales with charge stage
-- [x] Low-friction ball material for rolling during charge
-- [x] Player can move, jump, grip during charge
-- [x] minSprintSpeed guarantee for quick-tap
 
 ### NPC Jumping System
-- [x] Predictive jump: wall detection via forward raycast
-- [x] Gap detection via multi-step ground scanning
-- [x] Player-above detection for vertical chase
+- [x] Predictive jump: wall detection, gap detection, player-above detection
 - [x] Dynamic jump force and horizontal boost
-- [x] Air control factor (50%) for natural jump arcs
-- [x] Works with both Rigidbody and Transform movement modes
+- [x] Air control factor (50%)
 
 ### NPC Wave Spawner
-- [x] S_NPCWaveSpawner: spawns NPCs at camera edges every 30s (configurable)
-- [x] Inspector camera reference (falls back to Camera.main)
-- [x] Ground detection via raycast
-- [x] Automatic cleanup of distant NPCs
-- [x] Gizmo visualization
-
-### Bug Fixes
-- [x] Fixed SetMovementLocked missing from S_Player (S_HideSpot compile error)
-- [x] movementLocked properly blocks jumping, gripping, and movement
-
-### Documentation
-- [x] Updated CHANGELOG.md with v0.7.0 entry
-- [x] Updated Player_Controller_Design.md (Section 9: Sprint Charge)
-- [x] Updated Skill_System_Design.md (Section 8: Sprint Charge Parameters)
-- [x] Updated NPC_System_Design.md (Sections 8-9: Jumping + Wave Spawner)
-- [x] Updated Manager_Systems_Design.md (Section 8: Movement Lock API)
-- [x] Updated memory-bank files
+- [x] S_NPCWaveSpawner: camera-edge spawning, 30s interval, cleanup
 
 ## Previous Versions
 See CHANGELOG.md for v0.1.0 through v0.6.3 history.
