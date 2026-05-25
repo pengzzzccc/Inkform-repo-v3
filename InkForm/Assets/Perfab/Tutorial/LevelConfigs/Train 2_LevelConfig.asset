@@ -18,16 +18,15 @@ MonoBehaviour:
   - CameraControl
   familiarizeVoiceClip: {fileID: 8300000, guid: d69399b36d126fc4e9dd27de8cb2bbf2, type: 3}
   familiarizeSubtitle: Now get familiar with the controls.
-  countdownVoiceClip: {fileID: 8300000, guid: 0fac6452f4b29c140944383693296f9b, type: 3}
   countdownDigitVoiceLibrary: {fileID: 11400000, guid: 969313e650e64c1fa53c081d42db3377, type: 2}
   autoGenerateCountdownSubtitle: 1
-  countdownSubtitle: Reach the goal within 50 seconds.
+  countdownSubtitle: Reach the goal within 40 seconds.
   requiredActions: []
   promptTitle: Sprint Controls
   promptDescription: "Hold Sprint - Charge\nRelease Sprint - Dash through weak blocks\nusing
     shift/east bottom to sprint\n\nTo Control camera movement \nHold Q/Left shoulder
     button\nand using wasd/Left stick to Navigate"
-  timeLimit: 50
+  timeLimit: 40
   startupDelay: 0.5
   panToTargetDuration: 1.5
   panHoldDuration: 1.5

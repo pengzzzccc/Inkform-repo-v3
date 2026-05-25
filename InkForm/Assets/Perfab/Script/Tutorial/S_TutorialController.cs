@@ -56,7 +56,7 @@ public class S_TutorialController : MonoBehaviour
     private bool goalReached;
     private bool countdownExpired;
     private bool tutorialInputLocked;
-    private readonly List<AudioClip> countdownVoiceClips = new List<AudioClip>(8);
+    private readonly List<AudioClip> digitCountdownClips = new List<AudioClip>(8);
 
     void Awake()
     {
@@ -158,18 +158,20 @@ public class S_TutorialController : MonoBehaviour
             string countdownSubtitle = levelConfig.GetCountdownSubtitle();
             if (voiceLinePlayer != null && !string.IsNullOrEmpty(countdownSubtitle))
             {
-                if (levelConfig.TryBuildCountdownVoiceClips(countdownVoiceClips, out float clipGap))
+                if (levelConfig.TryBuildCountdownVoiceClips(digitCountdownClips, out float clipGap))
                 {
                     yield return voiceLinePlayer.PlayVoiceSequence(
-                        countdownVoiceClips,
+                        digitCountdownClips,
                         countdownSubtitle,
                         clipGap);
                 }
                 else
                 {
-                    yield return voiceLinePlayer.PlayVoiceLine(
-                        levelConfig.countdownVoiceClip,
-                        countdownSubtitle);
+                    Debug.LogWarning($"[TutorialController] Countdown digit voice library is missing or incomplete for {levelConfig.name}. Showing countdown subtitle without legacy audio fallback.");
+                    yield return voiceLinePlayer.PlayVoiceSequence(
+                        null,
+                        countdownSubtitle,
+                        0f);
                 }
             }
         }

@@ -40,9 +40,6 @@ public class S_LevelConfig : ScriptableObject
     [TextArea]
     public string familiarizeSubtitle = "Now get familiar with the controls.";
 
-    [Tooltip("Voice clip for the countdown prompt. Can be null.")]
-    public AudioClip countdownVoiceClip;
-
     [Tooltip("Optional digit voice library. When assigned, countdown audio is composed from 0-9 digit clips based on timeLimit.")]
     public S_CountdownDigitVoiceLibrary countdownDigitVoiceLibrary;
 

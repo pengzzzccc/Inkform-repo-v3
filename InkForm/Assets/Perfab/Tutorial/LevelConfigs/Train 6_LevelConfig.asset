@@ -18,7 +18,6 @@ MonoBehaviour:
   - FluidClimb
   familiarizeVoiceClip: {fileID: 8300000, guid: d69399b36d126fc4e9dd27de8cb2bbf2, type: 3}
   familiarizeSubtitle: 
-  countdownVoiceClip: {fileID: 8300000, guid: 0fac6452f4b29c140944383693296f9b, type: 3}
   countdownDigitVoiceLibrary: {fileID: 11400000, guid: 969313e650e64c1fa53c081d42db3377, type: 2}
   autoGenerateCountdownSubtitle: 1
   countdownSubtitle: Reach the goal within 40 seconds.
