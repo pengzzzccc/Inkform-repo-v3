@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -34,9 +35,11 @@ public class S_InputBindingManager : MonoBehaviour
     }
 
     private const string BindingPrefsKey = "InkForm.InputBindingOverrides";
+    private const string LegacyGameplayInputLockId = "LegacyGameplayInputRequest";
     private static S_InputBindingManager instance;
 
     private InputSystem_Actions actions;
+    private readonly HashSet<string> gameplayInputLocks = new HashSet<string>();
     private InputActionRebindingExtensions.RebindingOperation rebindingOperation;
     private InputAction rebindingAction;
     private bool rebindingActionWasEnabled;
@@ -70,11 +73,16 @@ public class S_InputBindingManager : MonoBehaviour
     {
         actions?.Enable();
         S_GameEvent.OnGameplayInputEnabledRequested += SetGameplayInputEnabled;
+        S_GameEvent.OnGameplayInputLockPushed += PushGameplayInputLock;
+        S_GameEvent.OnGameplayInputLockPopped += PopGameplayInputLock;
+        ApplyGameplayInputLockState();
     }
 
     private void OnDisable()
     {
         S_GameEvent.OnGameplayInputEnabledRequested -= SetGameplayInputEnabled;
+        S_GameEvent.OnGameplayInputLockPushed -= PushGameplayInputLock;
+        S_GameEvent.OnGameplayInputLockPopped -= PopGameplayInputLock;
         CancelRebind();
         actions?.Disable();
     }
@@ -186,12 +194,39 @@ public class S_InputBindingManager : MonoBehaviour
 
     public void SetGameplayInputEnabled(bool enabled)
     {
+        if (enabled)
+            PopGameplayInputLock(LegacyGameplayInputLockId);
+        else
+            PushGameplayInputLock(LegacyGameplayInputLockId);
+    }
+
+    public void PushGameplayInputLock(string lockId)
+    {
+        InitializeActions();
+        gameplayInputLocks.Add(NormalizeGameplayInputLockId(lockId));
+        ApplyGameplayInputLockState();
+    }
+
+    public void PopGameplayInputLock(string lockId)
+    {
+        InitializeActions();
+        gameplayInputLocks.Remove(NormalizeGameplayInputLockId(lockId));
+        ApplyGameplayInputLockState();
+    }
+
+    private void ApplyGameplayInputLockState()
+    {
         InitializeActions();
 
-        if (enabled)
+        if (gameplayInputLocks.Count == 0)
             actions.Player.Enable();
         else
             actions.Player.Disable();
+    }
+
+    private static string NormalizeGameplayInputLockId(string lockId)
+    {
+        return string.IsNullOrWhiteSpace(lockId) ? "AnonymousGameplayInputLock" : lockId;
     }
 
     private void InitializeActions()

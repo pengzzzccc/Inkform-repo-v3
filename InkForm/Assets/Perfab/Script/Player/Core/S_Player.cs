@@ -213,7 +213,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
             gripping = false;
             return;
         }
-        gripping = m_PlayerGrep.IsPressed();
+        gripping = m_PlayerGrep.IsPressed() && IsFluidClimbSkillAvailable();
     }
 
     void Jump()
@@ -621,6 +621,11 @@ public class S_Player : MonoBehaviour, IPlayerActor
     private void EndCameraControl() => skillController?.EndCameraControl();
 
     internal void ClearGripState() => gripping = false;
+
+    private bool IsFluidClimbSkillAvailable()
+    {
+        return S_SkillTree.Instance == null || S_SkillTree.Instance.IsUnlocked("FluidClimb");
+    }
 
     void OnEnable()
     {

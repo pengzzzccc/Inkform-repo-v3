@@ -1,4 +1,4 @@
-%YAML 1.1
+﻿%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!1045 &1
 EditorBuildSettings:
@@ -8,24 +8,24 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/For_game/Start.unity
     guid: 665b7399a8720754497d27f28bbc3aa9
-  - enabled: 0
-    path: Assets/Scenes/SampleScene.unity
-    guid: 8c9cfa26abfee488c85f1582747f6a02
-  - enabled: 0
-    path: Assets/Scenes/QA/CoreToyPrototype.unity
-    guid: 73e0704b35959544390dd7254c75629c
-  - enabled: 0
-    path: Assets/Scenes/For_test/CharacterTest.unity
-    guid: 47c5a7c83af6b524cb9ffc3711c08db1
-  - enabled: 0
-    path: Assets/Scenes/QA/CoreToyPrototype_mergeTest.unity
-    guid: df1c0c2e10064d446a960fed8bc93765
   - enabled: 1
-    path: Assets/Scenes/For_test/Playtest1.unity
-    guid: d89088fbe1afcb1419d44060683b6aa9
+    path: Assets/Scenes/For_game/Training Room/Train 1.unity
+    guid: 8ae0b4ce0e765794d913e902e35918ce
   - enabled: 1
-    path: Assets/Scenes/For_test/NPCPlayTestScene.unity
-    guid: 16f270c5970770d43accee11d773a4c8
+    path: Assets/Scenes/For_game/Training Room/Train 2.unity
+    guid: a57228b8449442d2aa07bd219bf70002
+  - enabled: 1
+    path: Assets/Scenes/For_game/Training Room/Train 3.unity
+    guid: a57228b8449442d2aa07bd219bf70003
+  - enabled: 1
+    path: Assets/Scenes/For_game/Training Room/Train 4.unity
+    guid: a57228b8449442d2aa07bd219bf70004
+  - enabled: 1
+    path: Assets/Scenes/For_game/Training Room/Train 5.unity
+    guid: a57228b8449442d2aa07bd219bf70005
+  - enabled: 1
+    path: Assets/Scenes/For_game/Training Room/Train 6.unity
+    guid: a57228b8449442d2aa07bd219bf70006
   - enabled: 1
     path: Assets/Scenes/For_game/END.unity
     guid: b7dea1b62d0ff7941a1670f24b89c4d6

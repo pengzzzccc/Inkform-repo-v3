@@ -9,8 +9,11 @@ public static class S_GameEvent
     public static event Action OnExit;
     public static event Action OnStartFreshGameRequested;
     public static event Action OnReturnToStartMenuRequested;
+    public static event Action OnRestartCurrentLevelRequested;
     public static event Action<string> OnSceneLoadRequested;
     public static event Action<bool> OnGameplayInputEnabledRequested;
+    public static event Action<string> OnGameplayInputLockPushed;
+    public static event Action<string> OnGameplayInputLockPopped;
     public static event Action<int> OnScoreChanged;
     public static event Action<string> OnSkillUsed;
     public static event Action<float, float> OnPlayerEnergyChanged;
@@ -46,8 +49,11 @@ public static class S_GameEvent
     public static void ExitGame() => OnExit?.Invoke();
     public static void StartFreshGameRequested() => OnStartFreshGameRequested?.Invoke();
     public static void ReturnToStartMenuRequested() => OnReturnToStartMenuRequested?.Invoke();
+    public static void RestartCurrentLevelRequested() => OnRestartCurrentLevelRequested?.Invoke();
     public static void SceneLoadRequested(string sceneName) => OnSceneLoadRequested?.Invoke(sceneName);
     public static void GameplayInputEnabledRequested(bool enabled) => OnGameplayInputEnabledRequested?.Invoke(enabled);
+    public static void PushGameplayInputLock(string lockId) => OnGameplayInputLockPushed?.Invoke(lockId);
+    public static void PopGameplayInputLock(string lockId) => OnGameplayInputLockPopped?.Invoke(lockId);
     public static void PlayerEnergyChanged(float current, float max) => OnPlayerEnergyChanged?.Invoke(current, max);
     public static void ReNewSpwnPoint(Transform spwnPoint) => SpawnPointChanged(spwnPoint);
     public static void SpawnPointChanged(Transform spwnPoint)
@@ -88,4 +94,24 @@ public static class S_GameEvent
     // Key & Gate Invokers
     public static void KeyCollected() => OnKeyCollected?.Invoke();
     public static void KeyCountChanged(int collected, int total) => OnKeyCountChanged?.Invoke(collected, total);
+
+    // Tutorial & Camera Pan Events
+    public static event Action OnCameraPanStarted;
+    public static event Action OnCameraPanEnded;
+    public static event Action<float> OnCountdownTick;
+    public static event Action OnCountdownStarted;
+    public static event Action OnCountdownFinished;
+    public static event Action OnTutorialPromptDismissed;
+    public static event Action OnVoiceLineFinished;
+    public static event Action OnTutorialPhaseChanged;
+
+    // Tutorial & Camera Pan Invokers
+    public static void CameraPanStarted() => OnCameraPanStarted?.Invoke();
+    public static void CameraPanEnded() => OnCameraPanEnded?.Invoke();
+    public static void CountdownStarted() => OnCountdownStarted?.Invoke();
+    public static void CountdownTick(float remaining) => OnCountdownTick?.Invoke(remaining);
+    public static void CountdownFinished() => OnCountdownFinished?.Invoke();
+    public static void TutorialPromptDismissed() => OnTutorialPromptDismissed?.Invoke();
+    public static void VoiceLineFinished() => OnVoiceLineFinished?.Invoke();
+    public static void TutorialPhaseChanged() => OnTutorialPhaseChanged?.Invoke();
 }

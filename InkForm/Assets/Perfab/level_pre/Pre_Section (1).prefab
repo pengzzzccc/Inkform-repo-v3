@@ -134,6 +134,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sectionIndex: 0
   triggerType: 0
+  requestLevelExitOnEnd: 0
 --- !u!61 &8181786402325470019
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -369,6 +370,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sectionIndex: 0
   triggerType: 1
+  requestLevelExitOnEnd: 0
 --- !u!61 &1804796337827710257
 BoxCollider2D:
   m_ObjectHideFlags: 0

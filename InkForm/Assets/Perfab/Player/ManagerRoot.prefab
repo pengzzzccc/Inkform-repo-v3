@@ -55,23 +55,47 @@ MonoBehaviour:
     sceneName: Start
   levelScenes:
   - sceneAsset: {fileID: 0}
-    scenePath: Assets/Scenes/For_test/Playtest1.unity
-    sceneName: Playtest1
+    scenePath: Assets/Scenes/For_game/Training Room/Train 1.unity
+    sceneName: Train 1
   - sceneAsset: {fileID: 0}
-    scenePath: Assets/Scenes/For_test/NPCPlayTestScene.unity
-    sceneName: NPCPlayTestScene
+    scenePath: Assets/Scenes/For_game/Training Room/Train 2.unity
+    sceneName: Train 2
+  - sceneAsset: {fileID: 0}
+    scenePath: Assets/Scenes/For_game/Training Room/Train 3.unity
+    sceneName: Train 3
+  - sceneAsset: {fileID: 0}
+    scenePath: Assets/Scenes/For_game/Training Room/Train 4.unity
+    sceneName: Train 4
+  - sceneAsset: {fileID: 0}
+    scenePath: Assets/Scenes/For_game/Training Room/Train 5.unity
+    sceneName: Train 5
+  - sceneAsset: {fileID: 0}
+    scenePath: Assets/Scenes/For_game/Training Room/Train 6.unity
+    sceneName: Train 6
   - sceneAsset: {fileID: 0}
     scenePath: Assets/Scenes/For_game/END.unity
     sceneName: END
   startMenuSceneName: Start
   levelSceneNames:
-  - Playtest1
-  - NPCPlayTestScene
+  - Train 1
+  - Train 2
+  - Train 3
+  - Train 4
+  - Train 5
+  - Train 6
   - END
   currentLevelIndex: -1
   unlockFrameRateOnStart: 1
   lockedFrameRate: 120
   allowRuntimeFrameRateToggle: 1
+  useSceneTransition: 1
+  transitionFadeOutTime: 0.35
+  transitionPreLoadHoldTime: 0
+  transitionPostLoadHoldTime: 0.05
+  transitionFadeInTime: 0.35
+  transitionColor: {r: 0, g: 0, b: 0, a: 1}
+  transitionClip: {fileID: 0}
+  transitionHoldTime: 0.05
 --- !u!1 &120000
 GameObject:
   m_ObjectHideFlags: 0
@@ -261,8 +285,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cfffd3e79bac20943ad35375465e7472, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  allSkills: []
+  allSkills:
+  - {fileID: 11400000, guid: d91b60083425f4e49b7fb656757b0f8e, type: 2}
+  - {fileID: 11400000, guid: 5cf4f0abfe21bbb4da609adf4d0d63cf, type: 2}
+  - {fileID: 11400000, guid: e65b958fd52d3b643a1cc5f6e23fe6bf, type: 2}
   skillPoints: 0
+  autoUnlockDefaultSkills: 1
+  defaultUnlockedSkills:
+  - Sprint
+  - FluidClimb
+  - CameraControl
 --- !u!1 &160000
 GameObject:
   m_ObjectHideFlags: 0

@@ -7,6 +7,8 @@ using UnityEngine.UI;
 
 public class S_GameManager : MonoBehaviour
 {
+    private const string SceneTransitionInputLockId = "SceneTransition";
+
     public static S_GameManager Instance { get; private set; }
 
     [Header("Legacy Start Scene")]
@@ -33,10 +35,12 @@ public class S_GameManager : MonoBehaviour
     [Header("Scene Transition")]
     [SerializeField] private bool useSceneTransition = true;
     [SerializeField, Min(0f)] private float transitionFadeOutTime = 0.35f;
-    [SerializeField, Min(0f)] private float transitionHoldTime = 0.05f;
+    [SerializeField, Min(0f)] private float transitionPreLoadHoldTime = 0f;
+    [SerializeField, Min(0f)] private float transitionPostLoadHoldTime = 0.05f;
     [SerializeField, Min(0f)] private float transitionFadeInTime = 0.35f;
     [SerializeField] private Color transitionColor = new Color(0f, 0f, 0f, 1f);
     [SerializeField] private AudioClip transitionClip;
+    [SerializeField, HideInInspector] private float transitionHoldTime = 0.05f;
 
     private bool isFrameRateUnlocked;
     private Canvas transitionCanvas;
@@ -79,6 +83,7 @@ public class S_GameManager : MonoBehaviour
         S_GameEvent.OnLevelExitRequested += HandleLevelExitRequested;
         S_GameEvent.OnStartFreshGameRequested += StartFreshGameFromMenu;
         S_GameEvent.OnReturnToStartMenuRequested += ReturnToStartMenu;
+        S_GameEvent.OnRestartCurrentLevelRequested += ReloadCurrentLevel;
         S_GameEvent.OnSceneLoadRequested += HandleSceneLoadRequested;
     }
 
@@ -91,6 +96,7 @@ public class S_GameManager : MonoBehaviour
         S_GameEvent.OnLevelExitRequested -= HandleLevelExitRequested;
         S_GameEvent.OnStartFreshGameRequested -= StartFreshGameFromMenu;
         S_GameEvent.OnReturnToStartMenuRequested -= ReturnToStartMenu;
+        S_GameEvent.OnRestartCurrentLevelRequested -= ReloadCurrentLevel;
         S_GameEvent.OnSceneLoadRequested -= HandleSceneLoadRequested;
     }
 
@@ -103,6 +109,9 @@ public class S_GameManager : MonoBehaviour
 #if UNITY_EDITOR
     void OnValidate()
     {
+        if (transitionHoldTime > 0f && Mathf.Approximately(transitionPostLoadHoldTime, 0.05f))
+            transitionPostLoadHoldTime = transitionHoldTime;
+
         SyncSceneReferenceForEditor(ref legacyStartScene, scene, "legacy start scene");
         SyncSceneReferenceForEditor(ref startMenuScene, startMenuSceneName, "start menu scene");
         SyncLevelReferencesForEditor();
@@ -335,46 +344,51 @@ public class S_GameManager : MonoBehaviour
 
     private IEnumerator LoadSceneWithTransition(string sceneKey)
     {
-        Time.timeScale = 1f;
-        Time.fixedDeltaTime = defaultFixedDeltaTime;
-        if (S_PlayerLookup.TryGetActive(out IPlayerActor player))
-            player.CancelActiveSkills();
-
-        S_GameEvent.GameplayInputEnabledRequested(false);
-        S_GameEvent.SuspicionResetRequested();
-        EnsureTransitionOverlay();
-
-        if (transitionClip != null)
-            S_GameEvent.PlaySFX(transitionClip);
-
-        yield return FadeTransitionOverlay(0f, 1f, transitionFadeOutTime);
-
-        AsyncOperation loadOperation = SceneManager.LoadSceneAsync(sceneKey);
-        if (loadOperation == null)
+        S_GameEvent.PushGameplayInputLock(SceneTransitionInputLockId);
+        try
         {
-            Debug.LogError($"[GameManager] Scene '{sceneKey}' failed to start loading.");
+            Time.timeScale = 1f;
+            Time.fixedDeltaTime = defaultFixedDeltaTime;
+            if (S_PlayerLookup.TryGetActive(out IPlayerActor player))
+                player.CancelActiveSkills();
+
+            S_GameEvent.SuspicionResetRequested();
+            EnsureTransitionOverlay();
+
+            if (transitionClip != null)
+                S_GameEvent.PlaySFX(transitionClip);
+
+            yield return FadeTransitionOverlay(0f, 1f, transitionFadeOutTime);
+
+            if (transitionPreLoadHoldTime > 0f)
+                yield return new WaitForSecondsRealtime(transitionPreLoadHoldTime);
+
+            AsyncOperation loadOperation = SceneManager.LoadSceneAsync(sceneKey);
+            if (loadOperation == null)
+            {
+                Debug.LogError($"[GameManager] Scene '{sceneKey}' failed to start loading.");
+                yield return FadeTransitionOverlay(1f, 0f, transitionFadeInTime);
+                if (transitionCanvas != null)
+                    transitionCanvas.gameObject.SetActive(false);
+                yield break;
+            }
+
+            while (!loadOperation.isDone)
+                yield return null;
+
+            if (transitionPostLoadHoldTime > 0f)
+                yield return new WaitForSecondsRealtime(transitionPostLoadHoldTime);
+
             yield return FadeTransitionOverlay(1f, 0f, transitionFadeInTime);
+
             if (transitionCanvas != null)
                 transitionCanvas.gameObject.SetActive(false);
-
-            sceneLoadRoutine = null;
-            S_GameEvent.GameplayInputEnabledRequested(true);
-            yield break;
         }
-
-        while (!loadOperation.isDone)
-            yield return null;
-
-        if (transitionHoldTime > 0f)
-            yield return new WaitForSecondsRealtime(transitionHoldTime);
-
-        yield return FadeTransitionOverlay(1f, 0f, transitionFadeInTime);
-
-        if (transitionCanvas != null)
-            transitionCanvas.gameObject.SetActive(false);
-
-        S_GameEvent.GameplayInputEnabledRequested(true);
-        sceneLoadRoutine = null;
+        finally
+        {
+            sceneLoadRoutine = null;
+            S_GameEvent.PopGameplayInputLock(SceneTransitionInputLockId);
+        }
     }
 
     private void EnsureTransitionOverlay()

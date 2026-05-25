@@ -11,6 +11,10 @@ public class S_SkillTree : MonoBehaviour
     [Header("init skill point")]
     [SerializeField] private int skillPoints = 0;
 
+    [Header("Default Runtime Unlocks")]
+    [SerializeField] private bool autoUnlockDefaultSkills = true;
+    [SerializeField] private string[] defaultUnlockedSkills = { "Sprint", "FluidClimb", "CameraControl" };
+
     private Dictionary<string, S_SkillBase> unlockedMap = new();
     private bool initialized = false;
 
@@ -28,9 +32,8 @@ public class S_SkillTree : MonoBehaviour
         {
             initialized = true;
             AddSkillPoints(5);
-            TryUnlock("Sprint");
-            TryUnlock("FluidClimb");
-            EnsureCameraControlSkill();
+            if (autoUnlockDefaultSkills)
+                UnlockDefaultSkills();
         }
     }
 
@@ -100,38 +103,103 @@ public class S_SkillTree : MonoBehaviour
 
     public S_Soild_sprint GetSprintSkill()
     {
-        S_SkillBase skill = FindSkill("Sprint");
-        return skill as S_Soild_sprint;
+        return unlockedMap.TryGetValue("Sprint", out S_SkillBase skill)
+            ? skill as S_Soild_sprint
+            : null;
     }
 
     public S_CameraControlSkill GetCameraControlSkill()
     {
-        EnsureCameraControlSkill();
         return unlockedMap.TryGetValue("CameraControl", out S_SkillBase skill)
             ? skill as S_CameraControlSkill
             : null;
     }
 
-    private void EnsureCameraControlSkill()
+    public void ApplyTutorialSkillSet(string[] skillNames)
     {
-        if (unlockedMap.ContainsKey("CameraControl"))
+        ResetUnlockedSkills();
+
+        if (skillNames == null)
             return;
 
-        S_CameraControlSkill skill = FindSkill("CameraControl") as S_CameraControlSkill;
+        foreach (string skillName in skillNames)
+        {
+            if (!string.IsNullOrWhiteSpace(skillName))
+                UnlockSkillDirect(skillName.Trim(), true);
+        }
+    }
+
+    public void RestoreDefaultSkillSet()
+    {
+        ResetUnlockedSkills();
+
+        if (autoUnlockDefaultSkills)
+            UnlockDefaultSkills();
+    }
+
+    public void ResetUnlockedSkills()
+    {
+        if (allSkills != null)
+        {
+            foreach (S_SkillBase skill in allSkills)
+            {
+                if (skill != null)
+                    skill.isUnlocked = false;
+            }
+        }
+
+        unlockedMap.Clear();
+    }
+
+    private void UnlockDefaultSkills()
+    {
+        if (defaultUnlockedSkills == null)
+            return;
+
+        foreach (string skillName in defaultUnlockedSkills)
+        {
+            if (string.IsNullOrWhiteSpace(skillName))
+                continue;
+
+            string trimmedName = skillName.Trim();
+            UnlockSkillDirect(trimmedName, false);
+        }
+    }
+
+    private bool UnlockSkillDirect(string skillName, bool logWarnings)
+    {
+        if (unlockedMap.ContainsKey(skillName))
+            return true;
+
+        S_SkillBase skill = FindSkill(skillName);
         if (skill == null)
         {
-            skill = ScriptableObject.CreateInstance<S_CameraControlSkill>();
-            skill.skillName = "CameraControl";
-            skill.requiredPoints = 0;
+            if (skillName == "CameraControl")
+            {
+                skill = ScriptableObject.CreateInstance<S_CameraControlSkill>();
+                skill.skillName = "CameraControl";
+                skill.requiredPoints = 0;
+            }
+            else
+            {
+                if (logWarnings)
+                    Debug.LogWarning($"[SkillTree] can't find skill: {skillName}");
+
+                return false;
+            }
         }
 
         skill.isUnlocked = true;
         unlockedMap[skill.skillName] = skill;
         skill.OnUnlocked(S_Player.Instance);
+        return true;
     }
 
     private S_SkillBase FindSkill(string name)
     {
+        if (allSkills == null)
+            return null;
+
         foreach (var s in allSkills)
             if (s != null && s.skillName == name) return s;
         return null;

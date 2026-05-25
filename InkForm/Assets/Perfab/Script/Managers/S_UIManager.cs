@@ -9,6 +9,9 @@ using UnityEngine.UI;
 
 public class S_UIManager : MonoBehaviour
 {
+    private const string PauseMenuInputLockId = "UIManager.PauseMenu";
+    private const string DeathUIInputLockId = "UIManager.DeathUI";
+
     public static S_UIManager Instance { get; private set; }
     private const string DefaultFirstLevelSceneName = "Playtest1";
 
@@ -208,7 +211,7 @@ public class S_UIManager : MonoBehaviour
         if (background == null) return;
 
         EnsureControlsUIBuilt();
-        PauseGameplayInput();
+        PauseGameplayInput(PauseMenuInputLockId);
         background.SetActive(true);
         menuOpen = true;
         SetControlsPanelVisible(false);
@@ -230,7 +233,7 @@ public class S_UIManager : MonoBehaviour
         Time.timeScale = 1f;
 
         if (!deathPanelOpen)
-            ResumeGameplayInputNextFrame();
+            ResumeGameplayInputNextFrame(PauseMenuInputLockId);
     }
 
     private void HideAllGameplayBlockingUI()
@@ -245,7 +248,7 @@ public class S_UIManager : MonoBehaviour
             return;
 
         EnsureDeathUIBuilt();
-        PauseGameplayInput();
+        PauseGameplayInput(DeathUIInputLockId);
 
         if (background != null)
             background.SetActive(false);
@@ -278,6 +281,8 @@ public class S_UIManager : MonoBehaviour
         if (deathPanel != null)
             deathPanel.SetActive(false);
 
+        S_GameEvent.PopGameplayInputLock(DeathUIInputLockId);
+
         if (clearSelection)
             ClearSelection();
     }
@@ -289,8 +294,7 @@ public class S_UIManager : MonoBehaviour
 
         HideDeathUI(false);
         Time.timeScale = 1f;
-        S_GameEvent.GameReStart();
-        ResumeGameplayInputNextFrame();
+        S_GameEvent.RestartCurrentLevelRequested();
     }
 
     private void SelectDeathDefaultIfNeeded()
@@ -407,7 +411,7 @@ public class S_UIManager : MonoBehaviour
 
         if (backToCheckpointButton == null)
         {
-            backToCheckpointButton = CreateButton("BackToCheckpointButton", deathPanel.transform, "back to checkpoint");
+            backToCheckpointButton = CreateButton("BackToCheckpointButton", deathPanel.transform, "restart current level");
             RectTransform buttonRect = backToCheckpointButton.GetComponent<RectTransform>();
             buttonRect.anchorMin = buttonRect.anchorMax = new Vector2(0.5f, 0.5f);
             buttonRect.pivot = new Vector2(0.5f, 0.5f);
@@ -422,6 +426,10 @@ public class S_UIManager : MonoBehaviour
     {
         if (backToCheckpointButton == null)
             return;
+
+        TMP_Text buttonText = backToCheckpointButton.GetComponentInChildren<TMP_Text>(true);
+        if (buttonText != null)
+            buttonText.text = "restart current level";
 
         backToCheckpointButton.onClick.RemoveListener(BackToCheckpoint);
         backToCheckpointButton.onClick.AddListener(BackToCheckpoint);
@@ -1067,7 +1075,7 @@ public class S_UIManager : MonoBehaviour
             content.anchoredPosition = new Vector2(content.anchoredPosition.x, 0f);
     }
 
-    private void PauseGameplayInput()
+    private void PauseGameplayInput(string lockId)
     {
         if (resumeGameplayInputCoroutine != null)
         {
@@ -1078,18 +1086,18 @@ public class S_UIManager : MonoBehaviour
         if (S_PlayerLookup.TryGetActive(out IPlayerActor player))
             player.CancelActiveSkills();
 
-        S_GameEvent.GameplayInputEnabledRequested(false);
+        S_GameEvent.PushGameplayInputLock(lockId);
     }
 
-    private void ResumeGameplayInputNextFrame()
+    private void ResumeGameplayInputNextFrame(string lockId)
     {
         if (resumeGameplayInputCoroutine != null)
             StopCoroutine(resumeGameplayInputCoroutine);
 
-        resumeGameplayInputCoroutine = StartCoroutine(ResumeGameplayInputAfterFrame());
+        resumeGameplayInputCoroutine = StartCoroutine(ResumeGameplayInputAfterFrame(lockId));
     }
 
-    private IEnumerator ResumeGameplayInputAfterFrame()
+    private IEnumerator ResumeGameplayInputAfterFrame(string lockId)
     {
         yield return null;
         resumeGameplayInputCoroutine = null;
@@ -1097,7 +1105,7 @@ public class S_UIManager : MonoBehaviour
         if (menuOpen)
             yield break;
 
-        S_GameEvent.GameplayInputEnabledRequested(true);
+        S_GameEvent.PopGameplayInputLock(lockId);
     }
 
     private void BeginRebind(BindingButtonView view)

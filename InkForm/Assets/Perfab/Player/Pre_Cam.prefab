@@ -234,12 +234,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   target: {fileID: 0}
-  minMoveSpeed: 15
-  manualMoveSpeed: 15
+  smoothSpeed: 8
+  deadZoneHeight: 3
+  minX: -20
+  maxX: 80
+  minY: -10
+  maxY: 50
+  manualMoveSpeed: 8
   manualMaxDistanceFromTarget: 8
-  returnSmoothSpeed: 12
-  followDeadZoneRadius: 0.25
   drawDeadZoneGizmo: 1
+  drawBoundsGizmo: 1
+  deadZoneColor: {r: 0.2, g: 0.8, b: 1, a: 0.25}
+  boundsColor: {r: 1, g: 0.9, b: 0.2, a: 0.5}
 --- !u!114 &3626135006407461005
 MonoBehaviour:
   m_ObjectHideFlags: 0
