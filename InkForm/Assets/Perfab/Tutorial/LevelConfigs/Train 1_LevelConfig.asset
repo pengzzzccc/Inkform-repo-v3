@@ -18,6 +18,7 @@ MonoBehaviour:
   familiarizeSubtitle: Now get familiar with the controls.
   countdownVoiceClip: {fileID: 8300000, guid: 0fac6452f4b29c140944383693296f9b, type: 3}
   countdownSubtitle: Reach the goal within 30 seconds.
+  requiredActions: []
   promptTitle: Movement Controls
   promptDescription: 'WASD / Arrow Keys - Move
 

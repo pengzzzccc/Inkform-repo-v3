@@ -16,10 +16,12 @@ MonoBehaviour:
   skillsToUnlock:
   - Sprint
   - FluidClimb
-  familiarizeVoiceClip: {fileID: 0}
+  - CameraControl
+  familiarizeVoiceClip: {fileID: 8300000, guid: d69399b36d126fc4e9dd27de8cb2bbf2, type: 3}
   familiarizeSubtitle: Now get familiar with the controls.
-  countdownVoiceClip: {fileID: 0}
+  countdownVoiceClip: {fileID: 8300000, guid: 0fac6452f4b29c140944383693296f9b, type: 3}
   countdownSubtitle: Reach the goal within 35 seconds.
+  requiredActions: []
   promptTitle: Fluid Climb Controls
   promptDescription: 'Hold Grip near a wall - Climb
 

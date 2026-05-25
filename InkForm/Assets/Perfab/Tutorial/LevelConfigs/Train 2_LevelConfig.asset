@@ -15,16 +15,17 @@ MonoBehaviour:
   tutorialType: 1
   skillsToUnlock:
   - Sprint
-  familiarizeVoiceClip: {fileID: 0}
+  - CameraControl
+  familiarizeVoiceClip: {fileID: 8300000, guid: d69399b36d126fc4e9dd27de8cb2bbf2, type: 3}
   familiarizeSubtitle: Now get familiar with the controls.
-  countdownVoiceClip: {fileID: 0}
-  countdownSubtitle: Reach the goal within 30 seconds.
+  countdownVoiceClip: {fileID: 8300000, guid: 0fac6452f4b29c140944383693296f9b, type: 3}
+  countdownSubtitle: Reach the goal within 50 seconds.
+  requiredActions: []
   promptTitle: Sprint Controls
-  promptDescription: 'Hold Sprint - Charge
-
-    Release Sprint - Dash through weak
-    blocks'
-  timeLimit: 30
+  promptDescription: "Hold Sprint - Charge\nRelease Sprint - Dash through weak blocks\nusing
+    shift/east bottom to sprint\n\nTo Control camera movement \nHold Q/Left shoulder
+    button\nand using wasd/Left stick to Navigate"
+  timeLimit: 50
   startupDelay: 0.5
   panToTargetDuration: 1.5
   panHoldDuration: 1.5

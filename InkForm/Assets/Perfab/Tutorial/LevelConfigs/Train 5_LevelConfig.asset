@@ -16,13 +16,15 @@ MonoBehaviour:
   skillsToUnlock:
   - Sprint
   - FluidClimb
-  familiarizeVoiceClip: {fileID: 0}
+  - CameraControl
+  familiarizeVoiceClip: {fileID: 8300000, guid: d69399b36d126fc4e9dd27de8cb2bbf2, type: 3}
   familiarizeSubtitle: Now get familiar with the controls.
-  countdownVoiceClip: {fileID: 0}
-  countdownSubtitle: Reach the goal within 35 seconds.
+  countdownVoiceClip: {fileID: 8300000, guid: 0fac6452f4b29c140944383693296f9b, type: 3}
+  countdownSubtitle: Reach the goal within 99 seconds.
+  requiredActions: []
   promptTitle: Climb Practice
   promptDescription: Combine Sprint and Fluid Climb to reach the goal.
-  timeLimit: 35
+  timeLimit: 99
   startupDelay: 0.5
   panToTargetDuration: 1.5
   panHoldDuration: 1.5

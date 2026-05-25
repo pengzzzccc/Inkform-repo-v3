@@ -136,21 +136,27 @@ public class S_CameraMove : MonoBehaviour
 
     private System.Collections.IEnumerator LerpCameraTo(Vector3 destination, float duration)
     {
+        float destX = Mathf.Clamp(destination.x, minX, maxX);
+        float destY = Mathf.Clamp(destination.y, minY, maxY);
+
         if (duration <= 0f)
         {
-            transform.position = new Vector3(destination.x, destination.y, transform.position.z);
+            transform.position = new Vector3(destX, destY, transform.position.z);
             yield break;
         }
 
         Vector3 startPos = transform.position;
-        Vector3 endPos = new Vector3(destination.x, destination.y, transform.position.z);
+        Vector3 endPos = new Vector3(destX, destY, transform.position.z);
         float elapsed = 0f;
 
         while (elapsed < duration)
         {
             elapsed += Time.unscaledDeltaTime;
             float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
-            transform.position = Vector3.Lerp(startPos, endPos, t);
+            Vector3 pos = Vector3.Lerp(startPos, endPos, t);
+            pos.x = Mathf.Clamp(pos.x, minX, maxX);
+            pos.y = Mathf.Clamp(pos.y, minY, maxY);
+            transform.position = pos;
             yield return null;
         }
 

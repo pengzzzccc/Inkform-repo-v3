@@ -15,8 +15,10 @@ MonoBehaviour:
   skillName: CameraControl
   description: 
   icon: {fileID: 0}
-  requiredPoints: 1
+  requiredPoints: 0
   prerequisites: []
   availableSolid: 1
   availableFluid: 1
+  minEnergyToStart: 10
+  energyDrainPerSecond: 20
   bulletTimeScale: 0.2

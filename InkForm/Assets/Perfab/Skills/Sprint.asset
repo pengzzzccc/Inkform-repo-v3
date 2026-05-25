@@ -15,10 +15,12 @@ MonoBehaviour:
   skillName: Sprint
   description: 
   icon: {fileID: 0}
-  requiredPoints: 1
+  requiredPoints: 0
   prerequisites: []
   availableSolid: 1
   availableFluid: 1
+  minEnergyToStart: 10
+  energyDrainPerSecond: 20
   sprintSpeed: 100
   cooldown: 1
   SprintLockTime: 0.1
@@ -46,3 +48,4 @@ MonoBehaviour:
   chargeStageClip: {fileID: 0}
   chargeStage3Clip: {fileID: 0}
   chargeReleaseClip: {fileID: 0}
+  quickTapEnergyCost: 12

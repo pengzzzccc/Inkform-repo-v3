@@ -46,33 +46,33 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   legacyStartScene:
     sceneAsset: {fileID: 0}
-    scenePath:
-    sceneName:
+    scenePath: 
+    sceneName: 
   scene: 
   startMenuScene:
-    sceneAsset: {fileID: 0}
+    sceneAsset: {fileID: 102900000, guid: 665b7399a8720754497d27f28bbc3aa9, type: 3}
     scenePath: Assets/Scenes/For_game/Start.unity
     sceneName: Start
   levelScenes:
-  - sceneAsset: {fileID: 0}
+  - sceneAsset: {fileID: 102900000, guid: 8ae0b4ce0e765794d913e902e35918ce, type: 3}
     scenePath: Assets/Scenes/For_game/Training Room/Train 1.unity
     sceneName: Train 1
-  - sceneAsset: {fileID: 0}
+  - sceneAsset: {fileID: 102900000, guid: f2559c9a19286dc4fb8d7a05180abdad, type: 3}
     scenePath: Assets/Scenes/For_game/Training Room/Train 2.unity
     sceneName: Train 2
-  - sceneAsset: {fileID: 0}
+  - sceneAsset: {fileID: 102900000, guid: 651490b125f0b744b893ecdc0d697db0, type: 3}
     scenePath: Assets/Scenes/For_game/Training Room/Train 3.unity
     sceneName: Train 3
-  - sceneAsset: {fileID: 0}
+  - sceneAsset: {fileID: 102900000, guid: 454e9f36b4119c44b84ed7968f864d08, type: 3}
     scenePath: Assets/Scenes/For_game/Training Room/Train 4.unity
     sceneName: Train 4
-  - sceneAsset: {fileID: 0}
+  - sceneAsset: {fileID: 102900000, guid: f672d913e2acc834f8d44464c50da8ca, type: 3}
     scenePath: Assets/Scenes/For_game/Training Room/Train 5.unity
     sceneName: Train 5
-  - sceneAsset: {fileID: 0}
-    scenePath: Assets/Scenes/For_game/Training Room/Train 6.unity
-    sceneName: Train 6
-  - sceneAsset: {fileID: 0}
+  - sceneAsset: {fileID: 102900000, guid: b7dea1b62d0ff7941a1670f24b89c4d6, type: 3}
+    scenePath: Assets/Scenes/For_game/END.unity
+    sceneName: END
+  - sceneAsset: {fileID: 102900000, guid: b7dea1b62d0ff7941a1670f24b89c4d6, type: 3}
     scenePath: Assets/Scenes/For_game/END.unity
     sceneName: END
   startMenuSceneName: Start
@@ -404,58 +404,6 @@ MonoBehaviour:
   spikeThresholdMs: 33.3
   logSpikesToConsole: 1
   windowsCsvLogging: 0
---- !u!1 &1515654825031196278
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 7685610171103954680}
-  - component: {fileID: 100002}
-  m_Layer: 0
-  m_Name: ManagerRoot
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &7685610171103954680
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1515654825031196278}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 110001}
-  - {fileID: 120001}
-  - {fileID: 130001}
-  - {fileID: 140001}
-  - {fileID: 150001}
-  - {fileID: 160001}
-  - {fileID: 170001}
-  - {fileID: 3919354013002183765}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &100002
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1515654825031196278}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9c51f08d21b940c4ba6e8ab6fb0a81f3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier:
 --- !u!1 &164035361011470795
 GameObject:
   m_ObjectHideFlags: 0
@@ -577,6 +525,58 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!1 &1515654825031196278
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7685610171103954680}
+  - component: {fileID: 100002}
+  m_Layer: 0
+  m_Name: ManagerRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7685610171103954680
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1515654825031196278}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 110001}
+  - {fileID: 120001}
+  - {fileID: 130001}
+  - {fileID: 140001}
+  - {fileID: 150001}
+  - {fileID: 160001}
+  - {fileID: 170001}
+  - {fileID: 3919354013002183765}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &100002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1515654825031196278}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c51f08d21b940c4ba6e8ab6fb0a81f3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1733632350782597402
 GameObject:
   m_ObjectHideFlags: 0
@@ -1322,8 +1322,16 @@ MonoBehaviour:
   StartButton: {fileID: 8932646041493936902}
   ReStartButton: {fileID: 768197469746092137}
   ExitButton: {fileID: 2102045108564647505}
+  ControlsButton: {fileID: 0}
   suspicionSlider: {fileID: 0}
   suspicionUI: {fileID: 0}
+  keyCountText: {fileID: 0}
+  energySlider: {fileID: 0}
+  energyUI: {fileID: 0}
+  deathPanel: {fileID: 0}
+  backToCheckpointButton: {fileID: 0}
+  deathCountText: {fileID: 0}
+  deathCountStartValue: 1
 --- !u!1 &7091170442762869114
 GameObject:
   m_ObjectHideFlags: 0
