@@ -20,6 +20,7 @@ public class S_PerformanceMonitor : MonoBehaviour
 
     [Header("Display")]
     [SerializeField] private bool showOnStart = false;
+    [SerializeField] private bool enableGamepadToggle = true;
     [SerializeField, Min(MinimumSampleInterval)] private float sampleInterval = 0.25f;
     [SerializeField, Min(0.5f)] private float sceneStatsInterval = 2f;
 
@@ -212,12 +213,34 @@ public class S_PerformanceMonitor : MonoBehaviour
 
     private void HandleToggleInput()
     {
+        if (WasKeyboardTogglePressed() || WasGamepadTogglePressed())
+            ToggleVisible();
+    }
+
+    private bool WasKeyboardTogglePressed()
+    {
         Keyboard keyboard = Keyboard.current;
         if (keyboard == null)
-            return;
+            return false;
 
-        if (keyboard[ToggleKey] != null && keyboard[ToggleKey].wasPressedThisFrame)
-            ToggleVisible();
+        return keyboard[ToggleKey] != null && keyboard[ToggleKey].wasPressedThisFrame;
+    }
+
+    private bool WasGamepadTogglePressed()
+    {
+        if (!enableGamepadToggle)
+            return false;
+
+        if (S_InputBindingManager.HasInstance && S_InputBindingManager.Instance.IsRebinding)
+            return false;
+
+        foreach (Gamepad gamepad in Gamepad.all)
+        {
+            if (gamepad != null && gamepad.selectButton.wasPressedThisFrame)
+                return true;
+        }
+
+        return false;
     }
 
     private void HandleSceneLoaded(Scene loadedScene, LoadSceneMode mode)
@@ -426,7 +449,7 @@ public class S_PerformanceMonitor : MonoBehaviour
     private void BuildOverlayText()
     {
         overlayBuilder.Length = 0;
-        overlayBuilder.AppendLine("InkForm Performance Monitor  (F3)");
+        overlayBuilder.AppendLine("InkForm Performance Monitor  (F3 / View)");
         overlayBuilder.AppendLine("--------------------------------");
         overlayBuilder.Append("FPS: ").Append(currentFps.ToString("0.0"));
         overlayBuilder.Append("  Avg: ").Append(averageFps.ToString("0.0"));
