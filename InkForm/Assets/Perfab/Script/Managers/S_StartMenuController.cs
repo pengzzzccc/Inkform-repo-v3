@@ -66,9 +66,26 @@ public class S_StartMenuController : MonoBehaviour
 
     private void Awake()
     {
-        EnsurePersistentManagers();
-        EnsureEventSystem();
-        cancelAction = S_InputBindingManager.Instance.Actions.UI.Cancel;
+        if (!EnsurePersistentManagers())
+        {
+            enabled = false;
+            return;
+        }
+
+        if (!EnsureEventSystem())
+        {
+            enabled = false;
+            return;
+        }
+
+        S_InputBindingManager inputBindingManager = S_InputBindingManager.Instance;
+        if (inputBindingManager == null)
+        {
+            enabled = false;
+            return;
+        }
+
+        cancelAction = inputBindingManager.Actions.UI.Cancel;
         BuildStartMenu();
         Time.timeScale = 1f;
     }
@@ -100,29 +117,41 @@ public class S_StartMenuController : MonoBehaviour
         }
     }
 
-    private void EnsurePersistentManagers()
+    private bool EnsurePersistentManagers()
     {
-        S_ManagerRoot root = S_ManagerRoot.EnsureExists();
+        S_ManagerRoot root = S_ManagerRoot.Instance != null
+            ? S_ManagerRoot.Instance
+            : FindAnyObjectByType<S_ManagerRoot>();
 
-        S_GameManager existingGameManager = S_GameManager.Instance != null
-            ? S_GameManager.Instance
-            : FindAnyObjectByType<S_GameManager>();
-        if (existingGameManager != null)
-            S_ManagerRoot.AttachPersistent(existingGameManager.transform);
-        else
-            root.GetOrCreateComponent<S_GameManager>("GameManager");
+        if (root == null)
+        {
+            Debug.LogError("[StartMenu] Missing ManagerRoot prefab. Add Assets/Perfab/Player/ManagerRoot.prefab to Start.unity.");
+            return false;
+        }
 
-        if (!S_InputBindingManager.HasInstance)
-            root.GetOrCreateComponent<S_InputBindingManager>("InputBindingManager");
-
-        if (S_AudioManager.Instance == null && FindAnyObjectByType<S_AudioManager>() == null)
-            root.GetOrCreateComponent<S_AudioManager>("AudioManager");
-
-        if (S_SuspicionSystem.Instance == null && FindAnyObjectByType<S_SuspicionSystem>() == null)
-            root.GetOrCreateComponent<S_SuspicionSystem>("SuspicionSystem");
+        bool hasRequiredManagers = true;
+        hasRequiredManagers &= HasManagerUnderRoot<S_GameManager>(root, "GameManager");
+        hasRequiredManagers &= HasManagerUnderRoot<S_InputBindingManager>(root, "InputBindingManager");
+        hasRequiredManagers &= HasManagerUnderRoot<S_AudioManager>(root, "AudioManager");
+        hasRequiredManagers &= HasManagerUnderRoot<S_SuspicionSystem>(root, "SuspicionSystem");
+        hasRequiredManagers &= HasManagerUnderRoot<S_UIManager>(root, "UIManager");
+        return hasRequiredManagers;
     }
 
-    private void EnsureEventSystem()
+    private static bool HasManagerUnderRoot<T>(S_ManagerRoot root, string managerName) where T : Component
+    {
+        T[] managers = FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (T manager in managers)
+        {
+            if (manager != null && manager.transform.IsChildOf(root.transform))
+                return true;
+        }
+
+        Debug.LogError($"[StartMenu] Missing {managerName} under ManagerRoot prefab. Add the full ManagerRoot prefab instead of loose manager objects.");
+        return false;
+    }
+
+    private bool EnsureEventSystem()
     {
         EventSystem eventSystem = EventSystem.current;
         if (eventSystem == null)
@@ -139,7 +168,14 @@ public class S_StartMenuController : MonoBehaviour
         if (inputModule == null)
             inputModule = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
 
-        InputSystem_Actions actions = S_InputBindingManager.Instance.Actions;
+        S_InputBindingManager inputBindingManager = S_InputBindingManager.Instance;
+        if (inputBindingManager == null)
+        {
+            Debug.LogError("[StartMenu] Cannot configure EventSystem because S_InputBindingManager is missing.");
+            return false;
+        }
+
+        InputSystem_Actions actions = inputBindingManager.Actions;
         inputModule.actionsAsset = actions.asset;
         inputModule.point = InputActionReference.Create(actions.UI.Point);
         inputModule.leftClick = InputActionReference.Create(actions.UI.Click);
@@ -151,6 +187,7 @@ public class S_StartMenuController : MonoBehaviour
         inputModule.cancel = InputActionReference.Create(actions.UI.Cancel);
         inputModule.trackedDevicePosition = InputActionReference.Create(actions.UI.TrackedDevicePosition);
         inputModule.trackedDeviceOrientation = InputActionReference.Create(actions.UI.TrackedDeviceOrientation);
+        return true;
     }
 
     private void BuildStartMenu()

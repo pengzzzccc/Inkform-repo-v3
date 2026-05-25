@@ -8,6 +8,12 @@ The player controller (`S_Player`) is the core gameplay component managing movem
 
 `S_CameraMove` provides smooth camera tracking that follows the player, with support for manual camera control via the Camera Control skill.
 
+### v0.8.1 Current Controller Updates
+- `S_Player` owns or references `S_PlayerEnergy`; Sprint, FluidClimb, and CameraControl all draw from the same energy pool.
+- `S_Player` initializes its Rigidbody2D with `CollisionDetectionMode2D.Continuous` and `RigidbodyInterpolation2D.Interpolate` for more stable high-speed motion.
+- Jump reset uses `SampleWalkableGround()` plus `ResetJumpCountIfGrounded()` so moving platforms restore jump count without relying on FluidClimb surface state.
+- FluidClimb grip detection now checks near the collider edge/direction, making wall attach more reliable when holding Grip near a wall.
+
 ### Core Gameplay Loop
 
 ```
@@ -40,6 +46,7 @@ S_Player (Singleton, implements IPlayerActor)
 |-- Rendering: SpriteRenderer, Sprite[], S_PlayerProceduralRenderer, S_PlayerDynamicCollider
 |-- Skills: S_fluid_climb (wall climbing), S_Soild_sprint (sprint charge), S_CameraControlSkill (camera control)
 |-- Skill Controller: S_PlayerSkillController (sprint charge + camera control logic, injected at Awake)
+|-- Energy: S_PlayerEnergy (shared active-skill energy pool)
 |-- Contracts: IPlayerActor interface (decouples player from NPC/Level systems)
 |-- Player Lookup: S_PlayerLookup (static utility resolving IPlayerActor from colliders)
 |-- Audio: S_GameEvent.PlaySFX() (jump, form switch, sprint charge SFX)
@@ -103,7 +110,7 @@ Player (S_Player component)
 
 **Singleton Pattern**: Uses `Instance` static property. Set in `Awake()`.
 
-**Interface**: `S_Player` implements `IPlayerActor` which exposes `Rigidbody`, `Collider`, `BodyTransform`, `IsFluidForm`, `IsParalyzed`, `IsSprintMomentumActive`, `FacingRight`, `Teleport`, `SetMovementLocked`, `ApplyParalyze`, `ForceSprintBreakthrough`, and `CancelSprintCharge`. Other systems access the player through `S_PlayerLookup.TryGet()` instead of directly referencing `S_Player.Instance`.
+**Interface**: `S_Player` implements `IPlayerActor` which exposes `Rigidbody`, `Collider`, `BodyTransform`, `Energy`, `IsFluidForm`, `IsParalyzed`, `IsSprintMomentumActive`, `FacingRight`, `Teleport`, `SetMovementLocked`, `ApplyParalyze`, `ForceSprintBreakthrough`, and `CancelActiveSkills`. Other systems access the player through `S_PlayerLookup.TryGet()` instead of directly referencing `S_Player.Instance`.
 
 **Serialized Fields**:
 | Field | Default | Description |
@@ -128,6 +135,7 @@ Player (S_Player component)
 | useDynamicCollider | true | Enable dynamic circle/capsule collider path |
 | dynamicCollider | - | Reference to Body S_PlayerDynamicCollider |
 | cameraController | - | Reference to S_CameraMove for manual camera control |
+| playerEnergy | - | Reference to S_PlayerEnergy; auto-resolved/added when missing |
 
 **Public Methods**:
 | Method | Parameters | Description |
@@ -343,7 +351,7 @@ When enabled, `S_PlayerProceduralRenderer` hides the fallback `SpriteRenderer` a
 
 The sprint skill has been replaced with a hold-to-charge sprint system. Instead of `WasPerformedThisFrame()` triggering an instant dash, the player now holds the sprint key to charge, and releases to dash.
 
-**v0.8.0 Note**: Sprint charge logic has been extracted from `S_Player` into `S_PlayerSkillController`. `S_Player` delegates `BeginSprintCharge()`, `ReleaseSprintCharge()`, and `CancelSprintCharge()` to the skill controller. The charge state machine, visual updates, and audio management all live in `S_PlayerSkillController`.
+**v0.8.1 Note**: Sprint charge logic lives in `S_PlayerSkillController`. `S_Player` delegates `BeginSprintCharge()`, `ReleaseSprintCharge()`, and active-skill cancellation to the skill controller. The charge state machine, visual updates, audio management, and energy drain all live in `S_PlayerSkillController`.
 
 ### 9.1 Behavior Overview
 

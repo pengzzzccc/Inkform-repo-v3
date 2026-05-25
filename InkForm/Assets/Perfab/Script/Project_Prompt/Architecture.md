@@ -1,29 +1,36 @@
 # InkForm Architecture
 
-> Last updated: v0.8.0 (2026-05-25) — Architecture Refactor
+> Last updated: v0.8.1 (2026-05-25) - Gameplay UX, Energy, Scene Flow, ManagerRoot Hardening
+
+## v0.8.1 Architecture Notes
+- `ManagerRoot.prefab` is the only persistent root. Child managers live under it and do not self-create, self-reparent, or call `DontDestroyOnLoad`.
+- Scene loading uses `S_SceneReference` drag references and runtime scene keys, with transition fade/SFX handled by `S_GameManager`.
+- Player skills share one `S_PlayerEnergy` pool and broadcast `OnPlayerEnergyChanged(current, max)` for the UI.
+- Death flow shows `S_UIManager`'s death panel first; checkpoint respawn happens only after `back to checkpoint` fires `GameReStart()`.
 
 ## 1. System Overview (C4-Style Context Diagram)
 
 ```mermaid
 graph TB
-    subgraph Input["🎮 Input Layer"]
+    subgraph Input["棣冨箖 Input Layer"]
         IBM[S_InputBindingManager<br/>Singleton]
         IA[InputSystem_Actions]
     end
 
-    subgraph Player["🧍 Player System"]
+    subgraph Player["棣冾潚 Player System"]
         P[S_Player<br/>Singleton<br/>implements IPlayerActor]
         PContracts[IPlayerActor interface]
         PLookup[S_PlayerLookup<br/>static utility]
         PSC[S_PlayerSkillController]
+        PE[S_PlayerEnergy<br/>shared skill energy]
     end
 
-    subgraph PlayerBody["🫠 Player Body"]
+    subgraph PlayerBody["棣冪彿 Player Body"]
         PDR[S_PlayerDynamicCollider]
         SPPR[S_PlayerProceduralRenderer]
     end
 
-    subgraph Skills["⚡ Skill System"]
+    subgraph Skills["閳?Skill System"]
         ST[S_SkillTree<br/>Singleton]
         SB[S_SkillBase<br/>ScriptableObject]
         SSprint[S_Soild_sprint]
@@ -31,13 +38,13 @@ graph TB
         SCCam[S_CameraControlSkill]
     end
 
-    subgraph Camera["📷 Camera System"]
+    subgraph Camera["棣冩懖 Camera System"]
         CM[S_CameraMove]
         NPCCam[S_NPCCamera]
         PL[S_ParallaxLayer]
     end
 
-    subgraph NPC["🤖 NPC System"]
+    subgraph NPC["棣冾樆 NPC System"]
         NPCBase[S_NPCbase]
         NPCE[S_NPCEnemy]
         EMProj[S_EMProjectile]
@@ -46,12 +53,12 @@ graph TB
         NPCStory[S_NPCStory]
     end
 
-    subgraph Suspicion["🔍 Suspicion System"]
+    subgraph Suspicion["棣冩敵 Suspicion System"]
         SUS[S_SuspicionSystem]
         HS[S_HideSpot]
     end
 
-    subgraph Level["🗺️ Level System"]
+    subgraph Level["棣冩閿?Level System"]
         subgraph Section["Section System"]
             LS[S_LevelSection]
             LSCtrl[S_LevelSectionController]
@@ -77,44 +84,45 @@ graph TB
         end
     end
 
-    subgraph Managers["🏢 Manager Layer"]
+    subgraph Managers["棣冨綒 Manager Layer"]
         MR[S_ManagerRoot<br/>Singleton<br/>DontDestroyOnLoad]
         GM[S_GameManager<br/>Singleton]
         UI[S_UIManager<br/>Singleton]
         AM[S_AudioManager<br/>Singleton]
     end
 
-    subgraph Events["📡 Event Bus"]
+    subgraph Events["棣冩憲 Event Bus"]
         GE[S_GameEvent<br/>Static<br/>30+ events]
     end
 
-    subgraph Tools["🔧 Tools"]
+    subgraph Tools["棣冩暋 Tools"]
         NST[S_NPCSpawnerTool]
         PM[S_PerformanceMonitor]
         STR[S_setTrigger]
     end
 
-    subgraph MCTS["🧪 MCTS Testing"]
+    subgraph MCTS["棣冃?MCTS Testing"]
         MCTSBot[MCTSBotController]
         MCTSGS[MCTSGameState]
         MCTSN[MCTSNode]
         LTM[LevelTestMetrics]
     end
 
-    subgraph SceneCtrl["🎬 Scene Control"]
+    subgraph SceneCtrl["棣冨箑 Scene Control"]
         SC[S_SceneChangeTrigger]
         SMC[S_StartMenuController]
     end
 
     %% Manager Root
-    MR -->|"AttachPersistent"| GM
-    MR -->|"AttachPersistent"| UI
-    MR -->|"AttachPersistent"| AM
-    MR -->|"AttachPersistent"| IBM
+    MR -->|"prefab child"| GM
+    MR -->|"prefab child"| UI
+    MR -->|"prefab child"| AM
+    MR -->|"prefab child"| IBM
 
     %% Player architecture
     P -->|"implements"| PContracts
     P -->|"creates"| PSC
+    P -->|"owns"| PE
     P -->|"manages"| SPPR
     P -->|"manages"| PDR
     P -->|"reads"| IBM
@@ -125,6 +133,7 @@ graph TB
     SB -->|"subclasses"| SCCam
     PSC -->|"delegates"| SSprint
     PSC -->|"delegates"| SCCam
+    PSC -->|"drains"| PE
     PSC -->|"modifies"| SPPR
     PSC -->|"modifies"| PDR
     P -->|"controls"| CM
@@ -136,7 +145,7 @@ graph TB
     SCT -->|"uses"| PLookup
     SUS -->|"uses"| PLookup
 
-    %% Player ↔ Level
+    %% Player 閳?Level
     P -->|"collides"| MP
     P -->|"triggers"| JP
     P -->|"uses"| Door
@@ -430,7 +439,7 @@ classDiagram
     class S_ManagerRoot {
         +static Instance
         +EnsureExists()$
-        +AttachPersistent(Transform)$
+        +AttachPersistent(Transform)$ compatibility only
         +DestroyDuplicate(MonoBehaviour)$
         +GetOrCreateChild(string)
         +GetOrCreateComponent~T~(string)
@@ -478,6 +487,7 @@ classDiagram
         +OnReturnToStartMenuRequested
         +OnSceneLoadRequested
         +OnGameplayInputEnabledRequested
+        +OnPlayerEnergyChanged
         +OnLevelExitRequested
         +OnSpawnPointChanged
         +OnSectionStart / OnSectionEnd
@@ -614,7 +624,7 @@ classDiagram
 
 ```mermaid
 graph LR
-    subgraph Publishers["📤 Event Publishers"]
+    subgraph Publishers["棣冩憶 Event Publishers"]
         P["S_Player"]
         PSC["S_PlayerSkillController"]
         NPCE["S_NPCEnemy"]
@@ -631,7 +641,7 @@ graph LR
         SMC["S_StartMenuController"]
     end
 
-    subgraph EventBus["📡 S_GameEvent"]
+    subgraph EventBus["棣冩憲 S_GameEvent"]
         direction TB
         E1["OnPlayerDied"]
         E2["OnGameStart / OnGameRestart"]
@@ -664,7 +674,7 @@ graph LR
         E29["OnKeyCountChanged"]
     end
 
-    subgraph Subscribers["📥 Event Subscribers"]
+    subgraph Subscribers["棣冩憸 Event Subscribers"]
         GM2["S_GameManager"]
         UI["S_UIManager"]
         AM["S_AudioManager"]
@@ -751,8 +761,8 @@ graph TB
     end
 
     subgraph SkillCtrl["S_PlayerSkillController"]
-        SC_Sprint["Sprint Charge State Machine<br/>BeginSprintCharge → FixedTick<br/>→ ReleaseSprintCharge"]
-        SC_Cam["Camera Control<br/>BeginCameraControl → CameraControlTick<br/>(bullet-time)"]
+        SC_Sprint["Sprint Charge State Machine<br/>BeginSprintCharge 閳?FixedTick<br/>閳?ReleaseSprintCharge"]
+        SC_Cam["Camera Control<br/>BeginCameraControl 閳?CameraControlTick<br/>(bullet-time)"]
     end
 
     subgraph Components["Player Components"]
@@ -760,8 +770,8 @@ graph TB
         PDC["S_PlayerDynamicCollider<br/>CircleCollider2D (default)<br/>CapsuleCollider2D (crouch/wall/ceiling)"]
     end
 
-    subgraph SkillTree["S_SkillTree → S_SkillBase[]"]
-        SS["S_Soild_sprint<br/>Hold-to-charge, 3 stages,<br/>Buffer (0.15s), Stage cooldowns"]
+    subgraph SkillTree["S_SkillTree 閳?S_SkillBase[]"]
+        SS["S_Soild_sprint<br/>Hold-to-charge, 3 stages,<br/>Energy drain"]
         SC["S_fluid_climb<br/>Wall/Ceiling climb,<br/>Fluid form gravity"]
         SCC["S_CameraControlSkill<br/>Bullet-time camera"]
     end
@@ -815,10 +825,10 @@ graph TB
         NPCE["S_NPCEnemy"]
     end
 
-    MR -->|"AttachPersistent"| GM
-    MR -->|"AttachPersistent"| UI
-    MR -->|"AttachPersistent"| AM
-    MR -->|"AttachPersistent"| IBM
+    MR -->|"prefab child"| GM
+    MR -->|"prefab child"| UI
+    MR -->|"prefab child"| AM
+    MR -->|"prefab child"| IBM
     MR -->|"GetOrCreateChild"| GM
     MR -->|"GetOrCreateChild"| UI
     MR -->|"GetOrCreateChild"| AM
@@ -839,10 +849,10 @@ graph TB
     end
 
     subgraph NPCEnemy["S_NPCEnemy (inherits S_NPCbase)"]
-        NE_State["5-State FSM:<br/>Patrol → Chase → Aim → Attack → Arrest"]
+        NE_State["5-State FSM:<br/>Patrol 閳?Chase 閳?Aim 閳?Attack 閳?Arrest"]
         NE_Stunned["Stunned State"]
         NE_Detection["Player Detection<br/>(IPlayerActor via S_PlayerLookup)"]
-        NE_Jump["Jump System:<br/>EvaluateJump → FindLandingSpot<br/>→ CalculateJumpParameters → ExecuteJump"]
+        NE_Jump["Jump System:<br/>EvaluateJump 閳?FindLandingSpot<br/>閳?CalculateJumpParameters 閳?ExecuteJump"]
         NE_AirControl["Air Control (50%)"]
     end
 
@@ -916,7 +926,7 @@ graph TB
 
 ```mermaid
 flowchart TD
-    Input["🎮 Input System"] -->|"Move/Jump/Skill"| Player["🧍 S_Player"]
+    Input["棣冨箖 Input System"] -->|"Move/Jump/Skill"| Player["棣冾潚 S_Player"]
     Player -->|"Update()"| Physics["Rigidbody2D<br/>(FixedUpdate)"]
     Player -->|"Form Switch"| SkillTree["S_SkillTree"]
     SkillTree -->|"Solid"| Sprint["S_Soild_sprint"]
@@ -928,28 +938,28 @@ flowchart TD
     SkillCtrl -->|"modifies"| DynCollider["S_PlayerDynamicCollider"]
     Player -->|"controls"| Camera["S_CameraMove"]
 
-    Player -->|"Trigger Enter"| Level["🗺️ Level Objects"]
+    Player -->|"Trigger Enter"| Level["棣冩閿?Level Objects"]
     Player -->|"Section Enter"| Section["S_LevelSection"]
-    Section -->|"Events"| EventBus["📡 S_GameEvent<br/>(30+ events)"]
+    Section -->|"Events"| EventBus["棣冩憲 S_GameEvent<br/>(30+ events)"]
     Level -->|"Events"| EventBus
 
-    NPC["🤖 S_NPCEnemy"] -->|"S_PlayerLookup.TryGet()"| IPlayer["IPlayerActor"]
+    NPC["棣冾樆 S_NPCEnemy"] -->|"S_PlayerLookup.TryGet()"| IPlayer["IPlayerActor"]
     NPC -->|"Attack"| Projectile["S_EMProjectile"]
     NPC -->|"Alert"| EventBus
 
-    Suspicion["🔍 S_SuspicionSystem"] -->|"Reads NPC"| NPC
+    Suspicion["棣冩敵 S_SuspicionSystem"] -->|"Reads NPC"| NPC
     Suspicion -->|"Threshold"| EventBus
     HideSpot["S_HideSpot"] -->|"Event"| EventBus
 
     Checkpoint["S_SceneCheckpointTracker"] -->|"subscribes"| EventBus
     Checkpoint -->|"IPlayerActor.Teleport"| IPlayer
 
-    EventBus -->|"Subscribe"| Managers["🏢 Managers"]
+    EventBus -->|"Subscribe"| Managers["棣冨綒 Managers"]
     Managers -->|"Audio"| AudioManager["S_AudioManager"]
     Managers -->|"UI"| UIManager["S_UIManager"]
     Managers -->|"Scene"| SceneControl["S_SceneChangeTrigger"]
 
-    MR["S_ManagerRoot"] -->|"AttachPersistent"| Managers
+    MR["S_ManagerRoot"] -->|"owns prefab children"| Managers
 ```
 
 ## 9. Singleton Dependency Map
@@ -967,18 +977,18 @@ graph LR
     end
 
     subgraph Dependents["Systems That Reference Singletons"]
-        P2["S_Player → S_InputBindingManager, S_SkillTree"]
-        PSC["S_PlayerSkillController → S_Player, S_SkillTree, S_CameraMove"]
-        SPR["S_PlayerProceduralRenderer → S_Player"]
-        PDC["S_PlayerDynamicCollider → S_Player"]
-        NPCE["S_NPCEnemy → IPlayerActor via S_PlayerLookup"]
-        SUS["S_SuspicionSystem → IPlayerActor via S_PlayerLookup"]
-        HS["S_HideSpot → IPlayerActor via S_PlayerLookup"]
-        SCT["S_SceneCheckpointTracker → IPlayerActor via S_PlayerLookup"]
-        CM["S_CameraMove → S_Player"]
-        LS["S_LevelSection → IPlayerActor via S_PlayerLookup"]
-        LSC["S_LevelSectionController → S_GameManager"]
-        PM["S_PerformanceMonitor → S_ManagerRoot"]
+        P2["S_Player 閳?S_InputBindingManager, S_SkillTree"]
+        PSC["S_PlayerSkillController 閳?S_Player, S_SkillTree, S_CameraMove"]
+        SPR["S_PlayerProceduralRenderer 閳?S_Player"]
+        PDC["S_PlayerDynamicCollider 閳?S_Player"]
+        NPCE["S_NPCEnemy 閳?IPlayerActor via S_PlayerLookup"]
+        SUS["S_SuspicionSystem 閳?IPlayerActor via S_PlayerLookup"]
+        HS["S_HideSpot 閳?IPlayerActor via S_PlayerLookup"]
+        SCT["S_SceneCheckpointTracker 閳?IPlayerActor via S_PlayerLookup"]
+        CM["S_CameraMove 閳?S_Player"]
+        LS["S_LevelSection 閳?IPlayerActor via S_PlayerLookup"]
+        LSC["S_LevelSectionController 閳?S_GameManager"]
+        PM["S_PerformanceMonitor 閳?S_ManagerRoot"]
     end
 
     MR -->|"manages"| GM
@@ -1003,91 +1013,91 @@ graph LR
 
 ```
 Assets/Perfab/Script/
-├── Camera/                          # Camera systems
-│   ├── S_CameraMove.cs              # Camera follow + manual control
-│   └── S_ParallaxLayer.cs           # Parallax scrolling
-├── Core/
-│   └── Events/
-│       └── S_GameEvent.cs           # Static event bus (30+ events)
-├── Input/
-│   ├── InputSystem_Actions.cs       # Generated input actions
-│   └── InputSystem_Actions.inputactions
-├── Level/
-│   ├── Interactables/
-│   │   ├── S_BreakableBlock.cs
-│   │   ├── S_ButtonDoor.cs
-│   │   ├── S_Checkpoint.cs
-│   │   ├── S_Door.cs
-│   │   ├── S_ExitGate.cs
-│   │   ├── S_HideSpot.cs
-│   │   ├── S_JumpPad.cs
-│   │   ├── S_Key.cs
-│   │   ├── S_Pipline.cs
-│   │   └── S_SceneCheckpointTracker.cs  # NEW: per-scene respawn
-│   ├── Platforms/
-│   │   ├── S_MoveBlock.cs
-│   │   ├── S_MovingPlatform.cs
-│   │   └── S_PlatformCableVisual.cs
-│   ├── Resources/
-│   │   ├── S_DroppedResourceItem.cs
-│   │   └── S_DropResourceCounter.cs
-│   ├── Sections/
-│   │   ├── S_LevelSection.cs
-│   │   ├── S_LevelSectionController.cs
-│   │   ├── S_SectionAlarmEffect.cs
-│   │   └── S_SectionGoal.cs
-│   └── Zones/
-│       └── S_CantClimb.cs
-├── Managers/
-│   ├── S_AudioManager.cs            # Audio (BGM/SFX/alarm)
-│   ├── S_GameManager.cs             # Game state + scene loading
-│   ├── S_InputBindingManager.cs     # Runtime rebinding
-│   ├── S_ManagerRoot.cs             # NEW: persistent root
-│   ├── S_SceneChangeTrigger.cs      # Scene transitions
-│   ├── S_StartMenuController.cs     # Start menu
-│   └── S_UIManager.cs               # UI overlay + controls menu
-├── MCTS/
-│   ├── LevelTestMetrics.cs
-│   ├── MCTSBotController.cs
-│   ├── MCTSGameState.cs
-│   └── MCTSNode.cs
-├── NPCs/
-│   ├── Combat/
-│   │   ├── S_EMProjectile.cs
-│   │   └── S_NPCEnemy.cs
-│   ├── Core/
-│   │   └── S_NPCbase.cs
-│   ├── Dialogue/
-│   │   ├── S_NPCDialogue.cs
-│   │   └── S_NPCStory.cs
-│   ├── Sensors/
-│   │   └── S_NPCCamera.cs
-│   └── Spawning/
-│       └── S_NPCWaveSpawner.cs
-├── Player/
-│   ├── Body/
-│   │   ├── S_PlayerDynamicCollider.cs
-│   │   └── S_PlayerProceduralRenderer.cs
-│   ├── Core/
-│   │   ├── S_Player.cs              # Main player (IPlayerActor)
-│   │   └── S_PlayerContracts.cs     # NEW: IPlayerActor + S_PlayerLookup
-│   ├── Physics/
-│   │   └── S_coleve.cs
-│   └── Skills/
-│       ├── S_CameraControlSkill.cs
-│       ├── S_fluid_climb.cs
-│       ├── S_PlayerSkillController.cs  # NEW: sprint + camera control
-│       ├── S_SkillBase.cs
-│       ├── S_SkillTree.cs
-│       └── S_Soild_sprint.cs
-├── Systems/
-│   └── Suspicion/
-│       └── S_SuspicionSystem.cs
-├── Tools/
-│   ├── S_NPCSpawnerTool.cs
-│   ├── S_PerformanceMonitor.cs
-│   └── S_setTrigger.cs
-└── Project_Prompt/                  # Design documents
-    ├── Architecture.md              # This file
-    ├── CHANGELOG.md
-    └── ...
+閳规壕鏀㈤埞鈧?Camera/                          # Camera systems
+閳?  閳规壕鏀㈤埞鈧?S_CameraMove.cs              # Camera follow + manual control
+閳?  閳规柡鏀㈤埞鈧?S_ParallaxLayer.cs           # Parallax scrolling
+閳规壕鏀㈤埞鈧?Core/
+閳?  閳规柡鏀㈤埞鈧?Events/
+閳?      閳规柡鏀㈤埞鈧?S_GameEvent.cs           # Static event bus (30+ events)
+閳规壕鏀㈤埞鈧?Input/
+閳?  閳规壕鏀㈤埞鈧?InputSystem_Actions.cs       # Generated input actions
+閳?  閳规柡鏀㈤埞鈧?InputSystem_Actions.inputactions
+閳规壕鏀㈤埞鈧?Level/
+閳?  閳规壕鏀㈤埞鈧?Interactables/
+閳?  閳?  閳规壕鏀㈤埞鈧?S_BreakableBlock.cs
+閳?  閳?  閳规壕鏀㈤埞鈧?S_ButtonDoor.cs
+閳?  閳?  閳规壕鏀㈤埞鈧?S_Checkpoint.cs
+閳?  閳?  閳规壕鏀㈤埞鈧?S_Door.cs
+閳?  閳?  閳规壕鏀㈤埞鈧?S_ExitGate.cs
+閳?  閳?  閳规壕鏀㈤埞鈧?S_HideSpot.cs
+閳?  閳?  閳规壕鏀㈤埞鈧?S_JumpPad.cs
+閳?  閳?  閳规壕鏀㈤埞鈧?S_Key.cs
+閳?  閳?  閳规壕鏀㈤埞鈧?S_Pipline.cs
+閳?  閳?  閳规柡鏀㈤埞鈧?S_SceneCheckpointTracker.cs  # NEW: per-scene respawn
+閳?  閳规壕鏀㈤埞鈧?Platforms/
+閳?  閳?  閳规壕鏀㈤埞鈧?S_MoveBlock.cs
+閳?  閳?  閳规壕鏀㈤埞鈧?S_MovingPlatform.cs
+閳?  閳?  閳规柡鏀㈤埞鈧?S_PlatformCableVisual.cs
+閳?  閳规壕鏀㈤埞鈧?Resources/
+閳?  閳?  閳规壕鏀㈤埞鈧?S_DroppedResourceItem.cs
+閳?  閳?  閳规柡鏀㈤埞鈧?S_DropResourceCounter.cs
+閳?  閳规壕鏀㈤埞鈧?Sections/
+閳?  閳?  閳规壕鏀㈤埞鈧?S_LevelSection.cs
+閳?  閳?  閳规壕鏀㈤埞鈧?S_LevelSectionController.cs
+閳?  閳?  閳规壕鏀㈤埞鈧?S_SectionAlarmEffect.cs
+閳?  閳?  閳规柡鏀㈤埞鈧?S_SectionGoal.cs
+閳?  閳规柡鏀㈤埞鈧?Zones/
+閳?      閳规柡鏀㈤埞鈧?S_CantClimb.cs
+閳规壕鏀㈤埞鈧?Managers/
+閳?  閳规壕鏀㈤埞鈧?S_AudioManager.cs            # Audio (BGM/SFX/alarm)
+閳?  閳规壕鏀㈤埞鈧?S_GameManager.cs             # Game state + scene loading
+閳?  閳规壕鏀㈤埞鈧?S_InputBindingManager.cs     # Runtime rebinding
+閳?  閳规壕鏀㈤埞鈧?S_ManagerRoot.cs             # NEW: persistent root
+閳?  閳规壕鏀㈤埞鈧?S_SceneChangeTrigger.cs      # Scene transitions
+閳?  閳规壕鏀㈤埞鈧?S_StartMenuController.cs     # Start menu
+閳?  閳规柡鏀㈤埞鈧?S_UIManager.cs               # UI overlay + controls menu
+閳规壕鏀㈤埞鈧?MCTS/
+閳?  閳规壕鏀㈤埞鈧?LevelTestMetrics.cs
+閳?  閳规壕鏀㈤埞鈧?MCTSBotController.cs
+閳?  閳规壕鏀㈤埞鈧?MCTSGameState.cs
+閳?  閳规柡鏀㈤埞鈧?MCTSNode.cs
+閳规壕鏀㈤埞鈧?NPCs/
+閳?  閳规壕鏀㈤埞鈧?Combat/
+閳?  閳?  閳规壕鏀㈤埞鈧?S_EMProjectile.cs
+閳?  閳?  閳规柡鏀㈤埞鈧?S_NPCEnemy.cs
+閳?  閳规壕鏀㈤埞鈧?Core/
+閳?  閳?  閳规柡鏀㈤埞鈧?S_NPCbase.cs
+閳?  閳规壕鏀㈤埞鈧?Dialogue/
+閳?  閳?  閳规壕鏀㈤埞鈧?S_NPCDialogue.cs
+閳?  閳?  閳规柡鏀㈤埞鈧?S_NPCStory.cs
+閳?  閳规壕鏀㈤埞鈧?Sensors/
+閳?  閳?  閳规柡鏀㈤埞鈧?S_NPCCamera.cs
+閳?  閳规柡鏀㈤埞鈧?Spawning/
+閳?      閳规柡鏀㈤埞鈧?S_NPCWaveSpawner.cs
+閳规壕鏀㈤埞鈧?Player/
+閳?  閳规壕鏀㈤埞鈧?Body/
+閳?  閳?  閳规壕鏀㈤埞鈧?S_PlayerDynamicCollider.cs
+閳?  閳?  閳规柡鏀㈤埞鈧?S_PlayerProceduralRenderer.cs
+閳?  閳规壕鏀㈤埞鈧?Core/
+閳?  閳?  閳规壕鏀㈤埞鈧?S_Player.cs              # Main player (IPlayerActor)
+閳?  閳?  閳规柡鏀㈤埞鈧?S_PlayerContracts.cs     # NEW: IPlayerActor + S_PlayerLookup
+閳?  閳规壕鏀㈤埞鈧?Physics/
+閳?  閳?  閳规柡鏀㈤埞鈧?S_coleve.cs
+閳?  閳规柡鏀㈤埞鈧?Skills/
+閳?      閳规壕鏀㈤埞鈧?S_CameraControlSkill.cs
+閳?      閳规壕鏀㈤埞鈧?S_fluid_climb.cs
+閳?      閳规壕鏀㈤埞鈧?S_PlayerSkillController.cs  # NEW: sprint + camera control
+閳?      閳规壕鏀㈤埞鈧?S_SkillBase.cs
+閳?      閳规壕鏀㈤埞鈧?S_SkillTree.cs
+閳?      閳规柡鏀㈤埞鈧?S_Soild_sprint.cs
+閳规壕鏀㈤埞鈧?Systems/
+閳?  閳规柡鏀㈤埞鈧?Suspicion/
+閳?      閳规柡鏀㈤埞鈧?S_SuspicionSystem.cs
+閳规壕鏀㈤埞鈧?Tools/
+閳?  閳规壕鏀㈤埞鈧?S_NPCSpawnerTool.cs
+閳?  閳规壕鏀㈤埞鈧?S_PerformanceMonitor.cs
+閳?  閳规柡鏀㈤埞鈧?S_setTrigger.cs
+閳规柡鏀㈤埞鈧?Project_Prompt/                  # Design documents
+    閳规壕鏀㈤埞鈧?Architecture.md              # This file
+    閳规壕鏀㈤埞鈧?CHANGELOG.md
+    閳规柡鏀㈤埞鈧?...

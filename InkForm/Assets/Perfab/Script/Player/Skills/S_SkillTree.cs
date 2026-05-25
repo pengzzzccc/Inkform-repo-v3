@@ -23,7 +23,6 @@ public class S_SkillTree : MonoBehaviour
         }
 
         Instance = this;
-        S_ManagerRoot.AttachPersistent(transform);
 
         if (!initialized)
         {

@@ -1,5 +1,6 @@
 using UnityEngine;
 
+[DefaultExecutionOrder(-10000)]
 [DisallowMultipleComponent]
 public class S_ManagerRoot : MonoBehaviour
 {
@@ -9,7 +10,7 @@ public class S_ManagerRoot : MonoBehaviour
 
     public static S_ManagerRoot Instance { get; private set; }
     public static bool IsShuttingDown => isShuttingDown;
-    public static bool CanCreateRuntimeRoot => Application.isPlaying && !isShuttingDown;
+    public static bool CanCreateRuntimeRoot => false;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatics()
@@ -35,11 +36,10 @@ public class S_ManagerRoot : MonoBehaviour
             return existingRoot;
         }
 
-        if (!CanCreateRuntimeRoot)
-            return null;
+        if (Application.isPlaying)
+            Debug.LogError("[ManagerRoot] Missing ManagerRoot prefab in the loaded scene. Add Assets/Perfab/Player/ManagerRoot.prefab to the scene instead of creating managers at runtime.");
 
-        GameObject rootObject = new GameObject(RootName);
-        return rootObject.AddComponent<S_ManagerRoot>();
+        return null;
     }
 
     public static void AttachPersistent(Transform target)
@@ -51,10 +51,10 @@ public class S_ManagerRoot : MonoBehaviour
         if (root == null)
             return;
 
-        if (target == root.transform || target.parent == root.transform)
+        if (target == root.transform || target.IsChildOf(root.transform))
             return;
 
-        target.SetParent(root.transform, true);
+        Debug.LogWarning($"[ManagerRoot] Skipped runtime attach for '{target.name}'. Managers should be direct children of the ManagerRoot prefab; runtime reparenting is no longer used.");
     }
 
     public static void DestroyDuplicate(MonoBehaviour component)
@@ -98,6 +98,7 @@ public class S_ManagerRoot : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
+            gameObject.SetActive(false);
             Destroy(gameObject);
             return;
         }

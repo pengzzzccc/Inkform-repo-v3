@@ -1,17 +1,28 @@
+using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class S_GameManager : MonoBehaviour
 {
     public static S_GameManager Instance { get; private set; }
 
     [Header("Legacy Start Scene")]
-    [SerializeField] private string scene;
+    [SerializeField] private S_SceneReference legacyStartScene = new S_SceneReference();
+    [SerializeField, HideInInspector] private string scene;
 
     [Header("Level Flow")]
-    [SerializeField] private string startMenuSceneName = "Start";
-    [SerializeField] private string[] levelSceneNames = { "Playtest1" };
+    [SerializeField] private S_SceneReference startMenuScene = new S_SceneReference("Assets/Scenes/For_game/Start.unity");
+    [SerializeField] private S_SceneReference[] levelScenes =
+    {
+        new S_SceneReference("Assets/Scenes/For_test/Playtest1.unity"),
+        new S_SceneReference("Assets/Scenes/For_test/NPCPlayTestScene.unity"),
+        new S_SceneReference("Assets/Scenes/For_game/END.unity")
+    };
+    [SerializeField, HideInInspector] private string startMenuSceneName = "Start";
+    [SerializeField, HideInInspector] private string[] levelSceneNames = { "Playtest1", "NPCPlayTestScene", "END" };
     [SerializeField] private int currentLevelIndex = -1;
 
     [Header("Frame Rate")]
@@ -19,7 +30,19 @@ public class S_GameManager : MonoBehaviour
     [SerializeField, Min(1)] private int lockedFrameRate = 120;
     [SerializeField] private bool allowRuntimeFrameRateToggle = true;
 
+    [Header("Scene Transition")]
+    [SerializeField] private bool useSceneTransition = true;
+    [SerializeField, Min(0f)] private float transitionFadeOutTime = 0.35f;
+    [SerializeField, Min(0f)] private float transitionHoldTime = 0.05f;
+    [SerializeField, Min(0f)] private float transitionFadeInTime = 0.35f;
+    [SerializeField] private Color transitionColor = new Color(0f, 0f, 0f, 1f);
+    [SerializeField] private AudioClip transitionClip;
+
     private bool isFrameRateUnlocked;
+    private Canvas transitionCanvas;
+    private Image transitionImage;
+    private Coroutine sceneLoadRoutine;
+    private float defaultFixedDeltaTime;
 
     public bool IsFrameRateUnlocked => isFrameRateUnlocked;
     public int LockedFrameRate => Mathf.Max(1, lockedFrameRate);
@@ -33,7 +56,7 @@ public class S_GameManager : MonoBehaviour
         }
 
         Instance = this;
-        S_ManagerRoot.AttachPersistent(transform);
+        defaultFixedDeltaTime = Time.fixedDeltaTime;
         ApplyFrameRateMode(unlockFrameRateOnStart, false);
     }
 
@@ -77,11 +100,20 @@ public class S_GameManager : MonoBehaviour
             Instance = null;
     }
 
+#if UNITY_EDITOR
+    void OnValidate()
+    {
+        SyncSceneReferenceForEditor(ref legacyStartScene, scene, "legacy start scene");
+        SyncSceneReferenceForEditor(ref startMenuScene, startMenuSceneName, "start menu scene");
+        SyncLevelReferencesForEditor();
+    }
+#endif
+
     void HandleGameStart() => GameStart();
     void HandleGameRestart() => GameReStart();
     void HandleExit() => ExitGame();
     void HandleLevelExitRequested() => LoadNextLevel();
-    void HandleSceneLoadRequested(string sceneName) => LoadSceneByName(sceneName);
+    void HandleSceneLoadRequested(string sceneKey) => LoadSceneByKey(sceneKey);
 
     public void SetFrameRateUnlocked(bool unlocked)
     {
@@ -116,16 +148,17 @@ public class S_GameManager : MonoBehaviour
 
     public void StartGameFromMenu()
     {
-        if (levelSceneNames != null && levelSceneNames.Length > 0)
+        if (GetConfiguredLevelCount() > 0)
         {
             LoadLevel(0);
             return;
         }
 
-        if (!string.IsNullOrEmpty(scene))
+        string legacySceneKey = GetSceneKey(legacyStartScene, scene);
+        if (!string.IsNullOrEmpty(legacySceneKey))
         {
             currentLevelIndex = -1;
-            LoadSceneByName(scene);
+            LoadSceneByKey(legacySceneKey);
             return;
         }
 
@@ -134,43 +167,48 @@ public class S_GameManager : MonoBehaviour
 
     public void StartFreshGameFromMenu()
     {
-        string firstLevelScene = GetFreshStartSceneName();
+        string firstLevelScene = GetFreshStartSceneKey();
         if (string.IsNullOrWhiteSpace(firstLevelScene))
         {
             Debug.LogWarning("[GameManager] No first level scene configured.");
             return;
         }
 
+        if (!CanLoadSceneKey(firstLevelScene))
+            return;
+
         Time.timeScale = 1f;
         S_GameEvent.SuspicionResetRequested();
         currentLevelIndex = IsConfiguredLevel(firstLevelScene, 0) ? 0 : -1;
-        DestroyRuntimeUIManager();
-        LoadSceneByName(firstLevelScene);
+        LoadSceneByKey(firstLevelScene, true);
     }
 
     public void LoadLevel(int index)
     {
-        if (levelSceneNames == null || index < 0 || index >= levelSceneNames.Length)
+        if (index < 0 || index >= GetConfiguredLevelCount())
         {
             Debug.LogWarning($"[GameManager] Level index out of range: {index}");
             return;
         }
 
-        string levelScene = levelSceneNames[index];
+        string levelScene = GetLevelSceneKey(index);
         if (string.IsNullOrWhiteSpace(levelScene))
         {
             Debug.LogWarning($"[GameManager] Level scene at index {index} is empty.");
             return;
         }
 
+        if (!CanLoadSceneKey(levelScene))
+            return;
+
         currentLevelIndex = index;
-        LoadSceneByName(levelScene);
+        LoadSceneByKey(levelScene, true);
     }
 
     public void LoadNextLevel()
     {
         int nextIndex = currentLevelIndex + 1;
-        if (levelSceneNames != null && nextIndex >= 0 && nextIndex < levelSceneNames.Length)
+        if (nextIndex >= 0 && nextIndex < GetConfiguredLevelCount())
         {
             LoadLevel(nextIndex);
             return;
@@ -181,62 +219,230 @@ public class S_GameManager : MonoBehaviour
 
     public void ReloadCurrentLevel()
     {
-        if (currentLevelIndex >= 0 && levelSceneNames != null && currentLevelIndex < levelSceneNames.Length)
+        if (currentLevelIndex >= 0 && currentLevelIndex < GetConfiguredLevelCount())
         {
             LoadLevel(currentLevelIndex);
             return;
         }
 
-        LoadSceneByName(SceneManager.GetActiveScene().name);
+        LoadSceneByKey(SceneManager.GetActiveScene().name);
     }
 
     public void ReturnToStartMenu()
     {
         currentLevelIndex = -1;
-        if (string.IsNullOrWhiteSpace(startMenuSceneName))
+        string startMenuSceneKey = GetSceneKey(startMenuScene, startMenuSceneName);
+        if (string.IsNullOrWhiteSpace(startMenuSceneKey))
         {
-            Debug.LogWarning("[GameManager] Start menu scene name is empty.");
+            Debug.LogWarning("[GameManager] Start menu scene is empty.");
             return;
         }
 
-        LoadSceneByName(startMenuSceneName);
+        LoadSceneByKey(startMenuSceneKey);
     }
 
-    private string GetFreshStartSceneName()
+    private string GetFreshStartSceneKey()
     {
-        if (levelSceneNames != null && levelSceneNames.Length > 0 && !string.IsNullOrWhiteSpace(levelSceneNames[0]))
-            return levelSceneNames[0];
-
-        return scene;
-    }
-
-    private bool IsConfiguredLevel(string sceneName, int index)
-    {
-        return levelSceneNames != null
-            && index >= 0
-            && index < levelSceneNames.Length
-            && string.Equals(levelSceneNames[index], sceneName, System.StringComparison.OrdinalIgnoreCase);
-    }
-
-    private void DestroyRuntimeUIManager()
-    {
-        if (S_UIManager.Instance == null)
-            return;
-
-        Destroy(S_UIManager.Instance.gameObject);
-    }
-
-    private void LoadSceneByName(string sceneName)
-    {
-        if (string.IsNullOrWhiteSpace(sceneName))
+        if (GetConfiguredLevelCount() > 0)
         {
-            Debug.LogWarning("[GameManager] Scene name is empty.");
+            string firstLevelScene = GetLevelSceneKey(0);
+            if (!string.IsNullOrWhiteSpace(firstLevelScene))
+                return firstLevelScene;
+        }
+
+        return GetSceneKey(legacyStartScene, scene);
+    }
+
+    private bool IsConfiguredLevel(string sceneKey, int index)
+    {
+        return index >= 0
+            && index < GetConfiguredLevelCount()
+            && S_SceneReference.SceneKeysMatch(GetLevelSceneKey(index), sceneKey);
+    }
+
+    private int GetConfiguredLevelCount()
+    {
+        int referenceCount = levelScenes != null ? levelScenes.Length : 0;
+        int legacyCount = levelSceneNames != null ? levelSceneNames.Length : 0;
+        return Mathf.Max(referenceCount, legacyCount);
+    }
+
+    private string GetLevelSceneKey(int index)
+    {
+        if (levelScenes != null && index >= 0 && index < levelScenes.Length)
+        {
+            string sceneKey = GetSceneKey(levelScenes[index], null);
+            if (!string.IsNullOrWhiteSpace(sceneKey))
+                return sceneKey;
+        }
+
+        if (levelSceneNames != null && index >= 0 && index < levelSceneNames.Length)
+            return levelSceneNames[index];
+
+        return string.Empty;
+    }
+
+    private string GetSceneKey(S_SceneReference sceneReference, string fallback)
+    {
+        if (sceneReference != null && sceneReference.IsValid)
+            return sceneReference.RuntimeKey;
+
+        return fallback;
+    }
+
+    private void LoadSceneByKey(string sceneKey, bool alreadyValidated = false)
+    {
+        if (string.IsNullOrWhiteSpace(sceneKey))
+        {
+            Debug.LogWarning("[GameManager] Scene is empty.");
             return;
         }
 
+        if (!alreadyValidated && !CanLoadSceneKey(sceneKey))
+            return;
+
+        if (!useSceneTransition || !Application.isPlaying || !isActiveAndEnabled)
+        {
+            LoadSceneImmediate(sceneKey);
+            return;
+        }
+
+        if (sceneLoadRoutine != null)
+            return;
+
+        sceneLoadRoutine = StartCoroutine(LoadSceneWithTransition(sceneKey));
+    }
+
+    private bool CanLoadSceneKey(string sceneKey)
+    {
+        if (S_SceneReference.CanLoadScene(sceneKey))
+            return true;
+
+        Debug.LogError($"[GameManager] Scene '{sceneKey}' cannot be loaded. Drag a valid scene asset in the GameManager Inspector and make sure it is enabled in File > Build Profiles / Build Settings.");
+        return false;
+    }
+
+    private void LoadSceneImmediate(string sceneKey)
+    {
         Time.timeScale = 1f;
+        Time.fixedDeltaTime = defaultFixedDeltaTime;
+        if (S_PlayerLookup.TryGetActive(out IPlayerActor player))
+            player.CancelActiveSkills();
+
         S_GameEvent.SuspicionResetRequested();
-        SceneManager.LoadScene(sceneName);
+        SceneManager.LoadScene(sceneKey);
+    }
+
+    private IEnumerator LoadSceneWithTransition(string sceneKey)
+    {
+        Time.timeScale = 1f;
+        Time.fixedDeltaTime = defaultFixedDeltaTime;
+        if (S_PlayerLookup.TryGetActive(out IPlayerActor player))
+            player.CancelActiveSkills();
+
+        S_GameEvent.GameplayInputEnabledRequested(false);
+        S_GameEvent.SuspicionResetRequested();
+        EnsureTransitionOverlay();
+
+        if (transitionClip != null)
+            S_GameEvent.PlaySFX(transitionClip);
+
+        yield return FadeTransitionOverlay(0f, 1f, transitionFadeOutTime);
+
+        AsyncOperation loadOperation = SceneManager.LoadSceneAsync(sceneKey);
+        if (loadOperation == null)
+        {
+            Debug.LogError($"[GameManager] Scene '{sceneKey}' failed to start loading.");
+            yield return FadeTransitionOverlay(1f, 0f, transitionFadeInTime);
+            if (transitionCanvas != null)
+                transitionCanvas.gameObject.SetActive(false);
+
+            sceneLoadRoutine = null;
+            S_GameEvent.GameplayInputEnabledRequested(true);
+            yield break;
+        }
+
+        while (!loadOperation.isDone)
+            yield return null;
+
+        if (transitionHoldTime > 0f)
+            yield return new WaitForSecondsRealtime(transitionHoldTime);
+
+        yield return FadeTransitionOverlay(1f, 0f, transitionFadeInTime);
+
+        if (transitionCanvas != null)
+            transitionCanvas.gameObject.SetActive(false);
+
+        S_GameEvent.GameplayInputEnabledRequested(true);
+        sceneLoadRoutine = null;
+    }
+
+    private void EnsureTransitionOverlay()
+    {
+        if (transitionCanvas != null && transitionImage != null)
+        {
+            transitionCanvas.gameObject.SetActive(true);
+            transitionCanvas.transform.SetAsLastSibling();
+            return;
+        }
+
+        GameObject canvasObject = new GameObject("SceneTransitionCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        canvasObject.transform.SetParent(transform, false);
+
+        transitionCanvas = canvasObject.GetComponent<Canvas>();
+        transitionCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        transitionCanvas.sortingOrder = 1000;
+
+        CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1366f, 768f);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        scaler.matchWidthOrHeight = 0.5f;
+
+        GameObject imageObject = new GameObject("InkFade", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        imageObject.transform.SetParent(canvasObject.transform, false);
+
+        RectTransform imageRect = imageObject.GetComponent<RectTransform>();
+        imageRect.anchorMin = Vector2.zero;
+        imageRect.anchorMax = Vector2.one;
+        imageRect.offsetMin = Vector2.zero;
+        imageRect.offsetMax = Vector2.zero;
+
+        transitionImage = imageObject.GetComponent<Image>();
+        transitionImage.raycastTarget = true;
+        SetTransitionAlpha(0f);
+    }
+
+    private IEnumerator FadeTransitionOverlay(float from, float to, float duration)
+    {
+        EnsureTransitionOverlay();
+
+        if (duration <= 0f)
+        {
+            SetTransitionAlpha(to);
+            yield break;
+        }
+
+        float timer = 0f;
+        while (timer < duration)
+        {
+            timer += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(timer / duration);
+            SetTransitionAlpha(Mathf.Lerp(from, to, t));
+            yield return null;
+        }
+
+        SetTransitionAlpha(to);
+    }
+
+    private void SetTransitionAlpha(float alpha)
+    {
+        if (transitionImage == null)
+            return;
+
+        Color color = transitionColor;
+        color.a = Mathf.Clamp01(alpha) * transitionColor.a;
+        transitionImage.color = color;
     }
 
     void HandleArrest()
@@ -258,4 +464,42 @@ public class S_GameManager : MonoBehaviour
         Application.Quit();
 #endif
     }
+
+#if UNITY_EDITOR
+    private void SyncLevelReferencesForEditor()
+    {
+        int legacyCount = levelSceneNames != null ? levelSceneNames.Length : 0;
+        if (legacyCount > 0 && (levelScenes == null || levelScenes.Length < legacyCount))
+        {
+            int oldLength = levelScenes != null ? levelScenes.Length : 0;
+            Array.Resize(ref levelScenes, legacyCount);
+            for (int i = oldLength; i < levelScenes.Length; i++)
+                levelScenes[i] = new S_SceneReference();
+        }
+
+        if (levelScenes == null)
+            return;
+
+        for (int i = 0; i < levelScenes.Length; i++)
+        {
+            string fallback = levelSceneNames != null && i < levelSceneNames.Length ? levelSceneNames[i] : null;
+            SyncSceneReferenceForEditor(ref levelScenes[i], fallback, $"level scene {i}");
+        }
+    }
+
+    private void SyncSceneReferenceForEditor(ref S_SceneReference sceneReference, string fallback, string label)
+    {
+        if (sceneReference == null)
+            sceneReference = new S_SceneReference();
+
+        sceneReference.EditorSyncAsset();
+
+        string key = sceneReference.IsValid ? sceneReference.RuntimeKey : fallback;
+        if (!string.IsNullOrWhiteSpace(key))
+            sceneReference.EditorTryAssignByKey(key);
+
+        if (sceneReference.IsValid && !sceneReference.EditorIsInEnabledBuildScenes())
+            Debug.LogWarning($"[GameManager] {label} '{sceneReference.RuntimeKey}' is not enabled in File > Build Profiles / Build Settings.", this);
+    }
+#endif
 }

@@ -37,6 +37,7 @@ public class S_Soild_sprint : S_SkillBase
     [SerializeField] private AudioClip chargeStageClip;
     [SerializeField] private AudioClip chargeStage3Clip;
     [SerializeField] private AudioClip chargeReleaseClip;
+    [SerializeField, Min(0f)] private float quickTapEnergyCost = 12f;
 
     public float MaxChargeTime => maxChargeTime;
     public float MaxSprintSpeed => maxSprintSpeed;
@@ -44,6 +45,8 @@ public class S_Soild_sprint : S_SkillBase
     public float BufferTime => bufferTime;
     public PhysicsMaterial2D ChargeBallMaterial => chargeBallMaterial;
     public AudioClip ChargeStartClip => chargeStartClip;
+    public float QuickTapEnergyCost => quickTapEnergyCost;
+    public float LegacyCooldown => cooldown;
 
     public int GetStage(float timer)
     {
@@ -123,14 +126,10 @@ public class S_Soild_sprint : S_SkillBase
     {
         if (player.IsParalyzed) return;
 
-        if (Time.time - lastUsedTime < cooldown)
-        {
-            Debug.Log($"[Sprint] cooling down, {cooldown - (Time.time - lastUsedTime):F1}s remaining");
-            return;
-        }
-
         if (!availableSolid && !player.getForm()) return;
         if (!availableFluid && player.getForm()) return;
+        if (player.Energy != null && (!player.Energy.CanStartSkill(this) || !player.Energy.TrySpendAmount(quickTapEnergyCost)))
+            return;
 
         lastUsedTime = Time.time;
 

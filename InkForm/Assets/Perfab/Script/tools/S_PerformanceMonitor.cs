@@ -100,7 +100,6 @@ public class S_PerformanceMonitor : MonoBehaviour
         }
 
         Instance = this;
-        S_ManagerRoot.AttachPersistent(transform);
         isVisible = showOnStart;
         sceneName = SceneManager.GetActiveScene().name;
         BuildOverlayText();

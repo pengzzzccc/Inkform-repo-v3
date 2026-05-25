@@ -30,7 +30,7 @@ public class S_fluid_climb : S_SkillBase
     [System.NonSerialized] private SurfaceType surface = SurfaceType.None;
     [System.NonSerialized] private Vector2 surfNormal = Vector2.up;
     [System.NonSerialized] private ContactPoint2D[] contacts;
-    [System.NonSerialized] private Collider2D[] gripBufferHits;
+    [System.NonSerialized] private RaycastHit2D[] gripBufferHits;
     [System.NonSerialized] private int noContactFrames = 0;
     [System.NonSerialized] private float climbTimer = 0f;
     [System.NonSerialized] private bool wasClimbing = false;
@@ -56,33 +56,47 @@ public class S_fluid_climb : S_SkillBase
         float inputY = player.GetClimbInput();
         Rigidbody2D rig = player.GetRigidbody();
         Collider2D col = player.GetCollider();
+        bool wasAlreadyClimbing = surface == SurfaceType.WallLeft || surface == SurfaceType.WallRight || surface == SurfaceType.Ceiling;
 
-        ClassifySurface(col, inputX, true);
+        if (!wasAlreadyClimbing && player.Energy != null && !player.Energy.CanStartSkill(this))
+        {
+            surface = SurfaceType.None;
+            rig.linearVelocity = ComputeFluidVelocity(rig, inputX, inputY, player.GetMoveSpeed());
+            return;
+        }
+
+        ClassifySurface(col, inputX, true, GetGripDirection(player, inputX));
         TryGripBuffer(player, col, rig, inputX);
 
         bool isClimbing = surface == SurfaceType.WallLeft || surface == SurfaceType.WallRight || surface == SurfaceType.Ceiling;
         if (isClimbing)
         {
-            climbTimer += Time.fixedDeltaTime;
-            wasClimbing = true;
-            if (climbTimer >= activeTime)
+            if (player.Energy != null && !player.Energy.TryConsumeSkillEnergy(this, Time.fixedDeltaTime))
             {
                 surface = SurfaceType.None;
                 rig.gravityScale = fluidGravityScale;
-                climbTimer = 0f;
                 wasClimbing = false;
-                climbExhausted = true;
+                player.Energy.NotifySkillUseStopped();
                 return;
             }
+
+            climbTimer += Time.fixedDeltaTime;
+            wasClimbing = true;
         }
         else if (surface == SurfaceType.Floor)
         {
+            if (wasClimbing && player.Energy != null)
+                player.Energy.NotifySkillUseStopped();
+
             climbTimer = 0f;
             wasClimbing = false;
             climbExhausted = false;
         }
         else if (surface == SurfaceType.None)
         {
+            if (wasClimbing && player.Energy != null)
+                player.Energy.NotifySkillUseStopped();
+
             wasClimbing = false;
         }
 
@@ -95,7 +109,7 @@ public class S_fluid_climb : S_SkillBase
         Debug.DrawRay(player.GetBodyTransform().position, surfNormal, Color.yellow);
     }
 
-    public void ClassifySurface(Collider2D col, float input, bool allowDirectCeilingEntry = false)
+    public void ClassifySurface(Collider2D col, float input, bool allowDirectCeilingEntry = false, float fallbackGripDirection = 0f)
     {
         if (contacts == null) contacts = new ContactPoint2D[3];
 
@@ -136,6 +150,9 @@ public class S_fluid_climb : S_SkillBase
             return;
         }
         noContactFrames = 0;
+        float desiredGripDirection = Mathf.Abs(input) > gripInputThreshold
+            ? Mathf.Sign(input)
+            : Mathf.Sign(fallbackGripDirection);
 
         switch (surface)
         {
@@ -144,8 +161,8 @@ public class S_fluid_climb : S_SkillBase
                 if (!climbExhausted)
                 {
                     if (allowDirectCeilingEntry && onCeill) { surface = SurfaceType.Ceiling; }
-                    else if (onWallL && input < -0.01f) { surface = SurfaceType.WallLeft; surfNormal = wallNormal; }
-                    else if (onWallR && input > 0.01f) { surface = SurfaceType.WallRight; surfNormal = wallNormal; }
+                    else if (onWallL && (input < -0.01f || (allowDirectCeilingEntry && desiredGripDirection < 0f))) { surface = SurfaceType.WallLeft; surfNormal = wallNormal; }
+                    else if (onWallR && (input > 0.01f || (allowDirectCeilingEntry && desiredGripDirection > 0f))) { surface = SurfaceType.WallRight; surfNormal = wallNormal; }
                     else if (onFloor) surface = SurfaceType.Floor;
                 }
                 else if (onFloor) surface = SurfaceType.Floor;
@@ -182,37 +199,30 @@ public class S_fluid_climb : S_SkillBase
         if (col == null || rig == null)
             return false;
 
-        if (gripBufferHits == null) gripBufferHits = new Collider2D[6];
+        if (gripBufferHits == null) gripBufferHits = new RaycastHit2D[6];
 
         float directionX = GetGripDirection(player, inputX);
         Vector2 direction = new Vector2(directionX, 0f);
         ContactFilter2D filter = CreateSurfaceFilter();
-        Bounds bounds = col.bounds;
-        Vector2 bufferCenter = GetGripBufferCenter(bounds);
-        int hitCount = Physics2D.OverlapCircle(bufferCenter, gripBufferDistance, filter, gripBufferHits);
+        int hitCount = col.Cast(direction, filter, gripBufferHits, gripBufferDistance + gripSnapSkin);
 
         float closestSnapDistance = float.MaxValue;
         Vector2 closestNormal = Vector2.zero;
         for (int i = 0; i < hitCount; i++)
         {
-            Collider2D hitCollider = gripBufferHits[i];
+            RaycastHit2D hit = gripBufferHits[i];
+            Collider2D hitCollider = hit.collider;
             if (hitCollider == null || hitCollider == col || hitCollider.attachedRigidbody == rig)
                 continue;
 
-            Vector2 closestPoint = hitCollider.ClosestPoint(bufferCenter);
-            Vector2 toSurface = closestPoint - bufferCenter;
-            float distanceInDirection = Vector2.Dot(toSurface, direction);
-            if (distanceInDirection < -0.001f)
-                continue;
-
-            Vector2 normal = toSurface.sqrMagnitude > 0.0001f
-                ? -toSurface.normalized
+            Vector2 normal = hit.normal.sqrMagnitude > 0.0001f
+                ? hit.normal
                 : -direction;
 
             if (!IsWallHitForDirection(normal, directionX))
                 continue;
 
-            float snapDistance = Mathf.Max(distanceInDirection - gripSnapSkin, 0f);
+            float snapDistance = Mathf.Max(hit.distance - gripSnapSkin, 0f);
             if (snapDistance >= closestSnapDistance)
                 continue;
 

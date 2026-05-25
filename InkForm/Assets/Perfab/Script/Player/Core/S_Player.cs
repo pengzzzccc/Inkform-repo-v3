@@ -39,6 +39,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
     [SerializeField] private S_CameraMove cameraController;
 
     private S_PlayerSkillController skillController;
+    private S_PlayerEnergy playerEnergy;
 
     private float moveSpeed;
     private float jumpSpeed;
@@ -116,6 +117,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
 
     public bool IsSprintCharging => skillController != null && skillController.IsSprintCharging;
     public bool IsCameraControlActive => skillController != null && skillController.IsCameraControlActive;
+    public S_PlayerEnergy Energy => playerEnergy;
 
     private bool movementLocked = false;
     public void SetMovementLocked(bool locked)
@@ -169,6 +171,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
         if (cameraController == null)
             cameraController = FindAnyObjectByType<S_CameraMove>();
 
+        SetupEnergy();
         SetupSkillController();
 
         inkform = form.fluid;
@@ -237,10 +240,6 @@ public class S_Player : MonoBehaviour, IPlayerActor
                 BeginSprintCharge();
             }
 
-            if (fluidClimbSkill != null && fluidClimbSkill.GetSurface() == S_fluid_climb.SurfaceType.Floor)
-            {
-                jumpCount = 0;
-            }
         }
     }
 
@@ -262,6 +261,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
 
         UpdateSlopeAssistTimer();
         SampleWalkableGround();
+        ResetJumpCountIfGrounded();
 
         if (inkform == form.solid)
             SolidMovement();
@@ -424,6 +424,15 @@ public class S_Player : MonoBehaviour, IPlayerActor
             useDynamicCollider);
     }
 
+    private void SetupEnergy()
+    {
+        if (playerEnergy == null)
+            playerEnergy = GetComponent<S_PlayerEnergy>();
+
+        if (playerEnergy == null)
+            playerEnergy = gameObject.AddComponent<S_PlayerEnergy>();
+    }
+
     private void UpdateDynamicCollider()
     {
         if (!useDynamicCollider || dynamicCollider == null)
@@ -477,6 +486,19 @@ public class S_Player : MonoBehaviour, IPlayerActor
         }
     }
 
+    private void ResetJumpCountIfGrounded()
+    {
+        if (slopeAssistDisabledTimer > 0f)
+            return;
+
+        bool groundedByPlayerContacts = isGroundedOnWalkableSurface;
+        bool groundedByClimbSurface = fluidClimbSkill != null
+            && fluidClimbSkill.GetSurface() == S_fluid_climb.SurfaceType.Floor;
+
+        if (groundedByPlayerContacts || groundedByClimbSurface)
+            jumpCount = 0;
+    }
+
     private bool ShouldUseSlopeMovement(float moveInput)
     {
         if (!isGroundedOnWalkableSurface || slopeAssistDisabledTimer > 0f)
@@ -506,6 +528,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
 
     public Rigidbody2D GetRigidbody() => b_Rig;
     public Rigidbody2D Rigidbody => b_Rig;
+    public S_PlayerEnergy GetEnergy() => playerEnergy;
 
     public Collider2D GetCollider()
     {
@@ -620,6 +643,13 @@ public class S_Player : MonoBehaviour, IPlayerActor
     public void ReleaseSprintCharge() => skillController?.ReleaseSprintCharge();
 
     public void CancelSprintCharge() => skillController?.CancelSprintCharge();
+
+    public void CancelActiveSkills()
+    {
+        CancelSprintCharge();
+        EndCameraControl();
+        ClearGripState();
+    }
 
     private void UpdateSprintBreakthrough()
     {

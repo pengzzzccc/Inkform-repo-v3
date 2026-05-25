@@ -49,14 +49,19 @@ public class S_BreakableBlock : MonoBehaviour
         for (int i = 0; i < dropCount; i++)
         {
             GameObject drop = Instantiate(dropPrefab, spawnPosition, Quaternion.identity);
-            if (drop.GetComponent<S_Key>() != null)
+            Vector2 launchVelocity = CreateDropVelocity();
+
+            S_Key droppedKey = drop.GetComponent<S_Key>();
+            if (droppedKey != null)
+            {
+                droppedKey.InitializeDroppedKey(launchVelocity, pickupDelay);
                 continue;
+            }
 
             S_DroppedResourceItem droppedItem = drop.GetComponent<S_DroppedResourceItem>();
             if (droppedItem == null)
                 droppedItem = drop.AddComponent<S_DroppedResourceItem>();
 
-            Vector2 launchVelocity = CreateDropVelocity();
             droppedItem.Initialize(resourceId, resourceAmountPerDrop, launchVelocity, pickupDelay, dropLifetime);
         }
     }

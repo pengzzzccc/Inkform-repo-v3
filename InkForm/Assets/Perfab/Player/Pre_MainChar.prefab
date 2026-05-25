@@ -47,7 +47,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   MoveSpeed: 14
   JumpSpeed: 20
-  MaxJump: 1
+  MaxJump: 2
   JumpCoolDownTime: 0.1
   body: {fileID: 5018208651326739801}
   sprites:

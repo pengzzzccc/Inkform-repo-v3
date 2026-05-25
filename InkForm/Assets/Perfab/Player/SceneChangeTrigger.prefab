@@ -100,5 +100,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c41bf2faffb276344bc11a8b0a39c692, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  targetScene:
+    sceneAsset: {fileID: 0}
+    scenePath:
+    sceneName:
   sceneName: 
   playerTag: Player

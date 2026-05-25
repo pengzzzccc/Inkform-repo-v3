@@ -1,4 +1,4 @@
-# Game Event System — Design Document
+# Game Event System 闂?Design Document
 
 ## 1. Overview
 
@@ -25,24 +25,25 @@ Producer (invokes event)          Consumer (subscribes to event)
            OnSectionStart += handler
 ```
 
-### 2.2 Event Inventory (30+ events as of v0.8.0)
+### 2.2 Event Inventory (30+ events as of v0.8.1)
 
 | Event | Parameter | Producer | Consumer |
 |-------|-----------|----------|----------|
 | **Game Lifecycle** | | | |
-| OnPlayerDied | none | S_coleve (lava), hazards | S_GameManager, S_SceneCheckpointTracker |
+| OnPlayerDied | none | S_coleve (lava), hazards, NPC arrest | S_UIManager |
 | OnGameStart | none | S_UIManager (Start button) | S_GameManager |
 | OnGameRestart | none | S_UIManager (Restart button) | S_GameManager, S_SceneCheckpointTracker |
 | OnExit | none | S_UIManager (Exit button) | S_GameManager |
 | OnStartFreshGameRequested | none | S_StartMenuController | S_GameManager |
 | OnReturnToStartMenuRequested | none | S_StartMenuController | S_GameManager |
-| OnSceneLoadRequested | string sceneName | S_GameManager | S_GameManager |
-| OnGameplayInputEnabledRequested | bool enabled | S_UIManager | S_Player |
+| OnSceneLoadRequested | string runtimeKey | S_SceneChangeTrigger, S_GameManager | S_GameManager |
+| OnGameplayInputEnabledRequested | bool enabled | S_GameManager, S_UIManager | S_Player |
 | OnLevelExitRequested | none | S_ExitGate | S_GameManager |
 | **Data** | | | |
 | OnScoreChanged | int score | (future use) | (future UI) |
 | OnSkillUsed | string name | (future use) | (future UI) |
-| reNewSpwnPoint | Transform | S_Checkpoint | S_GameManager (legacy bridge) |
+| OnPlayerEnergyChanged | float current, float max | S_PlayerEnergy | S_UIManager |
+| reNewSpwnPoint | Transform | S_Checkpoint | S_SceneCheckpointTracker (legacy bridge) |
 | OnSpawnPointChanged | Transform | S_Checkpoint | S_SceneCheckpointTracker |
 | **Section** | | | |
 | OnSectionStart | int index | S_SectionGoal (Start trigger) | S_LevelSectionController |
@@ -75,30 +76,31 @@ Producer (invokes event)          Consumer (subscribes to event)
 
 #### Player Death Flow
 ```
-Player touches lava
-    → S_coleve.OnCollisionEnter2D()
-    → S_GameEvent.PlayerDied()
-    → S_GameManager.PlayerDied()
-        → Teleport player to spwnPoint
-    → S_UIManager.ShowUI()
-        → Menu appears
+Player touches lava or NPC arrest occurs
+    -> S_GameEvent.PlayerDied()
+    -> S_UIManager.ShowDeathUI()
+        -> Time.timeScale = 0
+        -> Death panel appears with back to checkpoint
+    -> Player presses back to checkpoint
+    -> S_GameEvent.GameReStart()
+    -> S_SceneCheckpointTracker respawns player
 ```
 
 #### Section Progression Flow
 ```
 Player enters Section 0 StartTrigger
-    → S_SectionGoal.OnTriggerEnter2D() (triggerType = Start)
-    → S_GameEvent.SectionStart(0)
-    → S_LevelSectionController.HandleSectionStart(0)
-        → sections[0].RevealSection() (section descends)
+    闂?S_SectionGoal.OnTriggerEnter2D() (triggerType = Start)
+    闂?S_GameEvent.SectionStart(0)
+    闂?S_LevelSectionController.HandleSectionStart(0)
+        闂?sections[0].RevealSection() (section descends)
 
 Player enters Section 0 EndTrigger
-    → S_SectionGoal.OnTriggerEnter2D() (triggerType = End)
-    → S_GameEvent.SectionEnd(0)
-    → S_LevelSectionController.HandleSectionEnd(0)
-        → sections[0].HideSection() (section ascends)
-        → sections[0].MarkCompleted()
-        → sections[1].RevealSection() (next section descends)
+    闂?S_SectionGoal.OnTriggerEnter2D() (triggerType = End)
+    闂?S_GameEvent.SectionEnd(0)
+    闂?S_LevelSectionController.HandleSectionEnd(0)
+        闂?sections[0].HideSection() (section ascends)
+        闂?sections[0].MarkCompleted()
+        闂?sections[1].RevealSection() (next section descends)
 ```
 
 ---
@@ -107,7 +109,7 @@ Player enters Section 0 EndTrigger
 
 ### 3.1 S_GameEvent.cs
 
-**Type**: Static class (no MonoBehaviour — does NOT need a GameObject in scene)
+**Type**: Static class (no MonoBehaviour 闂?does NOT need a GameObject in scene)
 
 **Event Declarations** (30+ events):
 ```csharp
@@ -116,17 +118,18 @@ public static event Action OnPlayerDied;
 public static event Action OnGameStart;
 public static event Action OnGameRestart;
 public static event Action OnExit;
-public static event Action OnStartFreshGameRequested;       // v0.8.0
-public static event Action OnReturnToStartMenuRequested;    // v0.8.0
-public static event Action<string> OnSceneLoadRequested;    // v0.8.0
-public static event Action<bool> OnGameplayInputEnabledRequested; // v0.8.0
+public static event Action OnStartFreshGameRequested;
+public static event Action OnReturnToStartMenuRequested;
+public static event Action<string> OnSceneLoadRequested;
+public static event Action<bool> OnGameplayInputEnabledRequested;
+public static event Action OnLevelExitRequested;
 
 // Data events
 public static event Action<int> OnScoreChanged;
 public static event Action<string> OnSkillUsed;
+public static event Action<float, float> OnPlayerEnergyChanged; // v0.8.1
 public static event Action<Transform> reNewSpwnPoint;       // legacy bridge
-public static event Action<Transform> OnSpawnPointChanged;  // v0.8.0
-public static event Action OnLevelExitRequested;            // v0.8.0
+public static event Action<Transform> OnSpawnPointChanged;
 
 // Section events
 public static event Action<int> OnSectionStart;
@@ -138,20 +141,20 @@ public static event Action<int> OnSectionDescentCompleted;
 public static event Action<AudioClip> OnPlaySFX;
 public static event Action<AudioClip, float, float> OnPlaySFXPitched;
 public static event Action<AudioClip> OnBGMChange;
-public static event Action<float> OnBgmVolumeChangeRequested;  // v0.8.0
-public static event Action<float> OnSfxVolumeChangeRequested;  // v0.8.0
+public static event Action<float> OnBgmVolumeChangeRequested;
+public static event Action<float> OnSfxVolumeChangeRequested;
 
 // NPC & Story events
 public static event Action<string> OnNPCInteract;
 public static event Action<float> OnSuspicionChanged;
-public static event Action<float, float> OnSuspicionValueChanged;             // v0.8.0
-public static event Action<float, Transform> OnSuspicionChangeRequested;      // v0.8.0
-public static event Action<float> OnHiddenSuspicionDecayRequested;            // v0.8.0
-public static event Action<bool> OnPlayerHiddenChangeRequested;               // v0.8.0
-public static event Action<bool> OnPlayerHiddenChanged;                       // v0.8.0
+public static event Action<float, float> OnSuspicionValueChanged;
+public static event Action<float, Transform> OnSuspicionChangeRequested;
+public static event Action<float> OnHiddenSuspicionDecayRequested;
+public static event Action<bool> OnPlayerHiddenChangeRequested;
+public static event Action<bool> OnPlayerHiddenChanged;
 public static event Action<Transform> OnAlertTriggered;
 public static event Action OnArrestTriggered;
-public static event Action OnSuspicionResetRequested;                         // v0.8.0
+public static event Action OnSuspicionResetRequested;
 public static event Action<string> OnStoryTrigger;
 
 // Key & Gate events
@@ -162,17 +165,18 @@ public static event Action<int, int> OnKeyCountChanged;
 **Invocation Methods**:
 | Method | Parameters | Invokes | Description |
 |--------|------------|---------|-------------|
-| `PlayerDied()` | none | `OnPlayerDied` | Player has died (lava, hazard) |
+| `PlayerDied()` | none | `OnPlayerDied` | Player has died (lava, hazard, NPC arrest) |
 | `GameStart()` | none | `OnGameStart` | Start button pressed |
 | `GameReStart()` | none | `OnGameRestart` | Restart button pressed |
 | `ExitGame()` | none | `OnExit` | Exit button pressed |
-| `ReNewSpwnPoint(Transform)` | Transform | `reNewSpwnPoint` | Legacy bridge — also calls `SpawnPointChanged` |
+| `ReNewSpwnPoint(Transform)` | Transform | `reNewSpwnPoint` | Legacy bridge 闂?also calls `SpawnPointChanged` |
 | `SpawnPointChanged(Transform)` | Transform | `OnSpawnPointChanged`, `reNewSpwnPoint` | New checkpoint reached (v0.8.0) |
 | `ScoreChanged(int)` | int | `OnScoreChanged` | Score updated (future) |
 | `SkillUsed(string)` | string | `OnSkillUsed` | Skill activated (future) |
+| `PlayerEnergyChanged(float, float)` | current, max | `OnPlayerEnergyChanged` | Shared player energy changed (v0.8.1) |
 | `StartFreshGameRequested()` | none | `OnStartFreshGameRequested` | New game from start menu (v0.8.0) |
 | `ReturnToStartMenuRequested()` | none | `OnReturnToStartMenuRequested` | Return to start menu (v0.8.0) |
-| `SceneLoadRequested(string)` | string | `OnSceneLoadRequested` | Request scene load (v0.8.0) |
+| `SceneLoadRequested(string)` | runtime scene key | `OnSceneLoadRequested` | Request scene load by `S_SceneReference.RuntimeKey` (v0.8.1) |
 | `GameplayInputEnabledRequested(bool)` | bool | `OnGameplayInputEnabledRequested` | Toggle gameplay input (v0.8.0) |
 | `LevelExitRequested()` | none | `OnLevelExitRequested` | Player exits level (v0.8.0) |
 | `SectionStart(int)` | int sectionIndex | `OnSectionStart` | Player entered section Start trigger |
@@ -198,7 +202,7 @@ public static event Action<int, int> OnKeyCountChanged;
 | `KeyCollected()` | none | `OnKeyCollected` | Player collected a key |
 | `KeyCountChanged(int, int)` | int collected, int total | `OnKeyCountChanged` | Key count updated |
 
-All methods use null-conditional invocation (`?.Invoke()`) for safety — no null reference exceptions if no subscribers.
+All methods use null-conditional invocation (`?.Invoke()`) for safety 闂?no null reference exceptions if no subscribers.
 
 ---
 
@@ -209,33 +213,25 @@ All methods use null-conditional invocation (`?.Invoke()`) for safety — no nul
 Always subscribe in `OnEnable()` and unsubscribe in `OnDisable()` to prevent memory leaks and null reference errors.
 
 ```csharp
-public class S_GameManager : MonoBehaviour
+public class S_UIManager : MonoBehaviour
 {
     void OnEnable()
     {
-        S_GameEvent.OnPlayerDied += PlayerDied;
-        S_GameEvent.reNewSpwnPoint += newSpwn;
-        S_GameEvent.OnSectionStart += HandleSectionStart;
-        S_GameEvent.OnSectionEnd += HandleSectionEnd;
+        S_GameEvent.OnPlayerDied += ShowDeathUI;
+        S_GameEvent.OnPlayerEnergyChanged += UpdateEnergyBar;
+        S_GameEvent.OnKeyCountChanged += UpdateKeyCount;
     }
 
     void OnDisable()
     {
-        S_GameEvent.OnPlayerDied -= PlayerDied;
-        S_GameEvent.reNewSpwnPoint -= newSpwn;
-        S_GameEvent.OnSectionStart -= HandleSectionStart;
-        S_GameEvent.OnSectionEnd -= HandleSectionEnd;
+        S_GameEvent.OnPlayerDied -= ShowDeathUI;
+        S_GameEvent.OnPlayerEnergyChanged -= UpdateEnergyBar;
+        S_GameEvent.OnKeyCountChanged -= UpdateKeyCount;
     }
 
-    private void PlayerDied()
+    private void UpdateEnergyBar(float current, float max)
     {
-        // Teleport player to spawn point
-        player.transform.position = spwnPoint.position;
-    }
-
-    private void HandleSectionStart(int index)
-    {
-        sections[index].RevealSection();
+        // Update shared skill energy UI.
     }
 }
 ```
@@ -243,10 +239,11 @@ public class S_GameManager : MonoBehaviour
 ### 4.2 Invoking an Event (Producer)
 
 ```csharp
-// Any script can invoke events — no reference needed
+// Any script can invoke events 闂?no reference needed
 S_GameEvent.PlayerDied();
 S_GameEvent.SectionStart(0);
-S_GameEvent.ReNewSpwnPoint(checkpointTransform);
+S_GameEvent.SpawnPointChanged(checkpointTransform);
+S_GameEvent.PlayerEnergyChanged(currentEnergy, maxEnergy);
 ```
 
 ### 4.3 Adding a New Event
@@ -268,7 +265,7 @@ S_GameEvent.ReNewSpwnPoint(checkpointTransform);
 ## 5. Event Category Guide
 
 ### 5.1 Game Lifecycle Events
-These events control the overall game flow (start, death, restart, exit). They are consumed by `S_GameManager` and `S_UIManager`.
+These events control the overall game flow (start, death, restart, exit). They are consumed by `S_GameManager`, `S_UIManager`, and `S_SceneCheckpointTracker`.
 
 | When to use | Event to fire |
 |-------------|---------------|
@@ -316,10 +313,10 @@ These events manage the key collection and exit gate system. Keys are produced b
 
 ## 6. Best Practices
 
-1. **Always unsubscribe in OnDisable()** — prevents memory leaks and stale references
+1. **Always unsubscribe in OnDisable()** 闂?prevents memory leaks and stale references
 2. **Use specific event types** (`Action<int>`) over generic (`Action<object>`)
-3. **Keep events focused on game-wide state changes** — for local communication, use direct method calls
-4. **Events are fire-and-forget** — producers don't wait for consumers to finish
+3. **Keep events focused on game-wide state changes** 闂?for local communication, use direct method calls
+4. **Events are fire-and-forget** 闂?producers don't wait for consumers to finish
 5. **Thread safety**: All events must be invoked from the main thread (Unity's Update/FixedUpdate)
 6. **Event naming**: Use `On` prefix for events (e.g., `OnPlayerDied`, `OnSectionStart`)
 
@@ -332,5 +329,5 @@ These events manage the key collection and exit gate system. Keys are produced b
 | Event not firing | Check `?.Invoke()` is used and at least one subscriber exists |
 | NullReferenceException on event | Ensure all subscriptions have matching unsubscriptions in OnDisable() |
 | Event fires but nothing happens | Check the consumer's OnEnable is being called (object must be active) |
-| Multiple handlers conflict | Events support multiple subscribers — order is not guaranteed, design accordingly |
+| Multiple handlers conflict | Events support multiple subscribers 闂?order is not guaranteed, design accordingly |
 | Event fires twice | Check for duplicate subscriptions (OnEnable called multiple times without OnDisable) |

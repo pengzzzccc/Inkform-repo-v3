@@ -1,13 +1,13 @@
-# Skill System — Design Document
+# Skill System 閳?Design Document
 
 ## 1. Overview
 
-The skill system allows players to unlock and activate abilities using skill points. It uses ScriptableObject-based skill definitions for data-driven design, with a centralized `S_SkillTree` manager for unlocking and activation.
+The skill system allows players to unlock and activate abilities using skill points. It uses ScriptableObject-based skill definitions for data-driven design, with a centralized `S_SkillTree` manager for unlocking and activation. Active skill use is gated by the player's shared `S_PlayerEnergy` pool.
 
 ### Supported Skills
-- **Sprint** (`S_Soild_sprint`) — Hold-to-charge sprint with buffer, stage scaling, and cooldown
-- **Fluid Climb** (`S_fluid_climb`) — Wall/ceiling climbing in fluid form
-- **Camera Control** (`S_CameraControlSkill`) — Bullet time + manual camera pan
+- **Sprint** (`S_Soild_sprint`) - Hold-to-charge sprint with buffer, stage scaling, quick-tap cost, and shared energy drain
+- **Fluid Climb** (`S_fluid_climb`) 閳?Wall/ceiling climbing in fluid form
+- **Camera Control** (`S_CameraControlSkill`) 閳?Bullet time + manual camera pan
 
 ---
 
@@ -27,17 +27,23 @@ S_SkillTree (MonoBehaviour, Singleton)
 |-- Dictionary<string, S_SkillBase> unlockedMap
 `-- int skillPoints
 
-S_PlayerSkillController (MonoBehaviour, v0.8.0) — extracted from S_Player
+S_PlayerSkillController (MonoBehaviour, v0.8.0) 閳?extracted from S_Player
 |-- Owns sprint charge state machine (BeginSprintCharge, FixedTick, Release, Cancel)
 |-- Owns camera control logic (BeginCameraControl, EndCameraControl, CameraControlTick)
 |-- Initialized via injection from S_Player.Initialize()
 `-- Delegates to S_SkillTree for skill parameter access
+
+S_PlayerEnergy (MonoBehaviour, v0.8.1)
+|-- Single shared energy pool on the player
+|-- Broadcasts OnPlayerEnergyChanged(current, max)
+`-- Skills consume energy using their own Inspector-configured costs
 ```
 
 ### 2.2 Why ScriptableObjects?
 
 ScriptableObjects are used because:
-- **Data-driven**: Skill parameters (speed, cooldown, force) are defined in assets, not hardcoded
+- **Data-driven**: Skill parameters (speed, energy drain, force) are defined in assets, not hardcoded
+- **Energy-driven**: Each skill asset configures its own energy threshold and drain while sharing one player energy bar
 - **Reusability**: The same skill asset can be referenced by multiple systems
 - **Editor-friendly**: Designers can tweak values in the Inspector without touching code
 - **Runtime persistence**: Skill state (unlocked/locked) is managed by S_SkillTree, not the SO itself
@@ -76,13 +82,15 @@ Activation Flow:
 | prerequisites | S_SkillBase[] | Array of prerequisite skills that must be unlocked first |
 | availableSolid | bool | Whether usable in solid form |
 | availableFluid | bool | Whether usable in fluid form |
+| minEnergyToStart | float | Minimum shared player energy required before a skill can begin |
+| energyDrainPerSecond | float | Shared player energy drained while the skill remains active |
 
 **Methods**:
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
 | `CanUnlock()` | none | bool | Checks all prerequisites are unlocked |
-| `Activate(S_Player)` | S_Player | void | **Abstract** — implement the skill effect in subclasses |
-| `OnUnlocked(S_Player)` | S_Player | void | **Virtual** — optional hook called once when skill is unlocked |
+| `Activate(S_Player)` | S_Player | void | **Abstract** 閳?implement the skill effect in subclasses |
+| `OnUnlocked(S_Player)` | S_Player | void | **Virtual** 閳?optional hook called once when skill is unlocked |
 
 **Creating a New Skill**:
 1. Create a new C# script extending `S_SkillBase`
@@ -96,9 +104,9 @@ Activation Flow:
 
 ### 3.2 S_SkillTree.cs (Singleton Manager)
 
-**Type**: MonoBehaviour (Singleton, DontDestroyOnLoad)
+**Type**: MonoBehaviour (Singleton, persistent child of `ManagerRoot.prefab`)
 
-**Initialization**: On first `Awake()`, grants 5 skill points and auto-unlocks Sprint and FluidClimb. Uses an `initialized` flag to prevent double initialization across scene loads.
+**Initialization**: On first `Awake()`, grants 5 skill points and auto-unlocks Sprint, FluidClimb, and CameraControl. Uses an `initialized` flag to prevent double initialization across scene loads.
 
 **Key Methods**:
 | Method | Parameters | Description |
@@ -106,8 +114,8 @@ Activation Flow:
 | `AddSkillPoints(int)` | int count | Add points to the pool |
 | `TryUnlock(string)` | string skillName | Attempt to unlock a skill by name. Checks prerequisites, deducts points |
 | `ActivateSkill(string)` | string skillName | Activate an unlocked skill. Calls `skill.Activate(player)` |
-| `IsUnlocked(string)` | string skillName → bool | Check if a skill is unlocked |
-| `GetSkillPoints()` | none → int | Get current point count |
+| `IsUnlocked(string)` | string skillName 閳?bool | Check if a skill is unlocked |
+| `GetSkillPoints()` | none 閳?int | Get current point count |
 
 **Internal State**:
 | Field | Type | Description |
@@ -126,13 +134,15 @@ Activation Flow:
 | Field | Default | Description |
 |-------|---------|-------------|
 | sprintSpeed | 20f | Impulse force magnitude |
-| cooldown | 1.0s | Time between activations |
+| quickTapEnergyCost | 12f | Extra shared energy cost for quick-tap sprint |
+| cooldown | 1.0s | Legacy instant `Activate()` fallback cooldown; energy is the main active-use limiter |
 | SprintLockTime | 0.1s | Duration locked in solid form during sprint |
 
 **Activation Flow**:
 ```
 Activate(S_Player player)
-    |-- Check cooldown (if cooldown active, return)
+    |-- Check shared player energy
+    |-- Check cooldown for legacy fallback activation
     |-- Check form availability (availableSolid / availableFluid)
     |-- Calculate impulse direction based on facing
     |-- Apply impulse: player.GetRigidbody().AddForce(direction * sprintSpeed, ForceMode2D.Impulse)
@@ -168,7 +178,7 @@ Activate(S_Player player)
 | stickyForce | 3f | Force pulling player toward surface |
 | climbSpeed | 3f | Movement speed along surfaces |
 | fluidGravityScale | 4f | Gravity when not attached to surface |
-| activeTime | 4.0s | Max climb duration before exhaustion |
+| activeTime | 4.0s | Legacy max climb duration; shared energy drain is the primary limiter |
 | surfaceLayer | ~0 | Layer mask for climbable surfaces |
 | floorDotThreshold | 0.5 | Dot product threshold for floor detection |
 | ceilingDotThreshold | 0.5 | Dot product threshold for ceiling detection |
@@ -210,7 +220,48 @@ Any --(exhaustion / no contact)--> None
 
 ---
 
-## 4. Creating a New Skill
+## 4. Shared Player Energy (v0.8.1)
+
+`S_PlayerEnergy` is a player component shared by Sprint, FluidClimb, and CameraControl. It starts full, regenerates after `regenDelay`, and broadcasts `S_GameEvent.PlayerEnergyChanged(current, max)` whenever the value changes.
+
+### 4.1 S_PlayerEnergy API
+
+| Member | Description |
+|--------|-------------|
+| `CurrentEnergy` | Current energy value |
+| `MaxEnergy` | Maximum energy value |
+| `NormalizedEnergy` | Current/max normalized value |
+| `CanStartSkill(S_SkillBase)` | Checks `skill.MinEnergyToStart` |
+| `TryConsumeSkillEnergy(S_SkillBase, float)` | Drains `skill.EnergyDrainPerSecond * deltaTime` |
+| `TrySpendAmount(float)` | One-shot energy spend used by sprint quick tap |
+| `ResetEnergy()` | Restores full energy and broadcasts UI update |
+
+### 4.2 Skill Asset Energy Fields
+
+Every `S_SkillBase` asset exposes:
+
+| Field | Description |
+|-------|-------------|
+| `minEnergyToStart` | Minimum player energy required before activation |
+| `energyDrainPerSecond` | Energy drain while active |
+
+`S_Soild_sprint` also exposes `quickTapEnergyCost` for short press sprint release.
+
+### 4.3 Runtime Behavior
+
+```
+Skill input starts
+    -> S_PlayerEnergy.CanStartSkill(skill)
+    -> active skill drains shared energy over time
+    -> if energy reaches zero, active skill stops
+Skill input stops
+    -> regeneration delay starts
+    -> energy recovers over time
+```
+
+---
+
+## 5. Creating a New Skill
 
 ### Step-by-Step
 
@@ -250,12 +301,12 @@ Any --(exhaustion / no contact)--> None
 
 ---
 
-## 5. Unity Setup
+## 6. Unity Setup
 
 ### S_SkillTree
 1. Create a GameObject named "SkillTree"
 2. Add `S_SkillTree` component
-3. The object uses `DontDestroyOnLoad` — create it once in the initial scene
+3. The object is a direct child of `ManagerRoot.prefab`
 4. Drag all skill ScriptableObject assets into `allSkills[]`
 
 ### S_Player Integration
@@ -265,21 +316,22 @@ Any --(exhaustion / no contact)--> None
 
 ---
 
-## 6. Common Issues
+## 7. Common Issues
 
 | Issue | Solution |
 |-------|----------|
 | Skill not activating | Check `IsUnlocked()` returns true and correct form availability |
 | Sprint feels wrong | Verify SprintLockTime and sprintSpeed values |
 | Wall climb not sticky enough | Increase stickyForce |
-| Exhaustion too fast | Increase activeTime |
-| Skills reset on scene load | S_SkillTree uses DontDestroyOnLoad + initialized flag |
+| Energy drains too fast | Lower the skill asset `energyDrainPerSecond` or increase `S_PlayerEnergy.regenPerSecond` |
+| SkillTree missing | Confirm the full `ManagerRoot.prefab` is present in the scene |
+| Energy bar not changing | Confirm player has `S_PlayerEnergy` and skill assets have nonzero energy costs |
 | Prerequisites not working | Ensure prerequisite skill names match exactly |
 | Skill asset not found | Check `skillName` string matches what's passed to TryUnlock/ActivateSkill |
 
 ---
 
-## 7. Fluid Climb Updates
+## 8. Fluid Climb Updates
 
 `S_fluid_climb` now supports a Grip buffer for fluid climbing. When the player is in fluid form and holding Grip, the skill can cast the player's collider horizontally within `gripBufferDistance`. If a valid wall is found, the player is snapped toward the wall and the state machine enters `WallLeft` or `WallRight` without requiring perfect contact first.
 
@@ -297,7 +349,7 @@ The surface state machine also allows direct `None/Floor -> Ceiling` entry while
 
 ---
 
-## 8. Sprint Charge System
+## 9. Sprint Charge System
 
 The sprint skill (`S_Soild_sprint`) now supports a hold-to-charge sprint mechanism. The player holds the sprint key to accumulate charge, and releases to dash.
 
@@ -354,7 +406,7 @@ Quick-tap sprint (press and release within `bufferTime`) bypasses all visual/phy
 
 ---
 
-## 9. Camera Control Skill
+## 10. Camera Control Skill
 
 The camera control skill (`S_CameraControlSkill`) allows the player to enter a bullet-time state and manually pan the camera to survey the level.
 
@@ -383,7 +435,7 @@ Player releases CameraControl input
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `bulletTimeScale` | 0.2f | Time scale multiplier (0.01–1.0). Lower = slower time |
+| `bulletTimeScale` | 0.2f | Time scale multiplier (0.01閳?.0). Lower = slower time |
 
 ### 9.3 Form Availability
 
@@ -405,7 +457,7 @@ Camera control is blocked when:
 
 ---
 
-## 10. S_PlayerSkillController (v0.8.0)
+## 11. S_PlayerSkillController (v0.8.0)
 
 `S_PlayerSkillController` is a MonoBehaviour created and injected by `S_Player` during `Awake()`. It owns the sprint charge state machine and camera control logic, previously embedded directly in `S_Player`.
 
@@ -423,9 +475,9 @@ skillController.Initialize(this, moveAction, sprintAction, cameraControlAction,
 
 | Method | Description |
 |--------|-------------|
-| `BeginSprintCharge()` | Start sprint charge (buffer → charge → release flow) |
+| `BeginSprintCharge()` | Start sprint charge (buffer 閳?charge 閳?release flow) |
 | `FixedTickSprintCharge()` | Per-frame charge update (stage progression, visuals, shake) |
-| `ReleaseSprintCharge()` | Release charge → apply sprint impulse + cooldown |
+| `ReleaseSprintCharge()` | Release charge 閳?apply sprint impulse + cooldown |
 | `CancelSprintCharge()` | Cancel active sprint charge and restore visuals |
 | `HandleCameraControlInput()` | Detect CameraControl input and activate/deactivate |
 | `CameraControlTick()` | Feed move input to camera during manual control |
@@ -442,8 +494,8 @@ skillController.Initialize(this, moveAction, sprintAction, cameraControlAction,
 
 ### 10.4 Integration
 
-- `S_Player.Update()` → calls `skillController.HandleCameraControlInput()`, `skillController.TickCooldown()`
-- `S_Player.FixedUpdate()` → calls `skillController.FixedTickSprintCharge()`
-- `S_Player.BeginSprintCharge()` → delegates to `skillController.BeginSprintCharge()`
-- `S_Player.ReleaseSprintCharge()` → delegates to `skillController.ReleaseSprintCharge()`
+- `S_Player.Update()` 閳?calls `skillController.HandleCameraControlInput()`, `skillController.TickCooldown()`
+- `S_Player.FixedUpdate()` 閳?calls `skillController.FixedTickSprintCharge()`
+- `S_Player.BeginSprintCharge()` 閳?delegates to `skillController.BeginSprintCharge()`
+- `S_Player.ReleaseSprintCharge()` 閳?delegates to `skillController.ReleaseSprintCharge()`
 - Sprint/Camera skill parameters are fetched from `S_SkillTree` at runtime

@@ -68,14 +68,12 @@ public class S_SceneCheckpointTracker : MonoBehaviour
     private void OnEnable()
     {
         S_GameEvent.OnSpawnPointChanged += HandleSpawnPointChanged;
-        S_GameEvent.OnPlayerDied += HandleRespawnRequested;
         S_GameEvent.OnGameRestart += HandleRespawnRequested;
     }
 
     private void OnDisable()
     {
         S_GameEvent.OnSpawnPointChanged -= HandleSpawnPointChanged;
-        S_GameEvent.OnPlayerDied -= HandleRespawnRequested;
         S_GameEvent.OnGameRestart -= HandleRespawnRequested;
     }
 

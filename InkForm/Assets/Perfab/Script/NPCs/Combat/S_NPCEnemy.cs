@@ -186,6 +186,9 @@ public class S_NPCEnemy : S_NPCbase
 
         if (npcRig != null)
         {
+            npcRig.interpolation = RigidbodyInterpolation2D.Interpolate;
+            npcRig.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+
             if (useRigidbodyMovement)
             {
                 npcRig.gravityScale = gravityScale;
@@ -250,11 +253,20 @@ public class S_NPCEnemy : S_NPCbase
             jumpCooldownTimer -= Time.deltaTime;
 
         UpdateStateMachine();
+        UpdateHitVisual();
+        UpdateFacingIndicator();
+    }
+
+    private void FixedUpdate()
+    {
+        if (!isActive || currentState == State.Disabled)
+            return;
+
+        ValidatePlayerReference();
         UpdateGroundCheck();
         if (ExecuteKnockback())
         {
             UpdateTransformVerticalMovement();
-            UpdateHitVisual();
             return;
         }
 
@@ -262,8 +274,6 @@ public class S_NPCEnemy : S_NPCbase
         ExecuteJump();
         ExecuteMovement();
         UpdateTransformVerticalMovement();
-        UpdateHitVisual();
-        UpdateFacingIndicator();
     }
 
     /// <summary>

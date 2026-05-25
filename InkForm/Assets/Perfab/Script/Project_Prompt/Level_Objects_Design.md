@@ -1,4 +1,4 @@
-# Level Objects — Design Document
+# Level Objects 閳?Design Document
 
 ## 1. Overview
 
@@ -33,7 +33,7 @@ Level objects are interactive elements placed in gameplay scenes. They include b
 
 **Type**: MonoBehaviour (attach to block prefab)
 
-**Behavior**: When the player collides with a breakable block while in **solid form**, the block is destroyed instantly. The block survives fluid-form player contact — only the solid form can break it.
+**Behavior**: When the player collides with a breakable block while in **solid form**, the block is destroyed instantly. The block survives fluid-form player contact 閳?only the solid form can break it.
 
 If `dropPrefab` is assigned, the block spawns one or more `S_DroppedResourceItem` pickups before it is destroyed. If `dropPrefab` is empty, the block follows the original behavior and is simply destroyed without spawning anything.
 
@@ -53,8 +53,8 @@ OnCollisionEnter2D(collision)
 
 **Setup Instructions**:
 1. Create a sprite GameObject for the block visual
-2. Add `BoxCollider2D` — **Is Trigger must be OFF** (this uses OnCollisionEnter2D, not trigger)
-3. Add `Rigidbody2D` — set **Body Type** = `Kinematic` (so it doesn't fall with gravity)
+2. Add `BoxCollider2D` 閳?**Is Trigger must be OFF** (this uses OnCollisionEnter2D, not trigger)
+3. Add `Rigidbody2D` 閳?set **Body Type** = `Kinematic` (so it doesn't fall with gravity)
 4. Add `S_BreakableBlock` component
 5. Optional: assign a pickup prefab to `dropPrefab`
 6. Tag the player GameObject as `"Player"` (the script uses `CompareTag` for zero-allocation checks)
@@ -73,7 +73,7 @@ OnCollisionEnter2D(collision)
 
 **Important Notes**:
 - The block requires a non-trigger Collider2D because it uses `OnCollisionEnter2D`
-- The Rigidbody2D must be Kinematic — if set to Dynamic, the block will fall due to gravity
+- The Rigidbody2D must be Kinematic 閳?if set to Dynamic, the block will fall due to gravity
 - If blocks are placed inside a Section, they will move with the section root automatically
 - Dropped pickup prefabs should have a visible sprite or mesh; `S_DroppedResourceItem` supplies trigger pickup behavior and adds missing physics components at runtime
 - Picked resources are counted in `S_DropResourceCounter`; HUD display is not connected here
@@ -84,27 +84,27 @@ OnCollisionEnter2D(collision)
 
 **Type**: MonoBehaviour (attach to checkpoint prefab)
 
-**Behavior**: When the player enters the checkpoint's trigger area, it fires the `reNewSpwnPoint` event to update the global spawn position in `S_GameManager`. The player will respawn at the most recently activated checkpoint after death.
+**Behavior**: When the player enters the checkpoint's trigger area, it fires `S_GameEvent.SpawnPointChanged(transform)` through the legacy `ReNewSpwnPoint` bridge. `S_SceneCheckpointTracker` caches the scene-scoped spawn position and respawns the player there after the death UI button triggers `GameReStart()`.
 
 **Event Flow**:
 ```
 OnTriggerEnter2D(collision)
     |-- CompareTag("Player") ?
     |   |-- YES: S_GameEvent.ReNewSpwnPoint(transform)
-    |   |   `-- S_GameManager receives event -> updates spwnPoint
+    |   |   `-- S_SceneCheckpointTracker caches scene spawn point
     |   `-- NO: do nothing
 ```
 
 **Setup Instructions**:
 1. Create a sprite GameObject for the checkpoint visual (e.g., a flag or marker)
-2. Add `BoxCollider2D` — set **Is Trigger** = `true`
+2. Add `BoxCollider2D` 閳?set **Is Trigger** = `true`
 3. Add `S_Checkpoint` component
 4. Position the checkpoint at the desired respawn location in the level
 
 **Important Notes**:
-- The trigger Collider2D must have `isTrigger = true` — otherwise `OnTriggerEnter2D` won't fire
+- The trigger Collider2D must have `isTrigger = true` 閳?otherwise `OnTriggerEnter2D` won't fire
 - Checkpoints are one-way: once the player passes one, the spawn point is permanently updated until the next checkpoint
-- Multiple checkpoints in a level are supported — the last one reached is the respawn point
+- Multiple checkpoints in a level are supported 閳?the last one reached is the respawn point
 
 ---
 
@@ -138,18 +138,14 @@ OnTriggerEnter2D(collision)
 **Pipeline Pair Diagram**:
 ```
    Entrance                    Exit
-   ┌─────┐                    ┌─────┐
-   │  ○  │ ──teleport──>      │  ○  │
-   │PIPE │                    │PIPE │
-   └─────┘                    └─────┘
-   [S_Pipline]                [position target]
+   閳瑰备鏀㈤埞鈧埞鈧埞鈧埞鈧埞?                   閳瑰备鏀㈤埞鈧埞鈧埞鈧埞鈧埞?   閳? 閳? 閳?閳光偓閳光偓teleport閳光偓閳光偓>      閳? 閳? 閳?   閳逛揪IPE 閳?                   閳逛揪IPE 閳?   閳规柡鏀㈤埞鈧埞鈧埞鈧埞鈧埞?                   閳规柡鏀㈤埞鈧埞鈧埞鈧埞鈧埞?   [S_Pipline]                [position target]
    [trigger Collider2D]       [no collider needed]
 ```
 
 **Important Notes**:
 - Only fluid-form players can use pipelines (the `getForm()` check returns `true` for fluid)
 - The teleport calls `S_Player.Teleport()` which also resets velocity to zero
-- The exit point doesn't need a Collider2D — it's just a position marker
+- The exit point doesn't need a Collider2D 閳?it's just a position marker
 - Null-safe: the script checks if Output is assigned before teleporting
 
 ---
@@ -184,7 +180,7 @@ Update()
 1. Create the block GameObject with a sprite, Collider2D, and Rigidbody2D (Kinematic)
 2. Create two empty GameObjects as position markers: `side_1` (default position) and `side_2` (target position)
 3. Create a child GameObject under the block for the trigger area
-4. Add `BoxCollider2D` or `CircleCollider2D` to the trigger child — set **Is Trigger** = `true`
+4. Add `BoxCollider2D` or `CircleCollider2D` to the trigger child 閳?set **Is Trigger** = `true`
 5. Add `S_MoveBlock` component to the **block** GameObject
 6. Add `S_setTrigger` component to the **trigger child** GameObject
 7. Assign all references in Inspector (side_1, side_2, block, trigger)
@@ -192,17 +188,17 @@ Update()
 **Hierarchy Example**:
 ```
 MoveBlock_Parent
-├── Block_Body          (S_MoveBlock, Collider2D, Rigidbody2D Kinematic)
-│   ├── Block_Sprite   (SpriteRenderer)
-│   └── Trigger_Zone   (S_setTrigger, Collider2D isTrigger)
-├── Side_1_Marker      (empty, position marker)
-└── Side_2_Marker      (empty, position marker)
+閳规壕鏀㈤埞鈧?Block_Body          (S_MoveBlock, Collider2D, Rigidbody2D Kinematic)
+閳?  閳规壕鏀㈤埞鈧?Block_Sprite   (SpriteRenderer)
+閳?  閳规柡鏀㈤埞鈧?Trigger_Zone   (S_setTrigger, Collider2D isTrigger)
+閳规壕鏀㈤埞鈧?Side_1_Marker      (empty, position marker)
+閳规柡鏀㈤埞鈧?Side_2_Marker      (empty, position marker)
 ```
 
 **Important Notes**:
-- The block uses exponential decay Lerp — it doesn't snap to the target, it approaches smoothly
+- The block uses exponential decay Lerp 閳?it doesn't snap to the target, it approaches smoothly
 - The trigger child must be tagged as `"block"` if using default S_setTrigger setup (it detects objects with "block" tag)
-- S_MoveBlock reads `SetTriggered(bool)` externally — it does NOT detect triggers directly
+- S_MoveBlock reads `SetTriggered(bool)` externally 閳?it does NOT detect triggers directly
 
 ---
 
@@ -277,9 +273,9 @@ OnCollisionExit2D(collision)
 | Breakable blocks | Default | (any) |
 
 **Important Notes**:
-- This is a Singleton — `S_coleve.Instance` provides global access to `getPlayerOnGround()`
+- This is a Singleton 閳?`S_coleve.Instance` provides global access to `getPlayerOnGround()`
 - Ground detection uses collision contact normals (normal.y > 0.5 means surface is below player)
-- Lava detection fires `OnPlayerDied` which triggers respawn via `S_GameManager`
+- Lava detection fires `OnPlayerDied`, which shows death UI; checkpoint respawn happens after the player clicks `back to checkpoint`
 
 ---
 
@@ -330,7 +326,7 @@ OnCollisionExit2D(collision)
 | Pipeline not teleporting | Check Output is assigned AND player is in fluid form |
 | Pipeline teleports but player keeps falling | Check that `Teleport()` resets velocity (built-in) |
 | Move block not responding | Verify S_setTrigger is on the trigger child AND child of S_MoveBlock |
-| Move block activates without trigger | Check trigger child Collider2D size — reduce if too large |
+| Move block activates without trigger | Check trigger child Collider2D size 閳?reduce if too large |
 | Player death not triggering on lava | Check S_coleve is on player body AND lava is tagged `"lava"` |
 | Ground detection unreliable | Ensure ground objects are on `"Ground"` layer and check contact normal threshold |
 
@@ -434,7 +430,7 @@ The color updates in edit mode via `OnValidate()` and at runtime via `Awake()`. 
 
 **Type**: MonoBehaviour (attach to key collectible)
 
-**Behavior**: When the player enters the key's trigger area, the key is collected (hidden via `SetActive(false)`). Fires `S_GameEvent.KeyCollected()` and `S_GameEvent.KeyCountChanged(collected, total)`. Keys persist across deaths within the same level — they only reset when a new scene loads.
+**Behavior**: When the player enters the key's trigger area, the key is collected (hidden via `SetActive(false)`). Fires `S_GameEvent.KeyCollected()` and `S_GameEvent.KeyCountChanged(collected, total)`. Keys persist across deaths within the same level 閳?they only reset when a new scene loads.
 
 **Serialized Fields**: None (auto-managed).
 
@@ -443,11 +439,14 @@ The color updates in edit mode via `OnValidate()` and at runtime via `Awake()`. 
 |---|---|---|
 | `TotalKeys` | int | Total keys in current scene |
 | `CollectedKeys` | int | Number of collected keys |
+| `InitializeDroppedKey(Vector2, float)` | void | Starts dropped-key pop-out motion, pickup delay, and near-ground hover behavior |
+
+**Dropped Key Behavior (v0.8.1)**: Keys placed directly in scenes remain collectible immediately. Keys spawned from `S_BreakableBlock` call `InitializeDroppedKey(launchVelocity, pickupDelay)`, pop upward/outward, settle near the ground, then hover up and down before becoming collectible.
 
 **Collection Flow**:
 ```
 OnTriggerEnter2D(collision)
-    |-- isCollected ? → skip
+    |-- isCollected ? 閳?skip
     |-- CompareTag("Player") ?
     |   |-- YES:
     |   |   |-- collectedCount++
@@ -461,12 +460,12 @@ OnTriggerEnter2D(collision)
 
 **Setup Instructions**:
 1. Create a sprite GameObject for the key visual
-2. Add `CircleCollider2D` or `BoxCollider2D` — set **Is Trigger** = `true`
+2. Add `CircleCollider2D` or `BoxCollider2D` 閳?set **Is Trigger** = `true`
 3. Add `S_Key` component
 4. Place in scene (repeat for multiple keys)
 
 **Important Notes**:
-- Keys are disabled (`SetActive(false)`) on collection, not destroyed — safe for static tracking
+- Keys are disabled (`SetActive(false)`) on collection, not destroyed 閳?safe for static tracking
 - Key count persists across player death within the same level
 - `allKeys` HashSet automatically cleans up via `OnDestroy()` when scene unloads
 
@@ -490,7 +489,7 @@ OnTriggerEnter2D(collision)
 ```
 OnEnable()
     |-- Subscribe to S_GameEvent.OnKeyCountChanged
-    |-- CheckUnlock() — immediate check if keys already collected
+    |-- CheckUnlock() 閳?immediate check if keys already collected
 
 HandleKeyCountChanged(collected, total)
     |-- collected >= requiredKeys ?
@@ -508,24 +507,24 @@ OnTriggerEnter2D(collision)
 
 **Setup Instructions**:
 1. Create a gate sprite GameObject
-2. Add `BoxCollider2D` — set **Is Trigger** = `true`
+2. Add `BoxCollider2D` 閳?set **Is Trigger** = `true`
 3. Add `S_ExitGate` component
 4. Assign `gateSprite` (or auto-finds `SpriteRenderer` in children)
 5. Set `requiredKeys` in Inspector (e.g., 3 for a 3-key gate)
-6. Place in scene — gate locks/unlocks automatically based on key collection
+6. Place in scene 閳?gate locks/unlocks automatically based on key collection
 
 **Hierarchy Example**:
 ```
 ExitGate
-├── Gate_Sprite     (SpriteRenderer, visual gate art)
-├── Collider_Zone   (BoxCollider2D, isTrigger = true, S_ExitGate)
-└── Lock_Indicator  (optional child SpriteRenderer for lock icon)
+閳规壕鏀㈤埞鈧?Gate_Sprite     (SpriteRenderer, visual gate art)
+閳规壕鏀㈤埞鈧?Collider_Zone   (BoxCollider2D, isTrigger = true, S_ExitGate)
+閳规柡鏀㈤埞鈧?Lock_Indicator  (optional child SpriteRenderer for lock icon)
 ```
 
 **Important Notes**:
 - Gate auto-checks key count on `OnEnable()` in case keys were collected before gate was active
 - Only one exit gate per level recommended (multiple gates share the same key counter)
-- Level progression uses `S_GameManager.levelSceneNames[]` — ensure scenes are registered
+- Level progression uses `S_GameManager.levelScenes[]` (`S_SceneReference`) whenever possible; drag SceneAssets in Inspector and ensure they are enabled in Build Settings / Build Profiles.
 
 ---
 
@@ -542,19 +541,22 @@ The tracker auto-creates per scene via `[RuntimeInitializeOnLoadMethod(RuntimeIn
 | Event | Handler | Action |
 |-------|---------|--------|
 | `OnSpawnPointChanged` | `HandleSpawnPointChanged(Transform)` | Update tracked spawn position (only if checkpoint is in tracked scene) |
-| `OnPlayerDied` | `HandleRespawnRequested()` | Teleport player to last checkpoint, or reload scene |
+| `OnPlayerDied` | UI only | Death UI is shown first; tracker waits for `OnGameRestart` before respawn |
 | `OnGameRestart` | `HandleRespawnRequested()` | Same as above |
 
 ### 12.3 Respawn Flow
 
 ```
 Player dies
-    → S_GameEvent.PlayerDied()
-    → S_SceneCheckpointTracker.HandleRespawnRequested()
-        → if hasSpawnPosition && player in tracked scene
-            → IPlayerActor.Teleport(spawnPosition)
-        → else
-            → ReloadTrackedScene()
+    -> S_GameEvent.PlayerDied()
+    -> S_UIManager.ShowDeathUI()
+    -> Player clicks back to checkpoint
+    -> S_GameEvent.GameReStart()
+    -> S_SceneCheckpointTracker.HandleRespawnRequested()
+        -> if hasSpawnPosition && player in tracked scene
+            -> IPlayerActor.Teleport(spawnPosition)
+        -> else
+            -> ReloadTrackedScene()
 ```
 
 ### 12.4 Key Methods

@@ -1,12 +1,12 @@
-# Manager Systems — Design Document
+# Manager Systems 閳?Design Document
 
 ## 1. Overview
 
-The manager systems handle game flow, UI management, audio playback, and global state. They consist of `S_ManagerRoot` (persistent container), `S_GameManager` (game flow control), `S_UIManager` (menu UI), and `S_AudioManager` (BGM + SFX). All systems communicate through `S_GameEvent` — they never reference each other directly.
+The manager systems handle game flow, UI management, audio playback, and global state. They consist of `S_ManagerRoot` (persistent container), `S_GameManager` (game flow control), `S_UIManager` (menu UI), and `S_AudioManager` (BGM + SFX). All systems communicate through `S_GameEvent` 閳?they never reference each other directly.
 
 `S_InputBindingManager` is also part of the manager layer. It owns the shared `InputSystem_Actions` instance, saves runtime binding overrides with `PlayerPrefs`, and is used by both `S_Player` and `S_UIManager`.
 
-`S_ManagerRoot` (v0.8.0) is the persistent `DontDestroyOnLoad` container that manages the lifecycle of all manager singletons.
+`S_ManagerRoot` (v0.8.1) is the only object allowed to call `DontDestroyOnLoad`. All persistent managers are authored as children of `ManagerRoot.prefab`; child managers keep singleton guards but do not self-create, self-reparent, or preserve themselves.
 
 ---
 
@@ -15,25 +15,26 @@ The manager systems handle game flow, UI management, audio playback, and global 
 ### 2.1 System Relationships
 
 ```
-S_ManagerRoot (Singleton, DontDestroyOnLoad) — v0.8.0
-|-- Persistent container for all manager singletons
-|-- AttachPersistent(managerTransform) — parents managers under root
-|-- GetOrCreateChild(name) / GetOrCreateComponent<T>(name) — lazy creation
+S_ManagerRoot (Singleton, DontDestroyOnLoad) - v0.8.1
+|-- Single persistent prefab root for all manager singletons
+|-- Destroys duplicate roots as a whole
+|-- AttachPersistent(managerTransform) is compatibility-only; normal code must not use runtime reparenting
 `-- RuntimeInitializeOnLoadMethod reset for editor domain reload
 
-S_UIManager (DontDestroyOnLoad, child of S_ManagerRoot)
+S_UIManager (child of ManagerRoot.prefab)
 |-- Buttons: Start, Restart, Exit
 |-- Toggle: OpenMenu input
-|-- Listens: OnGameStart, OnGameRestart, OnPlayerDied, OnKeyCountChanged
-`-- Controls: Time.timeScale, background visibility
+|-- Death panel: red count + back to checkpoint button
+|-- Energy UI: listens to OnPlayerEnergyChanged
+`-- Controls: pause menu, death UI, gameplay input lock/unlock
 
-S_GameManager (DontDestroyOnLoad, child of S_ManagerRoot)
-|-- Player respawn management
-|-- Scene loading (via OnSceneLoadRequested)
-|-- Listens: OnPlayerDied, OnGameStart, OnGameRestart, OnExit, OnSpawnPointChanged
-`-- Spawn point tracking
+S_GameManager (child of ManagerRoot.prefab)
+|-- Scene flow using S_SceneReference drag references
+|-- Ink fade transition + optional transition SFX
+|-- Listens: OnGameStart, OnGameRestart, OnExit, OnLevelExitRequested, OnSceneLoadRequested
+`-- Disables gameplay input during scene transitions
 
-S_AudioManager (DontDestroyOnLoad, child of S_ManagerRoot)
+S_AudioManager (child of ManagerRoot.prefab)
 |-- BGM playback (loop)
 |-- SFX playback (one-shot)
 |-- Platform Alarm (loop, triggered by section descent)
@@ -45,7 +46,7 @@ S_SectionAlarmEffect (per-scene)
 |-- Listens: OnSectionDescentStarted, OnSectionDescentCompleted
 `-- Screen flash + tint effect
 
-S_InputBindingManager (DontDestroyOnLoad, child of S_ManagerRoot)
+S_InputBindingManager (child of ManagerRoot.prefab)
 |-- Owns one shared InputSystem_Actions instance
 |-- Loads/saves binding overrides via PlayerPrefs
 |-- Provides interactive rebinding for keyboard/mouse and gamepad
@@ -56,10 +57,13 @@ S_InputBindingManager (DontDestroyOnLoad, child of S_ManagerRoot)
 
 | System | Persistence | Instantiation |
 |--------|-------------|---------------|
-| S_UIManager | DontDestroyOnLoad (survives scene loads) | Create once in initial scene |
-| S_InputBindingManager | DontDestroyOnLoad (survives scene loads) | Auto-created on first access |
-| S_GameManager | Per-scene (destroyed on scene load) | Create in each gameplay scene |
-| S_AudioManager | Per-scene (destroyed on scene load) | Create in each gameplay scene |
+| S_ManagerRoot | DontDestroyOnLoad root | Place full `ManagerRoot.prefab` in Start and gameplay scenes |
+| S_GameManager | Persistent as root child | Direct child of `ManagerRoot.prefab` |
+| S_UIManager | Persistent as root child | Direct child of `ManagerRoot.prefab` |
+| S_InputBindingManager | Persistent as root child | Direct child of `ManagerRoot.prefab`; not auto-created |
+| S_AudioManager | Persistent as root child | Direct child of `ManagerRoot.prefab` |
+| S_SuspicionSystem | Persistent as root child | Direct child of `ManagerRoot.prefab` |
+| S_SkillTree | Persistent as root child | Direct child of `ManagerRoot.prefab` |
 | S_SectionAlarmEffect | Per-scene (destroyed on scene load) | Create in each gameplay scene |
 
 ### 2.3 Game Flow Diagram
@@ -72,8 +76,9 @@ Game Start:
 
 Player Death:
   S_coleve (lava contact) --> S_GameEvent.PlayerDied()
-  --> S_GameManager.PlayerDied() --> Reset player position to spawn
-  --> S_UIManager.ShowUI() --> Menu appears
+  --> S_UIManager.ShowDeathUI() --> Freeze time + show death panel
+  --> Player clicks back to checkpoint
+  --> S_GameEvent.GameReStart() --> S_SceneCheckpointTracker respawns player
 
 Game Restart:
   S_UIManager.ReStartButton --> S_GameEvent.GameReStart()
@@ -91,54 +96,57 @@ Game Exit:
 
 ### 3.1 S_GameManager.cs
 
-**Type**: MonoBehaviour (Singleton, per-scene)
+**Type**: MonoBehaviour (Singleton, persistent child of `ManagerRoot.prefab`)
 
 **Singleton Pattern**: Uses `Instance` static property. If a new instance is created while one already exists, the duplicate is destroyed.
 
 **Serialized Fields**:
 | Field | Type | Description |
 |-------|------|-------------|
-| scene | string | Scene name to load on game start |
-| loadScene | bool | Whether to load a scene on GameStart (default false) |
+| startMenuScene | S_SceneReference | Start menu scene selected by dragging a SceneAsset in Inspector |
+| levelScenes | S_SceneReference[] | Ordered level flow, using scene path first and legacy name fallback |
+| transitionFadeOutTime / transitionFadeInTime | float | Ink fade timing for scene transitions |
+| transitionClip | AudioClip | Optional SFX played when transition starts |
 
 **Runtime State**:
 | Field | Type | Description |
 |-------|------|-------------|
-| player | S_Player | Reference to S_Player (found via `FindAnyObjectByType` in Start) |
-| spwnPoint | Transform | Current spawn point (starts at player position) |
+| currentLevelIndex | int | Active level index for `LoadNextLevel()` |
+| sceneLoadRoutine | Coroutine | Guards against double scene-load triggers |
 
 **Event Subscriptions**:
 | Event | Handler | Action |
 |-------|---------|--------|
-| OnPlayerDied | `PlayerDied()` | Teleport player to spawn point |
 | OnGameStart | `GameStart()` | Load scene, reset time scale |
-| OnGameRestart | `GameReStart()` | Reset player position, reset time scale |
+| OnGameRestart | `GameReStart()` | Reset time scale and suspicion; checkpoint tracker handles respawn |
 | OnExit | `ExitGame()` | Quit application |
-| reNewSpwnPoint | `newSpwn(Transform)` | Update spawn point to new checkpoint |
+| OnLevelExitRequested | `LoadNextLevel()` | Load the next configured scene |
+| OnSceneLoadRequested | `LoadSceneByKey(string)` | Load scene by path/name runtime key |
 
 **Key Methods**:
 | Method | Description |
 |--------|-------------|
-| `Start()` | Find S_Player instance, initialize spawn point |
-| `PlayerDied()` | Teleport player back to spawn point |
-| `GameStart()` | Load the target scene via `SceneManager.LoadScene(scene)` |
-| `GameReStart()` | Reset player to spawn point, set `Time.timeScale = 1` |
+| `StartFreshGameFromMenu()` | Reset session state and load the first configured level |
+| `LoadLevel(int)` | Load a configured level by index |
+| `LoadNextLevel()` | Advance through `levelScenes` |
+| `ReturnToStartMenu()` | Load the configured start menu scene |
+| `GameReStart()` | Reset time/suspicion and let checkpoint tracker respawn |
 | `ExitGame()` | Call `Application.Quit()` |
-| `newSpwn(Transform)` | Update `spwnPoint` to new checkpoint position |
+| `CanLoadSceneKey(string)` | Validate scene path/name is loadable before transition starts |
 
 **Important Notes**:
-- `GameStart()` uses `SceneManager.LoadScene()` which destroys the current scene (including this GameManager)
-- The new scene must have its own S_GameManager instance
-- `GameReStart()` does NOT reload the scene — it just resets the player position
+- `S_GameManager` uses `S_SceneReference` runtime keys; dragging SceneAssets in Inspector is preferred over typing names
+- `GameReStart()` does NOT reload the scene; the checkpoint tracker respawns only after the death UI button is pressed
+- During transitions, gameplay input is disabled and restored after fade-in
 - `Time.timeScale` must be reset to 1 after being set to 0 by the menu
 
 ---
 
 ### 3.2 S_UIManager.cs
 
-**Type**: MonoBehaviour (Singleton, DontDestroyOnLoad)
+**Type**: MonoBehaviour (Singleton, persistent child of `ManagerRoot.prefab`)
 
-**Persistence**: This manager survives scene loads. Create it once in the initial scene and it persists throughout the game session.
+**Persistence**: `S_UIManager` is authored under `ManagerRoot.prefab`. It never calls `DontDestroyOnLoad` or `AttachPersistent` during normal lifecycle.
 
 **Serialized Fields**:
 | Field | Type | Description |
@@ -148,6 +156,9 @@ Game Exit:
 | ReStartButton | Button | Restart level button |
 | ExitButton | Button | Exit game button |
 | ControlsButton | Button | Optional controls button; created at runtime if unset |
+| energySlider / energyUI | Slider / GameObject | Energy HUD, created at runtime if unset |
+| deathPanel / backToCheckpointButton | GameObject / Button | Independent death UI |
+| deathCountText | TMP_Text | Red death counter displayed on death panel |
 
 **Menu Toggle System**:
 - Uses `S_InputBindingManager.Instance.Actions.UI.OpenMenu`
@@ -173,17 +184,22 @@ OpenMenu input pressed:
 **Event Subscriptions**:
 | Event | Handler | Action |
 |-------|---------|--------|
-| OnGameStart | `HideUI()` | Hide menu when game starts |
-| OnGameRestart | `HideUI()` | Hide menu on restart |
-| OnPlayerDied | `ShowUI()` | Show menu on death |
+| OnGameStart | `HideAllGameplayBlockingUI()` | Hide pause/death UI when game starts |
+| OnGameRestart | `HideAllGameplayBlockingUI()` | Hide pause/death UI on checkpoint return |
+| OnPlayerDied | `ShowDeathUI()` | Freeze time and show death panel |
+| OnPlayerEnergyChanged | `UpdateEnergyBar(float, float)` | Refresh shared energy UI |
+| OnKeyCountChanged | `UpdateKeyCount(int, int)` | Refresh key HUD |
 
 **Key Methods**:
 | Method | Description |
 |--------|-------------|
 | `Start()` | Set up button listeners and build controls UI |
 | `Update()` | Check OpenMenu input for toggle |
-| `ShowUI()` | Set background active and show main menu |
+| `ShowUI()` | Set background active and show pause menu |
 | `HideUI()` | Set background inactive, cancel rebinding, resume time |
+| `ShowDeathUI()` | Show death panel and select `back to checkpoint` |
+| `BackToCheckpoint()` | Hide death UI and fire `GameReStart()` |
+| `UpdateEnergyBar(float, float)` | Cache/update energy slider value |
 | `OnStartButton()` | Fire `S_GameEvent.GameStart()` |
 | `OnReStartButton()` | Fire `S_GameEvent.GameReStart()` |
 | `OnExitButton()` | Fire `S_GameEvent.ExitGame()` |
@@ -192,69 +208,54 @@ OpenMenu input pressed:
 
 ## 4. Unity Setup
 
-### S_GameManager (per-scene)
-1. Create a GameManager GameObject in each gameplay scene
-2. Add `S_GameManager` component
-3. Set the `scene` field to the target scene name for the Start button
-4. Ensure there is only one per scene (Singleton enforces this, but clean setup is better)
+### ManagerRoot Prefab Setup
+1. Place the full `Assets/Perfab/Player/ManagerRoot.prefab` in `Start.unity` and any gameplay scene that can be opened directly.
+2. Keep these managers as direct prefab children: `S_GameManager`, `S_UIManager`, `S_InputBindingManager`, `S_AudioManager`, `S_SuspicionSystem`, `S_SkillTree`, and `S_PerformanceMonitor`.
+3. Do not place standalone `UIManager.prefab` instances in scenes.
+4. Do not create partial managers at runtime; `S_StartMenuController` validates the root and logs an error if it is missing.
 
-### S_UIManager (global)
-1. Create a UIManager GameObject in the initial scene (will persist via DontDestroyOnLoad)
-2. Add `S_UIManager` component
-3. Create a Canvas with:
-   - A background panel (initially inactive)
-   - Start/Restart/Exit buttons as children of the background
-4. Assign all UI references in Inspector
-5. Set up button OnClick events to call `OnStartButton()`, `OnReStartButton()`, `OnExitButton()`
+### Scene Flow Setup
+1. In `S_GameManager`, drag SceneAsset files into `startMenuScene` and `levelScenes`.
+2. In `S_SceneChangeTrigger`, drag the target SceneAsset into `targetScene`.
+3. Make sure dragged scenes are enabled in Build Settings / Build Profiles; loading validates this before transition starts.
+4. Configure transition fade times and optional `transitionClip` in `S_GameManager`.
 
-### S_AudioManager (per-scene)
-1. Create an AudioManager GameObject in each gameplay scene
-2. Add `S_AudioManager` component
-3. Assign `bgmClip` in Inspector (optional — auto-plays on Start)
-4. Adjust `bgmVolume` and `sfxVolume` sliders (0-1)
-5. AudioSources are created programmatically — no manual setup needed
+### UI Setup
+1. `S_UIManager` lives under `ManagerRoot.prefab` with its menu Canvas and EventSystem hierarchy.
+2. Energy UI and death UI can be assigned in Inspector or built at runtime if unset.
+3. Death UI should expose only `back to checkpoint` by default; normal pause menu remains controlled by OpenMenu input.
 
 ### Scene Setup Checklist
 ```
-[ ] S_UIManager exists in initial scene (DontDestroyOnLoad)
-[ ] S_GameManager exists in each gameplay scene
-[ ] S_AudioManager exists in each gameplay scene (with bgmClip assigned)
-[ ] S_GameManager.scene is set to the correct scene name
-[ ] Player is tagged "Player"
-[ ] S_coleve is on the player body for death detection
-[ ] S_Checkpoint exists in the level for spawn point updates
-[ ] Player has jumpClip / formSwitchClip assigned for SFX
+[ ] Full ManagerRoot.prefab exists in the scene
+[ ] No standalone UIManager prefab instance exists in the scene
+[ ] S_GameManager levelScenes/startMenuScene use dragged SceneAsset references
+[ ] Referenced scenes are enabled in Build Settings / Build Profiles
+[ ] Player has S_PlayerEnergy and skill assets have energy costs configured
+[ ] S_SceneCheckpointTracker can respawn from last checkpoint after GameReStart
 ```
 
 ---
 
 ## 5. Event Wiring
 
-This section shows how all events connect the manager systems to other game systems.
+This section shows how current manager systems connect to other game systems.
 
-### 5.1 Complete Event Map
+### 5.1 Current Event Map
 
 ```
-S_coleve ──(PlayerDied)──> S_GameEvent ──> S_GameManager.PlayerDied()
-                                         ──> S_UIManager.ShowUI()
+S_coleve / NPC arrest --(PlayerDied)--> S_GameEvent --> S_UIManager.ShowDeathUI()
+BackToCheckpoint button --(GameReStart)--> S_GameEvent --> S_SceneCheckpointTracker respawn
 
-S_UIManager ──(GameStart)──> S_GameEvent ──> S_GameManager.GameStart()
-                                          ──> S_UIManager.HideUI()
+S_StartMenuController --(StartFreshGameRequested)--> S_GameEvent --> S_GameManager.StartFreshGameFromMenu()
+S_ExitGate --(LevelExitRequested)--> S_GameEvent --> S_GameManager.LoadNextLevel()
+S_SceneChangeTrigger --(SceneLoadRequested runtimeKey)--> S_GameEvent --> S_GameManager transition load
 
-S_UIManager ──(GameReStart)──> S_GameEvent ──> S_GameManager.GameReStart()
-                                           ──> S_UIManager.HideUI()
+S_PlayerEnergy --(PlayerEnergyChanged current,max)--> S_GameEvent --> S_UIManager energy bar
+S_Player / systems --(GameplayInputEnabledRequested bool)--> S_GameEvent --> S_Player input lock
 
-S_UIManager ──(ExitGame)──> S_GameEvent ──> S_GameManager.ExitGame()
-
-S_Checkpoint ──(ReNewSpwnPoint)──> S_GameEvent ──> S_GameManager.newSpwn()
-
-S_SectionGoal ──(SectionStart)──> S_GameEvent ──> S_LevelSectionController
-
-S_SectionGoal ──(SectionEnd)──> S_GameEvent ──> S_LevelSectionController
-
-S_Player ──(PlaySFX)──> S_GameEvent ──> S_AudioManager.PlaySFX()
-
-Any System ──(BGMChange)──> S_GameEvent ──> S_AudioManager.PlayBGM()
+S_Checkpoint --(SpawnPointChanged Transform)--> S_GameEvent --> S_SceneCheckpointTracker cache spawn
+S_Player / systems --(PlaySFX)--> S_GameEvent --> S_AudioManager.PlaySFX()
 ```
 
 ---
@@ -263,30 +264,29 @@ Any System ──(BGMChange)──> S_GameEvent ──> S_AudioManager.PlayBGM()
 
 | Issue | Solution |
 |-------|----------|
-| Menu not showing on death | Check S_UIManager is subscribed to OnPlayerDied in OnEnable() |
-| Scene not loading | Verify scene name in S_GameManager.scene field matches Build Settings |
-| Player not respawning | Check S_Player.Instance and spwnPoint are not null |
-| Menu toggle not working | Ensure InputSystem_Actions.UI.OpenMenu is bound in Input Actions |
-| Time scale stuck at 0 | Check GameReStart properly sets Time.timeScale = 1 |
-| Duplicate managers | Ensure only one S_UIManager and one S_GameManager per context |
-| Button clicks not responding | Verify OnClick events are wired in the Button Inspector |
+| Transform.SetParent assertion | Ensure only `S_ManagerRoot` calls `DontDestroyOnLoad`; child managers must not call `AttachPersistent()` during normal lifecycle |
+| Start menu cannot build | Add the full `ManagerRoot.prefab` to `Start.unity`; runtime creation of partial managers is intentionally disabled |
+| Scene not loading | Drag a valid SceneAsset into `S_GameManager`/`S_SceneChangeTrigger` and enable it in Build Settings / Build Profiles |
+| Death opens pause menu | `OnPlayerDied` should call `ShowDeathUI()`, not `ShowUI()` |
+| Energy bar missing | Confirm the active player has `S_PlayerEnergy` and `S_UIManager` is under `ManagerRoot.prefab` |
+| Duplicate managers | Delete standalone scene manager instances; use the full `ManagerRoot.prefab` |
 
 ---
 
-## 7. UIManager Persistence Guard
+## 7. ManagerRoot Single Persistence Rule
 
-`S_UIManager` now routes persistence through `PreserveAcrossScenes()` instead of calling `DontDestroyOnLoad(gameObject)` directly in `Awake()`.
+`S_ManagerRoot` is the only persistent object. Duplicate roots are disabled/destroyed as whole roots, and child managers only keep singleton duplicate guards. `AttachPersistent()` remains for compatibility but should not be used by manager `Awake()` methods or new code.
 
-This guard prevents Unity's duplicate persistent-scene assertion by:
-
-- Returning early when the object is already in the `DontDestroyOnLoad` scene.
-- Detaching from a parent before calling `DontDestroyOnLoad`.
-- Clearing `S_UIManager.Instance` in `OnDestroy()` when the active instance is destroyed.
-
-This keeps the singleton stable across scene loads and protects against accidentally calling `DontDestroyOnLoad` twice on the same UIManager object.
+Normal lifecycle:
+```
+Scene loads full ManagerRoot.prefab
+  -> S_ManagerRoot.Awake() calls DontDestroyOnLoad(root)
+  -> Child managers initialize in place
+  -> Later scenes may include another ManagerRoot prefab
+  -> Duplicate root is destroyed, persistent root remains active
+```
 
 ---
-
 ## 8. S_Player Movement Lock API (v0.7.0)
 
 `S_Player` exposes a `SetMovementLocked(bool)` method used by `S_HideSpot` and other systems that need to freeze the player in place.

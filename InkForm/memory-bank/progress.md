@@ -1,11 +1,11 @@
 # InkForm Project Progress
 
 ## Current Version
-v0.8.0 (Architecture Refactor — Modular Directory + Interface Abstraction)
+v0.8.1 (Gameplay UX, Energy, Scene Flow, ManagerRoot Hardening)
 
 ## What Works
 - Player Controller (IPlayerActor interface, solid/fluid form switching, wall climb, wall jump, paralyze)
-- Sprint Charge System (hold-to-charge, buffer, three-stage scaling, stage-based cooldowns — now in S_PlayerSkillController)
+- Sprint Charge System (hold-to-charge, buffer, three-stage scaling, shared energy drain)
 - Camera Control System (bullet-time manual camera, now in S_PlayerSkillController)
 - Procedural Slime Rendering (body, outline, eye glow, contact-plane fitting, hybrid tail mesh)
 - Dynamic Collider (CircleCollider2D default + CapsuleCollider2D for crouch/wall/ceiling)
@@ -29,19 +29,47 @@ v0.8.0 (Architecture Refactor — Modular Directory + Interface Abstraction)
 - Narrative System (Characters, Story Outline, World Overview, Willard Protocol)
 - Player Movement Lock API (SetMovementLocked for S_HideSpot integration)
 - Player Contracts (IPlayerActor interface + S_PlayerLookup utility)
-- Manager Root (S_ManagerRoot persistent DontDestroyOnLoad container)
+- Manager Root (single persistent ManagerRoot.prefab)
 - Scene Checkpoint Tracker (S_SceneCheckpointTracker per-scene auto-creation)
 - Key & Exit Gate System (collect keys to unlock exit, load next level)
 
-## v0.8.0 — Architecture Refactor (2026-05-25)
+## v0.8.1 - Gameplay UX, Energy, Scene Flow, ManagerRoot Hardening (2026-05-25)
+
+### ManagerRoot Single Persistence
+- [x] `ManagerRoot.prefab` is the only object that calls `DontDestroyOnLoad`
+- [x] `S_UIManager` moved under `ManagerRoot.prefab`; standalone scene UIManager instances removed
+- [x] Child managers no longer self-create, self-reparent, or call `AttachPersistent()` during normal lifecycle
+- [x] `S_StartMenuController` validates full ManagerRoot setup instead of creating partial managers
+
+### Scene Flow & UI
+- [x] `S_SceneReference` supports Inspector SceneAsset drag references with runtime path/name fallback
+- [x] `S_GameManager` transition fade/SFX flow disables gameplay input while loading
+- [x] Scene loading validates Build Settings / Build Profiles before transition starts
+- [x] Death UI uses an independent panel with red death counter and `back to checkpoint` button
+
+### Shared Energy & Gameplay Fixes
+- [x] `S_PlayerEnergy` shared pool, regen delay, reset behavior, and `OnPlayerEnergyChanged` event
+- [x] Skill assets expose `minEnergyToStart` and `energyDrainPerSecond`; sprint exposes `quickTapEnergyCost`
+- [x] Energy UI reflects shared skill usage and recovery
+- [x] Dropped keys pop out from breakable blocks and hover near ground before pickup
+- [x] NPC/player Rigidbody2D stability improved with Continuous + Interpolate
+- [x] FluidClimb grip detection and moving-platform jump reset fixed
+
+### Documentation
+- [x] CHANGELOG.md v0.8.1 entry
+- [x] Manager, event, skill, player, level object, architecture, active context, progress, and error-log docs updated
+
+---
+
+## v0.8.0 闁?Architecture Refactor (2026-05-25)
 
 ### Architecture Overhaul
-- [x] Major directory restructure: flat structure → modular directory tree
-- [x] Player: `player/` → `Player/Core/`, `Player/Skills/`, `Player/Body/`, `Player/Physics/`
-- [x] Managers: `Manager/` → `Managers/` (plus new S_ManagerRoot)
-- [x] NPCs: `Npcs/` → `NPCs/Core/`, `NPCs/Combat/`, `NPCs/Dialogue/`, `NPCs/Sensors/`, `NPCs/Spawning/`
-- [x] Level: `LevelCon/` → `Level/Interactables/`, `Level/Platforms/`, `Level/Resources/`, `Level/Sections/`, `Level/Zones/`
-- [x] Tools: `tools/` → `Tools/`
+- [x] Major directory restructure: flat structure 闁?modular directory tree
+- [x] Player: `player/` 闁?`Player/Core/`, `Player/Skills/`, `Player/Body/`, `Player/Physics/`
+- [x] Managers: `Manager/` 闁?`Managers/` (plus new S_ManagerRoot)
+- [x] NPCs: `Npcs/` 闁?`NPCs/Core/`, `NPCs/Combat/`, `NPCs/Dialogue/`, `NPCs/Sensors/`, `NPCs/Spawning/`
+- [x] Level: `LevelCon/` 闁?`Level/Interactables/`, `Level/Platforms/`, `Level/Resources/`, `Level/Sections/`, `Level/Zones/`
+- [x] Tools: `tools/` 闁?`Tools/`
 - [x] New: `Core/Events/`, `Camera/`, `Input/`, `Systems/Suspicion/`
 
 ### Interface Abstraction
@@ -57,8 +85,8 @@ v0.8.0 (Architecture Refactor — Modular Directory + Interface Abstraction)
 - [x] Initialized via injection from S_Player
 
 ### Manager Root
-- [x] S_ManagerRoot: persistent DontDestroyOnLoad container
-- [x] AttachPersistent API for manager lifecycle
+- [x] S_ManagerRoot: single persistent ManagerRoot.prefab root
+- [x] AttachPersistent retained only as compatibility path; manager lifecycle now uses prefab children
 - [x] GetOrCreateChild / GetOrCreateComponent helpers
 - [x] RuntimeInitializeOnLoadMethod reset for editor domain reload
 
@@ -77,10 +105,10 @@ v0.8.0 (Architecture Refactor — Modular Directory + Interface Abstraction)
 ### Documentation
 - [x] Updated memory-bank/activeContext.md
 - [x] Updated memory-bank/progress.md
-- [ ] Updated Architecture.md (Mermaid diagrams)
-- [ ] Updated CHANGELOG.md
+- [x] Updated Architecture.md (v0.8.1 diagrams/notes)
+- [x] Updated CHANGELOG.md
 
-## v0.7.2 — Key & Exit Gate System, UI Fixes (2026-05-15)
+## v0.7.2 闁?Key & Exit Gate System, UI Fixes (2026-05-15)
 
 ### New Features
 - [x] Key & Exit Gate System (S_Key + S_ExitGate + S_GameEvent events)
@@ -90,10 +118,10 @@ v0.8.0 (Architecture Refactor — Modular Directory + Interface Abstraction)
 - [x] Controls Mapping Panel layout fix (anchor-based positioning)
 
 ### Documentation
-- [x] Level_Objects_Design.md: §11 Key & Exit Gate System
+- [x] Level_Objects_Design.md: 閹?1 Key & Exit Gate System
 - [x] Game_Event_System_Design.md: Key & Gate events
 
-## v0.7.1 — Documentation Sync & Platform Cable (2026-05-15)
+## v0.7.1 闁?Documentation Sync & Platform Cable (2026-05-15)
 
 ### New Features
 - [x] Dual Platform Cable (S_PlatformCableVisual)
@@ -101,12 +129,12 @@ v0.8.0 (Architecture Refactor — Modular Directory + Interface Abstraction)
 ### Documentation
 - [x] Full sync of all 9 design documents against 40+ source files
 
-## v0.7.0 — Sprint Charge, NPC Jumping & Wave Spawner (2026-05-13)
+## v0.7.0 闁?Sprint Charge, NPC Jumping & Wave Spawner (2026-05-13)
 
 ### Sprint Charge System
 - [x] Hold-to-charge sprint with buffer (0.15s quick-tap for instant dash)
 - [x] Three-stage size scaling with shake transition effects
-- [x] Stage-based cooldowns (0.1s/0.5s/1.0s)
+- [x] Shared energy drain is now the main sprint limiter; old stage cooldowns remain only as legacy tuning data
 
 ### NPC Jumping System
 - [x] Predictive jump: wall detection, gap detection, player-above detection

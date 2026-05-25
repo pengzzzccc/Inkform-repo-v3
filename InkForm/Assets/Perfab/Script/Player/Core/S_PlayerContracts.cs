@@ -15,6 +15,7 @@ public interface IPlayerActor
     void ApplyParalyze(float duration, float slowMultiplier);
     void ForceSprintBreakthrough(float direction, float minimumHorizontalSpeed, float duration);
     void CancelSprintCharge();
+    void CancelActiveSkills();
 }
 
 public static class S_PlayerLookup

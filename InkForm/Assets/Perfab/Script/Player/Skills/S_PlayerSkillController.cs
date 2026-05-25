@@ -87,6 +87,15 @@ public class S_PlayerSkillController : MonoBehaviour
 
     public void CameraControlTick()
     {
+        if (player != null
+            && cameraControlSkill != null
+            && player.Energy != null
+            && !player.Energy.TryConsumeSkillEnergy(cameraControlSkill, Time.unscaledDeltaTime))
+        {
+            EndCameraControl();
+            return;
+        }
+
         if (cameraController != null && moveAction != null)
             cameraController.ManualControlTick(moveAction.ReadValue<Vector2>());
     }
@@ -103,6 +112,9 @@ public class S_PlayerSkillController : MonoBehaviour
             return;
 
         if (player.IsParalyzed || player.IsMovementLocked || isSprintCharging || Mathf.Approximately(Time.timeScale, 0f))
+            return;
+
+        if (player.Energy != null && !player.Energy.CanStartSkill(skill))
             return;
 
         cameraControlSkill = skill;
@@ -136,6 +148,9 @@ public class S_PlayerSkillController : MonoBehaviour
         if (cameraController != null)
             cameraController.EndManualControl();
 
+        if (player != null && player.Energy != null)
+            player.Energy.NotifySkillUseStopped();
+
         cameraControlSkill = null;
     }
 
@@ -147,9 +162,6 @@ public class S_PlayerSkillController : MonoBehaviour
         if (player.IsParalyzed)
             return;
 
-        if (sprintCooldownRemaining > 0f)
-            return;
-
         sprintSkill = S_SkillTree.Instance != null ? S_SkillTree.Instance.GetSprintSkill() : null;
         if (sprintSkill == null)
             return;
@@ -158,6 +170,9 @@ public class S_PlayerSkillController : MonoBehaviour
             return;
 
         if (!sprintSkill.availableFluid && player.IsFluidForm)
+            return;
+
+        if (player.Energy != null && !player.Energy.CanStartSkill(sprintSkill))
             return;
 
         isSprintCharging = true;
@@ -175,6 +190,14 @@ public class S_PlayerSkillController : MonoBehaviour
             return;
 
         sprintChargeTimer += Time.fixedDeltaTime;
+
+        if (player != null
+            && player.Energy != null
+            && !player.Energy.TryConsumeSkillEnergy(sprintSkill, Time.fixedDeltaTime))
+        {
+            CancelSprintCharge();
+            return;
+        }
 
         if (!chargeVisualsActive && sprintChargeTimer >= sprintSkill.BufferTime)
         {
@@ -225,19 +248,26 @@ public class S_PlayerSkillController : MonoBehaviour
 
         if (!chargeVisualsActive)
         {
-            sprintCooldownRemaining = sprintSkill.GetCooldown(0);
+            if (player.Energy != null && !player.Energy.TrySpendAmount(sprintSkill.QuickTapEnergyCost))
+            {
+                CancelSprintCharge();
+                return;
+            }
+
+            sprintCooldownRemaining = 0f;
             StopSprintChargeSfx();
             sprintSkill.ActivateCharge(player, sprintSkill.MinSprintSpeed, releaseDirection);
             PlaySprintReleaseSfx();
             isSprintCharging = false;
             sprintChargeTimer = 0f;
+            player.Energy?.NotifySkillUseStopped();
             return;
         }
 
         float charge01 = Mathf.Clamp01(sprintChargeTimer / sprintSkill.MaxChargeTime);
         float finalSpeed = Mathf.Lerp(sprintSkill.MinSprintSpeed, sprintSkill.MaxSprintSpeed, charge01);
 
-        sprintCooldownRemaining = sprintSkill.GetCooldown(sprintChargeStage);
+        sprintCooldownRemaining = 0f;
         StopSprintChargeSfx();
         sprintSkill.ActivateCharge(player, finalSpeed, releaseDirection);
         PlaySprintReleaseSfx();
@@ -250,6 +280,7 @@ public class S_PlayerSkillController : MonoBehaviour
         chargeShakeTimer = 0f;
 
         RestoreChargeVisuals();
+        player.Energy?.NotifySkillUseStopped();
     }
 
     public void CancelSprintCharge()
@@ -270,6 +301,9 @@ public class S_PlayerSkillController : MonoBehaviour
 
         if (restoreChargeVisuals)
             RestoreChargeVisuals();
+
+        if (player != null && player.Energy != null)
+            player.Energy.NotifySkillUseStopped();
     }
 
     public bool SprintReleasedThisFrame()

@@ -61,7 +61,6 @@ public class S_AudioManager : MonoBehaviour
         }
 
         Instance = this;
-        S_ManagerRoot.AttachPersistent(transform);
 
         bgmVolume = PlayerPrefs.GetFloat(BgmVolumePrefsKey, bgmVolume);
         sfxVolume = PlayerPrefs.GetFloat(SfxVolumePrefsKey, sfxVolume);

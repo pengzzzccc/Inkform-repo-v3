@@ -1,5 +1,38 @@
 # InkForm — Changelog
 
+## v0.8.1 - Gameplay UX, Energy, Scene Flow, ManagerRoot Hardening (2026-05-25)
+
+### Gameplay UX & Flow
+- Added scene transition flow in `S_GameManager`: fade out, optional transition SFX, async load, fade in, and gameplay input lock/unlock during transition.
+- Added `S_SceneReference` for Inspector scene drag references. Runtime loading prefers `scenePath` and keeps `sceneName` as a compatibility fallback.
+- Updated `S_GameManager` and `S_SceneChangeTrigger` to use scene references instead of hand-typed scene names where possible.
+- Added load-time scene validation so missing Build Settings / Build Profile entries produce clear errors and recover transition/input state.
+- Added independent death UI in `S_UIManager` with red death count and a single `back to checkpoint` button. Death no longer opens the normal pause menu or immediately respawns.
+
+### Shared Player Energy
+- Added `S_PlayerEnergy` on the player with `maxEnergy`, delayed regeneration, reset-on-checkpoint behavior, and `OnPlayerEnergyChanged(current, max)` UI updates.
+- Added shared skill energy configuration on `S_SkillBase`: `minEnergyToStart` and `energyDrainPerSecond`.
+- Added `quickTapEnergyCost` to `S_Soild_sprint`; sprint, FluidClimb, and CameraControl now consume the same player energy pool.
+- Added runtime energy UI generation/update in `S_UIManager`; skill use drains energy and recovery starts after the configured delay.
+
+### Level Objects & Movement Fixes
+- Added dropped-key behavior: breakable blocks call `S_Key.InitializeDroppedKey(...)`, keys pop out first, then hover near the ground before pickup.
+- Improved NPC physics setup with `Continuous` collision detection and `Interpolate` to reduce wall clipping during chase, jump, and knockback.
+- Improved FluidClimb grip detection so holding Grip near/facing a wall can attach more reliably without requiring perfect center overlap.
+- Fixed jump reset on moving platforms by using `SampleWalkableGround()` and a grounded reset guard instead of relying on FluidClimb surface state.
+
+### ManagerRoot Single Persistence
+- `ManagerRoot.prefab` is now the only object that calls `DontDestroyOnLoad`.
+- `S_UIManager` is embedded under `ManagerRoot.prefab`; standalone UIManager scene instances were removed.
+- Child managers (`S_GameManager`, `S_UIManager`, `S_InputBindingManager`, `S_AudioManager`, `S_SuspicionSystem`, `S_SkillTree`, `S_PerformanceMonitor`) no longer self-reparent, self-create, or call `AttachPersistent()` during normal lifecycle.
+- `S_ManagerRoot.AttachPersistent()` remains only as a compatibility no-op/warning path; normal setup requires managers to be direct children of `ManagerRoot.prefab`.
+- `Start.unity` now contains the full `ManagerRoot.prefab`; `S_StartMenuController` validates this setup instead of creating partial manager objects at runtime.
+
+### Documentation
+- Updated manager, event, skill, player, level object, architecture, memory-bank, and error-log documentation to match the current v0.8.1 behavior.
+
+---
+
 ## v0.8.0 - Architecture Refactor: Modular Directory & Interface Abstraction (2026-05-25)
 
 ### Architecture Overhaul

@@ -181,5 +181,14 @@ Known bugs and their fixes. Updated whenever a runtime or logic bug is discovere
 
 ### Cross-Reference Scan Results
 - **S_NPCbase**: `EnterState()` pattern is properly followed after fix. Safe.
-- **S_GameManager.PlayerDied()**: Only resets position, does not reload scene — correct.
+- **Historical note**: This was correct for the older flow; v0.8.1 moved death handling to `S_UIManager.ShowDeathUI()` and checkpoint respawn to `S_SceneCheckpointTracker` on `GameReStart`.
 - **S_UIManager**: Subscribed to both `OnPlayerDied → ShowUI` and `OnGameRestart → HideUI` — ordering now correct since `HandleArrest` no longer calls `GameReStart`.
+
+---
+
+## 2026-05-25 | Manager child SetParent assertion after UI energy/death UI work
+- **Symptom**: Unity assertion `m_GameObjects.find(gameObject.GetInstanceID()) == m_GameObjects.end()` appeared during manager initialization, first from `S_UIManager.EnsureEnergyUIBuilt()` and later from `S_UIManager.Awake -> S_ManagerRoot.AttachPersistent()`.
+- **Root Cause**: Multiple managers tried to protect themselves independently by calling `AttachPersistent(transform)` or otherwise moving UI objects during `Awake`/startup. This conflicted with Unity's persistent scene bookkeeping, especially when UIManager existed both as a scene object and as a manager that tried to migrate under a persistent root.
+- **Final Fix**: `ManagerRoot.prefab` is the single persistence boundary. Only `S_ManagerRoot` calls `DontDestroyOnLoad(gameObject)`. Child managers are direct prefab children and no longer self-create, self-reparent, or call `AttachPersistent()` in normal lifecycle. Standalone scene `UIManager.prefab` instances were removed, and `S_StartMenuController` validates the full root instead of creating partial managers.
+- **Related Scripts/Assets**: `S_ManagerRoot.cs`, `S_UIManager.cs`, `S_InputBindingManager.cs`, `S_StartMenuController.cs`, `ManagerRoot.prefab`, Start/gameplay scenes.
+- **Lesson**: Persistent architecture needs one owner. Do not mix `DontDestroyOnLoad`, runtime reparenting, and duplicate scene-authored manager prefabs across several singleton scripts. If a manager must survive scene loads, author it under the single persistent prefab root.

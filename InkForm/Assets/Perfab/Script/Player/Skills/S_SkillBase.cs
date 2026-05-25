@@ -16,7 +16,14 @@ public abstract class S_SkillBase : ScriptableObject
     public bool availableSolid = true;
     public bool availableFluid = false;
 
+    [Header("Energy")]
+    [SerializeField, Min(0f)] private float minEnergyToStart = 10f;
+    [SerializeField, Min(0f)] private float energyDrainPerSecond = 20f;
+
     [System.NonSerialized] public bool isUnlocked = false;
+
+    public float MinEnergyToStart => minEnergyToStart;
+    public float EnergyDrainPerSecond => energyDrainPerSecond;
 
     public bool CanUnlock()
     {

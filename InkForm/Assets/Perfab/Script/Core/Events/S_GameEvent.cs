@@ -13,6 +13,7 @@ public static class S_GameEvent
     public static event Action<bool> OnGameplayInputEnabledRequested;
     public static event Action<int> OnScoreChanged;
     public static event Action<string> OnSkillUsed;
+    public static event Action<float, float> OnPlayerEnergyChanged;
     public static event Action<Transform> reNewSpwnPoint;
     public static event Action<Transform> OnSpawnPointChanged;
     public static event Action OnLevelExitRequested;
@@ -47,6 +48,7 @@ public static class S_GameEvent
     public static void ReturnToStartMenuRequested() => OnReturnToStartMenuRequested?.Invoke();
     public static void SceneLoadRequested(string sceneName) => OnSceneLoadRequested?.Invoke(sceneName);
     public static void GameplayInputEnabledRequested(bool enabled) => OnGameplayInputEnabledRequested?.Invoke(enabled);
+    public static void PlayerEnergyChanged(float current, float max) => OnPlayerEnergyChanged?.Invoke(current, max);
     public static void ReNewSpwnPoint(Transform spwnPoint) => SpawnPointChanged(spwnPoint);
     public static void SpawnPointChanged(Transform spwnPoint)
     {

@@ -8,29 +8,16 @@ public class S_InputBindingManager : MonoBehaviour
     {
         get
         {
-            if (instance == null)
+            if (instance == null && !TryGetExisting(out _))
             {
-                instance = FindAnyObjectByType<S_InputBindingManager>();
-
-                if (instance == null)
-                {
-                    S_ManagerRoot root = S_ManagerRoot.EnsureExists();
-                    if (root == null)
-                        return null;
-
-                    instance = root.GetOrCreateComponent<S_InputBindingManager>("InputBindingManager");
-                }
-                else
-                {
-                    S_ManagerRoot.AttachPersistent(instance.transform);
-                }
+                Debug.LogError("[InputBindingManager] Missing S_InputBindingManager. Add the full ManagerRoot prefab to the scene.");
             }
 
             return instance;
         }
     }
 
-    public static bool HasInstance => instance != null;
+    public static bool HasInstance => TryGetExisting(out _);
 
     public static bool TryGetExisting(out S_InputBindingManager manager)
     {
@@ -76,7 +63,6 @@ public class S_InputBindingManager : MonoBehaviour
         }
 
         instance = this;
-        S_ManagerRoot.AttachPersistent(transform);
         InitializeActions();
     }
 

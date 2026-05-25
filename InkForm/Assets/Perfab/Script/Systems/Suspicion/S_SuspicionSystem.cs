@@ -53,7 +53,6 @@ public class S_SuspicionSystem : MonoBehaviour
         }
 
         Instance = this;
-        S_ManagerRoot.AttachPersistent(transform);
     }
 
     private void OnEnable()
