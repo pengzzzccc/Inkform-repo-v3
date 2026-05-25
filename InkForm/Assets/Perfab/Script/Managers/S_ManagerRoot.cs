@@ -7,6 +7,7 @@ public class S_ManagerRoot : MonoBehaviour
     private const string RootName = "PersistentManagers";
 
     private static bool isShuttingDown;
+    private bool isPreserved;
 
     public static S_ManagerRoot Instance { get; private set; }
     public static bool IsShuttingDown => isShuttingDown;
@@ -31,8 +32,6 @@ public class S_ManagerRoot : MonoBehaviour
         if (existingRoot != null)
         {
             Instance = existingRoot;
-            if (Application.isPlaying)
-                existingRoot.PreserveRoot();
             return existingRoot;
         }
 
@@ -117,20 +116,23 @@ public class S_ManagerRoot : MonoBehaviour
     {
         if (Instance == this)
         {
-            if (Application.isPlaying)
-                isShuttingDown = true;
-
             Instance = null;
         }
     }
 
     private void PreserveRoot()
     {
-        gameObject.name = RootName;
+        if (isPreserved)
+            return;
 
         if (transform.parent != null)
-            transform.SetParent(null);
+        {
+            Debug.LogError("[ManagerRoot] ManagerRoot must be a scene root object. Move the full ManagerRoot prefab to the scene root; runtime unparenting is intentionally disabled.");
+            return;
+        }
 
+        gameObject.name = RootName;
         DontDestroyOnLoad(gameObject);
+        isPreserved = true;
     }
 }

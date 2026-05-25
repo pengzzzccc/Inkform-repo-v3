@@ -25,6 +25,9 @@ public class S_StartMenuController : MonoBehaviour
     private BindingButtonView activeRebind;
     private InputAction cancelAction;
     private Button startButton;
+    private Button settingsButton;
+    private Button exitButton;
+    private Coroutine selectStartNextFrameRoutine;
 
     private readonly List<BindingButtonView> bindingButtons = new List<BindingButtonView>();
     private readonly List<Button> settingsButtons = new List<Button>();
@@ -98,6 +101,12 @@ public class S_StartMenuController : MonoBehaviour
 
     private void OnDisable()
     {
+        if (selectStartNextFrameRoutine != null)
+        {
+            StopCoroutine(selectStartNextFrameRoutine);
+            selectStartNextFrameRoutine = null;
+        }
+
         if (S_InputBindingManager.HasInstance)
         {
             S_InputBindingManager.Instance.CancelRebind();
@@ -115,6 +124,8 @@ public class S_StartMenuController : MonoBehaviour
         {
             ShowMainMenu();
         }
+
+        MaintainMainMenuSelection();
     }
 
     private bool EnsurePersistentManagers()
@@ -207,17 +218,18 @@ public class S_StartMenuController : MonoBehaviour
         CreateInkformMascot(mainMenuRoot);
 
         startButton = CreateMenuButton(mainMenuRoot, "start", new Vector2(350f, 145f), new Vector2(300f, 58f));
-        Button settingsButton = CreateMenuButton(mainMenuRoot, "Setting", new Vector2(455f, 0f), new Vector2(330f, 64f));
-        Button exitButton = CreateMenuButton(mainMenuRoot, "Exit", new Vector2(305f, -155f), new Vector2(310f, 58f));
+        settingsButton = CreateMenuButton(mainMenuRoot, "Setting", new Vector2(455f, 0f), new Vector2(330f, 64f));
+        exitButton = CreateMenuButton(mainMenuRoot, "Exit", new Vector2(305f, -155f), new Vector2(310f, 58f));
 
         startButton.onClick.AddListener(RequestFreshGameStart);
         settingsButton.onClick.AddListener(ShowSettings);
         exitButton.onClick.AddListener(() => S_GameEvent.ExitGame());
+        ConfigureMainMenuNavigation();
 
         settingsPanel = CreateSettingsPanel(canvas.transform);
         settingsPanel.gameObject.SetActive(false);
 
-        SelectButton(startButton);
+        SelectButtonNextFrame(startButton);
     }
 
     private Canvas CreateCanvas()
@@ -287,6 +299,7 @@ public class S_StartMenuController : MonoBehaviour
 
         Button button = mascot.GetComponent<Button>();
         button.transition = Selectable.Transition.None;
+        ApplyNoNavigation(button);
 
         Image leftGlow = CreateMascotEye(mascot.transform, "LeftEyeGlow", new Vector2(-58f, 30f), new Vector2(56f, 40f), new Color(0.6f, 1f, 1f, 0.28f));
         Image rightGlow = CreateMascotEye(mascot.transform, "RightEyeGlow", new Vector2(58f, 22f), new Vector2(56f, 40f), new Color(0.6f, 1f, 1f, 0.28f));
@@ -680,7 +693,7 @@ public class S_StartMenuController : MonoBehaviour
         mainMenuRoot.gameObject.SetActive(true);
         activeRebind = null;
         SetSettingsInteractable(true);
-        SelectButton(startButton);
+        SelectButtonNextFrame(startButton);
     }
 
     private void BeginRebind(BindingButtonView view)
@@ -801,11 +814,79 @@ public class S_StartMenuController : MonoBehaviour
         EventSystem.current.SetSelectedGameObject(button.gameObject);
     }
 
+    private void SelectButtonNextFrame(Button button)
+    {
+        if (!isActiveAndEnabled)
+            return;
+
+        if (selectStartNextFrameRoutine != null)
+            StopCoroutine(selectStartNextFrameRoutine);
+
+        selectStartNextFrameRoutine = StartCoroutine(SelectButtonAfterFrame(button));
+    }
+
+    private IEnumerator SelectButtonAfterFrame(Button button)
+    {
+        yield return null;
+        selectStartNextFrameRoutine = null;
+        SelectButton(button);
+    }
+
+    private void MaintainMainMenuSelection()
+    {
+        if (mainMenuRoot == null
+            || !mainMenuRoot.gameObject.activeInHierarchy
+            || EventSystem.current == null
+            || startButton == null)
+        {
+            return;
+        }
+
+        GameObject selected = EventSystem.current.currentSelectedGameObject;
+        if (selected == startButton.gameObject
+            || selected == settingsButton?.gameObject
+            || selected == exitButton?.gameObject)
+        {
+            return;
+        }
+
+        SelectButton(startButton);
+    }
+
+    private void ConfigureMainMenuNavigation()
+    {
+        SetVerticalNavigation(startButton, exitButton, settingsButton);
+        SetVerticalNavigation(settingsButton, startButton, exitButton);
+        SetVerticalNavigation(exitButton, settingsButton, startButton);
+    }
+
+    private void SetVerticalNavigation(Button button, Selectable up, Selectable down)
+    {
+        if (button == null)
+            return;
+
+        Navigation nav = button.navigation;
+        nav.mode = Navigation.Mode.Explicit;
+        nav.selectOnUp = up;
+        nav.selectOnDown = down;
+        nav.selectOnLeft = null;
+        nav.selectOnRight = null;
+        button.navigation = nav;
+    }
+
     private void ApplyAutomaticNavigation(Selectable selectable)
     {
         if (selectable == null) return;
         Navigation nav = selectable.navigation;
         nav.mode = Navigation.Mode.Automatic;
+        selectable.navigation = nav;
+    }
+
+    private void ApplyNoNavigation(Selectable selectable)
+    {
+        if (selectable == null) return;
+        Navigation nav = selectable.navigation;
+        nav.mode = Navigation.Mode.None;
         selectable.navigation = nav;
     }
 

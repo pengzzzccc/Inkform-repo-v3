@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -55,6 +56,7 @@ public class S_TutorialController : MonoBehaviour
     private bool goalReached;
     private bool countdownExpired;
     private bool tutorialInputLocked;
+    private readonly List<AudioClip> countdownVoiceClips = new List<AudioClip>(8);
 
     void Awake()
     {
@@ -153,12 +155,22 @@ public class S_TutorialController : MonoBehaviour
         // --- COUNTDOWN ANNOUNCEMENT PHASE ---
         if (type != TutorialType.None)
         {
-            // Voice: "Reach the goal within 30 seconds."
-            if (voiceLinePlayer != null && !string.IsNullOrEmpty(levelConfig.countdownSubtitle))
+            string countdownSubtitle = levelConfig.GetCountdownSubtitle();
+            if (voiceLinePlayer != null && !string.IsNullOrEmpty(countdownSubtitle))
             {
-                yield return voiceLinePlayer.PlayVoiceLine(
-                    levelConfig.countdownVoiceClip,
-                    levelConfig.countdownSubtitle);
+                if (levelConfig.TryBuildCountdownVoiceClips(countdownVoiceClips, out float clipGap))
+                {
+                    yield return voiceLinePlayer.PlayVoiceSequence(
+                        countdownVoiceClips,
+                        countdownSubtitle,
+                        clipGap);
+                }
+                else
+                {
+                    yield return voiceLinePlayer.PlayVoiceLine(
+                        levelConfig.countdownVoiceClip,
+                        countdownSubtitle);
+                }
             }
         }
 

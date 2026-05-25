@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 [Serializable]
@@ -42,6 +43,12 @@ public class S_LevelConfig : ScriptableObject
     [Tooltip("Voice clip for the countdown prompt. Can be null.")]
     public AudioClip countdownVoiceClip;
 
+    [Tooltip("Optional digit voice library. When assigned, countdown audio is composed from 0-9 digit clips based on timeLimit.")]
+    public S_CountdownDigitVoiceLibrary countdownDigitVoiceLibrary;
+
+    [Tooltip("Generate countdown subtitle from timeLimit so text always matches the configured countdown.")]
+    public bool autoGenerateCountdownSubtitle = true;
+
     [Tooltip("Subtitle text shown during countdown voice")]
     [TextArea]
     public string countdownSubtitle = "Reach the goal within 30 seconds.";
@@ -73,4 +80,34 @@ public class S_LevelConfig : ScriptableObject
     [Header("NPC")]
     [Tooltip("Whether this level contains NPCs")]
     public bool hasNPC;
+
+    public int GetCountdownSeconds()
+    {
+        return Mathf.Max(0, Mathf.CeilToInt(timeLimit));
+    }
+
+    public string GetCountdownSubtitle()
+    {
+        if (autoGenerateCountdownSubtitle || string.IsNullOrWhiteSpace(countdownSubtitle))
+            return $"Reach the goal within {GetCountdownSeconds()} seconds.";
+
+        return countdownSubtitle;
+    }
+
+    public bool TryBuildCountdownVoiceClips(List<AudioClip> output, out float clipGap)
+    {
+        clipGap = 0f;
+
+        if (countdownDigitVoiceLibrary == null)
+        {
+            output?.Clear();
+            return false;
+        }
+
+        bool built = countdownDigitVoiceLibrary.TryBuildCountdownClips(GetCountdownSeconds(), output);
+        if (built)
+            clipGap = countdownDigitVoiceLibrary.ClipGap;
+
+        return built;
+    }
 }
