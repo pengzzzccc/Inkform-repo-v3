@@ -20,11 +20,11 @@ MonoBehaviour:
   familiarizeSubtitle: Now get familiar with the controls.
   countdownDigitVoiceLibrary: {fileID: 11400000, guid: 969313e650e64c1fa53c081d42db3377, type: 2}
   autoGenerateCountdownSubtitle: 1
-  countdownSubtitle: Reach the goal within 55 seconds.
+  countdownSubtitle: Reach the goal within 65 seconds.
   requiredActions: []
   promptTitle: Sprint Practice
   promptDescription: Use Sprint to reach the exit before time runs out.
-  timeLimit: 55
+  timeLimit: 65
   startupDelay: 0.5
   panToTargetDuration: 1.5
   panHoldDuration: 1.5

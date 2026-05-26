@@ -21,9 +21,9 @@ MonoBehaviour:
   countdownSubtitle: Reach the goal within 30 seconds.
   requiredActions: []
   promptTitle: Movement Controls
-  promptDescription: 'WASD / Arrow Keys - Move
+  promptDescription: 'WASD / Left Stick - Move
 
-    Space - Jump'
+    Space / south bottom - Jump'
   timeLimit: 30
   startupDelay: 1
   panToTargetDuration: 1.5

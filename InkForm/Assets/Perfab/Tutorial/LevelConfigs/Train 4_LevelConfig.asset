@@ -21,7 +21,7 @@ MonoBehaviour:
   familiarizeSubtitle: Now get familiar with the controls.
   countdownDigitVoiceLibrary: {fileID: 11400000, guid: 969313e650e64c1fa53c081d42db3377, type: 2}
   autoGenerateCountdownSubtitle: 1
-  countdownSubtitle: Reach the goal within 30 seconds.
+  countdownSubtitle: Reach the goal within 36 seconds.
   requiredActions: []
   promptTitle: Fluid Climb Controls
   promptDescription: 'Hold Grip near a wall - Climb
@@ -30,7 +30,7 @@ MonoBehaviour:
     to cross gaps
 
     Hold G/east bottom to grip on a wall'
-  timeLimit: 30
+  timeLimit: 36
   startupDelay: 0.5
   panToTargetDuration: 1.5
   panHoldDuration: 1.5
