@@ -1,0 +1,12 @@
+# ninja log v5
+108	640	8014398653859080	FramePacing/CMakeFiles/swappywrapper.dir/UnitySwappyWrapper.cpp.o	846b436bd73d2f1b
+644	1185	8014398658739174	E:/GitHub/Inkform-repo-v3/InkForm/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/6g605g5x/obj/arm64-v8a/libswappywrapper.so	ebac43ac47831773
+16	2501	8014398672331717	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	a481b0ce12bf36a3
+40	2510	8014398672461230	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	b5ad274a1fc6cd9
+51	2526	8014398672673157	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	deb464484b33d39f
+92	2565	8014398673035117	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	26310b36676f397
+29	2600	8014398673366187	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	267aa5b71bfad71f
+78	2866	8014398676078776	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	58b71bb564edff25
+64	2975	8014398677156530	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	7f7101d7d44a6c07
+2	3115	8014398678535771	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	ec73611a7b7105a0
+3115	3416	8014398681433493	E:/GitHub/Inkform-repo-v3/InkForm/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/6g605g5x/obj/arm64-v8a/libgame.so	36005b7d31d30553
