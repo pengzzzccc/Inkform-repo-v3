@@ -244,6 +244,10 @@ public class S_TutorialController : MonoBehaviour
     {
         goalReached = true;
 
+        // Last fixed tutorial: hand off to random training instead of linear advance.
+        if (levelConfig != null && levelConfig.isLastFixedTutorial)
+            S_GameEvent.FixedTutorialsComplete();
+
         // Stop countdown if still running
         if (countdownTimer != null && countdownTimer.IsRunning)
             StopCountdown();

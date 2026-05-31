@@ -78,6 +78,10 @@ public class S_LevelConfig : ScriptableObject
     [Tooltip("Whether this level contains NPCs")]
     public bool hasNPC;
 
+    [Header("Progression")]
+    [Tooltip("Last fixed tutorial. On goal, hands off to random training via the progression controller.")]
+    public bool isLastFixedTutorial;
+
     public int GetCountdownSeconds()
     {
         return Mathf.Max(0, Mathf.CeilToInt(timeLimit));

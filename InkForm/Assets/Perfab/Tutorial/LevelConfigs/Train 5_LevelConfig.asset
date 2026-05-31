@@ -33,3 +33,4 @@ MonoBehaviour:
   preCountdownDelay: 0
   timeoutDeathDelay: 0.5
   hasNPC: 0
+  isLastFixedTutorial: 1

@@ -95,6 +95,18 @@ public static class S_GameEvent
     public static void KeyCollected() => OnKeyCollected?.Invoke();
     public static void KeyCountChanged(int collected, int total) => OnKeyCountChanged?.Invoke(collected, total);
 
+    // Progression Events
+    public static event Action OnFixedTutorialsComplete;
+    public static event Action<string> OnRoomEnterRequested;
+    public static event Action OnFacilityEntered;
+    public static event Action OnReachEnding;
+
+    // Progression Invokers
+    public static void FixedTutorialsComplete() => OnFixedTutorialsComplete?.Invoke();
+    public static void RoomEnterRequested(string roomId) => OnRoomEnterRequested?.Invoke(roomId);
+    public static void FacilityEntered() => OnFacilityEntered?.Invoke();
+    public static void ReachEnding() => OnReachEnding?.Invoke();
+
     // Tutorial & Camera Pan Events
     public static event Action OnCameraPanStarted;
     public static event Action OnCameraPanEnded;

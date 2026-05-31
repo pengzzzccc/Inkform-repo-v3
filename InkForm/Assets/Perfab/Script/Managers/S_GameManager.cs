@@ -43,6 +43,7 @@ public class S_GameManager : MonoBehaviour
     [SerializeField, HideInInspector] private float transitionHoldTime = 0.05f;
 
     private bool isFrameRateUnlocked;
+    private bool levelExitDeciding;
     private Canvas transitionCanvas;
     private Image transitionImage;
     private Coroutine sceneLoadRoutine;
@@ -121,7 +122,28 @@ public class S_GameManager : MonoBehaviour
     void HandleGameStart() => GameStart();
     void HandleGameRestart() => GameReStart();
     void HandleExit() => ExitGame();
-    void HandleLevelExitRequested() => LoadNextLevel();
+    void HandleLevelExitRequested()
+    {
+        // Defer one frame so other LevelExitRequested subscribers (e.g. the tutorial controller
+        // setting up a fixed->training handoff) run first, regardless of subscription order.
+        if (levelExitDeciding)
+            return;
+
+        levelExitDeciding = true;
+        StartCoroutine(DecideLevelExitNextFrame());
+    }
+
+    private IEnumerator DecideLevelExitNextFrame()
+    {
+        yield return null;
+        levelExitDeciding = false;
+
+        // Let the progression controller own the run once it has taken over; otherwise linear advance.
+        if (S_ProgressionController.Instance != null && S_ProgressionController.Instance.HandleLevelExit())
+            yield break;
+
+        LoadNextLevel();
+    }
     void HandleSceneLoadRequested(string sceneKey) => LoadSceneByKey(sceneKey);
 
     public void SetFrameRateUnlocked(bool unlocked)

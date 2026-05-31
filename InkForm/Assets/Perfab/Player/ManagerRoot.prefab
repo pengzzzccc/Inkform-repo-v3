@@ -563,6 +563,7 @@ Transform:
   - {fileID: 160001}
   - {fileID: 170001}
   - {fileID: 3919354013002183765}
+  - {fileID: 99100002}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &100002
@@ -1683,3 +1684,65 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!1 &99100001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 99100002}
+  - component: {fileID: 99100003}
+  m_Layer: 0
+  m_Name: ProgressionController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &99100002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 99100001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7685610171103954680}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &99100003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 99100001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce9576fde200e734293f54bed42364ef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  roomGraph: {fileID: 11400000, guid: 0bf6b71119a517740b5065bb253db153, type: 2}
+  endScene:
+    sceneAsset: {fileID: 102900000, guid: b7dea1b62d0ff7941a1670f24b89c4d6, type: 3}
+    scenePath: Assets/Scenes/For_game/END.unity
+    sceneName: END
+  trainingRoomPool:
+  - sceneAsset: {fileID: 102900000, guid: 651490b125f0b744b893ecdc0d697db0, type: 3}
+    scenePath: Assets/Scenes/For_game/Training Room/Train 3.unity
+    sceneName: Train 3
+  - sceneAsset: {fileID: 102900000, guid: f672d913e2acc834f8d44464c50da8ca, type: 3}
+    scenePath: Assets/Scenes/For_game/Training Room/Train 5.unity
+    sceneName: Train 5
+  - sceneAsset: {fileID: 102900000, guid: 94135adc9f8667f4a93310003cfb03f9, type: 3}
+    scenePath: Assets/Scenes/For_game/Training Room/Train 6.unity
+    sceneName: Train 6
+  minTrainRooms: 2
+  maxTrainRooms: 3
+  drRoomEndingStoryId: Dialogue_End_DrR
