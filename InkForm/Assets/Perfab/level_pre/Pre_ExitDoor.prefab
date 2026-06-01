@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1264702972576534817}
   - component: {fileID: 8092734889678894032}
-  - component: {fileID: 3515317314085823065}
+  - component: {fileID: 3753780645063792003}
   - component: {fileID: 7730304107024111339}
   m_Layer: 0
   m_Name: Pre_ExitDoor
@@ -89,7 +89,7 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &3515317314085823065
+--- !u!114 &3753780645063792003
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -98,13 +98,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 3188493099228037457}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 33071b2f1c75b1a4a8b9ebf6f3dcdef2, type: 3}
+  m_Script: {fileID: 11500000, guid: 08a5ab958b0e5d54bb84d7b06fba6a38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  requiredKeys: 1
-  gateSprite: {fileID: 0}
-  lockedColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
-  unlockedColor: {r: 0.3, g: 1, b: 0.4, a: 1}
+  targetRoom: 0
 --- !u!61 &7730304107024111339
 BoxCollider2D:
   m_ObjectHideFlags: 0

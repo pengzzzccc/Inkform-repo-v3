@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
+using UnityEngine.Tilemaps;
 
 public class S_ParallaxLayer : MonoBehaviour
 {
@@ -31,18 +33,36 @@ public class S_ParallaxLayer : MonoBehaviour
     [SerializeField] private bool applySortingToChildren = true;
     [SerializeField] private bool includeInactiveChildren = true;
 
+    [Header("Layer Visual")]
+    [SerializeField] private bool applyLayerVisualMaterial = true;
+    [SerializeField] private Material visualMaterialOverride;
+
+    private const string LayerVisualResourceFolder = "LayerVisuals/";
+    private const string LayerVisualMaterialPrefix = "M_";
+    private const string LayerVisualMaterialSuffix = "LayerVisual";
+
+    private static readonly Dictionary<ParallaxDepth, Material> layerVisualMaterialCache = new Dictionary<ParallaxDepth, Material>();
+
     private Vector3 originalLayerPosition;
     private Vector3 originalCameraPosition;
     private bool hasCameraStartPosition;
     private bool hasWarnedMissingCamera;
+    private bool hasWarnedMissingVisualMaterial;
 
     private void Awake()
     {
         ApplyDepthPreset();
         ApplyRendererSorting();
+        ApplyLayerVisualMaterial();
 
         // The layer always returns to this base position plus the camera offset.
         originalLayerPosition = transform.position;
+    }
+
+    private void OnEnable()
+    {
+        ApplyRendererSorting();
+        ApplyLayerVisualMaterial();
     }
 
     private void Reset()
@@ -50,14 +70,18 @@ public class S_ParallaxLayer : MonoBehaviour
         parallaxDepth = ParallaxDepth.Mid;
         useDepthMovementPreset = false;
         parallaxFactor = 0f;
+        applyLayerVisualMaterial = true;
+        visualMaterialOverride = null;
         ApplyDepthPreset();
         ApplyRendererSorting();
+        ApplyLayerVisualMaterial();
     }
 
     private void OnValidate()
     {
         ApplyDepthPreset();
         ApplyRendererSorting();
+        ApplyLayerVisualMaterial();
     }
 
     private void Start()
@@ -158,10 +182,72 @@ public class S_ParallaxLayer : MonoBehaviour
             if (targetRenderer == null)
                 continue;
 
+            if (!IsManagedRenderer(targetRenderer))
+                continue;
+
             // If the layer name does not exist yet, keep Unity's current layer.
             if (hasValidSortingLayer)
                 targetRenderer.sortingLayerName = presetSortingLayerName;
         }
+    }
+
+    private void ApplyLayerVisualMaterial()
+    {
+        if (!applyLayerVisualMaterial)
+            return;
+
+        Material layerVisualMaterial = ResolveLayerVisualMaterial();
+        if (layerVisualMaterial == null)
+            return;
+
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(includeInactiveChildren);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer targetRenderer = renderers[i];
+            if (!IsManagedRenderer(targetRenderer) || !SupportsLayerVisualMaterial(targetRenderer))
+                continue;
+
+            if (targetRenderer.sharedMaterial != layerVisualMaterial)
+                targetRenderer.sharedMaterial = layerVisualMaterial;
+        }
+    }
+
+    private Material ResolveLayerVisualMaterial()
+    {
+        if (visualMaterialOverride != null)
+        {
+            hasWarnedMissingVisualMaterial = false;
+            return visualMaterialOverride;
+        }
+
+        if (!layerVisualMaterialCache.TryGetValue(parallaxDepth, out Material material) || material == null)
+        {
+            string resourcePath = $"{LayerVisualResourceFolder}{LayerVisualMaterialPrefix}{parallaxDepth}{LayerVisualMaterialSuffix}";
+            material = Resources.Load<Material>(resourcePath);
+            layerVisualMaterialCache[parallaxDepth] = material;
+        }
+
+        if (material == null && !hasWarnedMissingVisualMaterial)
+        {
+            Debug.LogWarning($"{nameof(S_ParallaxLayer)} on {name} could not find a layer visual material for {parallaxDepth}.", this);
+            hasWarnedMissingVisualMaterial = true;
+        }
+        else if (material != null)
+        {
+            hasWarnedMissingVisualMaterial = false;
+        }
+
+        return material;
+    }
+
+    private bool IsManagedRenderer(Renderer targetRenderer)
+    {
+        return targetRenderer != null && targetRenderer.GetComponentInParent<S_ParallaxLayer>() == this;
+    }
+
+    private static bool SupportsLayerVisualMaterial(Renderer targetRenderer)
+    {
+        return targetRenderer is SpriteRenderer || targetRenderer is TilemapRenderer;
     }
 
     private float GetPresetParallaxFactor(ParallaxDepth depth)

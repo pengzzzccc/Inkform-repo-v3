@@ -114,7 +114,7 @@ MonoBehaviour:
   beamWidth: 0.15
   beamColor: {r: 1, g: 0.2, b: 0.2, a: 0.85}
   beamMaterial: {fileID: 0}
-  sortingLayerName: 
+  sortingLayerName: Mid
   sortingOrder: 5
   hitSfx: {fileID: 0}
   humLoop: {fileID: 0}

@@ -31,7 +31,7 @@ public class S_SwingingLaser : MonoBehaviour
     [SerializeField, Min(0.001f)] private float beamWidth = 0.15f;
     [SerializeField] private Color beamColor = new Color(1f, 0.2f, 0.2f, 0.85f);
     [SerializeField] private Material beamMaterial;
-    [SerializeField] private string sortingLayerName = "";
+    [SerializeField] private string sortingLayerName = DefaultBeamSortingLayerName;
     [SerializeField] private int sortingOrder = 5;
 
     [Header("Audio")]
@@ -45,6 +45,7 @@ public class S_SwingingLaser : MonoBehaviour
     [SerializeField] private bool drawGizmos = true;
 
     private const int GizmoArcSegments = 16;
+    private const string DefaultBeamSortingLayerName = "Mid";
 
     private static Material fallbackBeamMaterial;
     private LineRenderer beam;
@@ -77,6 +78,8 @@ public class S_SwingingLaser : MonoBehaviour
         swingSpeed = Mathf.Max(0f, swingSpeed);
         loopInterval = Mathf.Max(0f, loopInterval);
         humHearMaxDistance = Mathf.Max(humHearMinDistance, humHearMaxDistance);
+        if (string.IsNullOrWhiteSpace(sortingLayerName))
+            sortingLayerName = DefaultBeamSortingLayerName;
     }
 
     void Update()
@@ -275,10 +278,16 @@ public class S_SwingingLaser : MonoBehaviour
         lr.alignment = LineAlignment.View;
         lr.sortingOrder = sortingOrder;
 
-        if (!string.IsNullOrEmpty(sortingLayerName))
-            lr.sortingLayerName = sortingLayerName;
+        lr.sortingLayerName = GetBeamSortingLayerName();
 
         lr.sharedMaterial = beamMaterial != null ? beamMaterial : GetFallbackMaterial();
+    }
+
+    private string GetBeamSortingLayerName()
+    {
+        return string.IsNullOrWhiteSpace(sortingLayerName)
+            ? DefaultBeamSortingLayerName
+            : sortingLayerName.Trim();
     }
 
     private static Material GetFallbackMaterial()
