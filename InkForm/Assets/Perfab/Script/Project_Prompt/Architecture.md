@@ -40,7 +40,7 @@ S_GameEvent.SceneLoadRequested(sceneKey)
 | Events | `S_GameEvent` | Static event bus for gameplay intent |
 | Training | `S_TrainingLevelConfig`, `S_TutorialController`, `S_CountdownTimer` | Per-training intro, prompt, camera pan, countdown |
 | Facility | `S_RoomGraph`, `S_RoomExit`, `S_EndingTrigger` | Room topology and facility navigation |
-| Respawn | `S_Checkpoint`, `S_SceneCheckpointTracker` | Scene-scoped checkpoint respawn |
+| Restart | `S_SceneCheckpointTracker` | Death UI restart reloads the current scene |
 | Level objects | `S_ExitGate`, `S_InkPod`, `S_SectionGoal` | Completion triggers and local interactions |
 | Player | `S_Player`, `S_PlayerSkillController`, `S_PlayerEnergy` | Movement, skills, shared energy |
 | NPC/stealth | `S_NPCEnemy`, `S_SuspicionSystem`, `S_HideSpot` | Detection, suspicion, hiding |
@@ -83,7 +83,7 @@ Assets/Perfab/Configs/Levels/
 ## Event Boundaries
 
 - UI requests a new run with `RunStartRequested`.
-- Death UI and pause restart request checkpoint return with `RespawnRequested`.
+- Death UI restart requests a full current-scene reload with `RespawnRequested`.
 - Level exits request progression with `LevelCompleted(S_LevelCompletionReason)`.
 - Facility exits request graph movement with `RoomEnterRequested(RoomId)`.
 - Ending triggers request the ending with `EndingRequested`.

@@ -97,6 +97,13 @@
 | `Keyboard Keys` | 完成该动作的键盘按键名，如 `W`、`A`、`Space` |
 | `Gamepad Keys` | 完成该动作的手柄按键名，如 `ButtonSouth`、`LeftStick` |
 
+## 3.1 Tutorial skip input
+
+- Voice lines and camera pan intros can be skipped at runtime.
+- Keyboard: `Enter` or `Numpad Enter`.
+- Gamepad: `A/Cross` (`buttonSouth`).
+- The skip only affects intro voice/camera phases; countdown gameplay and required-action prompts are not skipped.
+
 ## 4. CountdownDigitVoiceLibrary
 
 文件位置：
@@ -146,7 +153,7 @@
 | `Pre_InkPod_Entry.prefab` / `S_InkPod` | 进入舱，播放入舱动画后完成关卡 | `Mode` 必须是 `Entry` |
 | `Pre_InkPod_Spawn.prefab` / `S_InkPod` | 出生舱，场景开始时把玩家放出来 | `Mode` 必须是 `Spawn` |
 | `Pre_Checkpoint.prefab` / `S_Checkpoint` | 保存当前场景出生点 | 玩家触碰后发送 `SpawnPointChanged` |
-| `S_SceneCheckpointTracker` | 每场景自动创建的 checkpoint 追踪器 | 死亡 UI 点击 restart 后响应 `RespawnRequested` |
+| `S_SceneCheckpointTracker` | 每场景自动创建的 restart 追踪器 | 死亡 UI 点击 restart 后通过 `RespawnRequested` 重载当前场景 |
 | `S_RoomExit` | 设施房间出口 | `Target Room` 必须是相邻房间 |
 | `S_EndingTrigger` | 结局触发器 | 玩家进入后发送 `EndingRequested` |
 | `S_SectionGoal` | 分段关卡 start/end 触发器 | `Complete Level On End` 为 true 时，End trigger 会完成关卡 |
@@ -191,5 +198,6 @@
 - 随机训练池数量大于等于 `Max Random Training Rooms`。
 - `RoomGraph` 至少有一个 `Is Facility Entry` 房间。
 - 每个 `S_RoomExit.targetRoom` 都是当前房间的相邻房间。
-- 死亡 UI 的 restart 能触发 checkpoint respawn。
+- 死亡 UI 的 restart 会重载当前场景，钥匙、机关、NPC、计时器等局部状态全部回到初始值。
+- 教程语音和镜头 pan 可用 `Enter` / `Numpad Enter` / 手柄 `A-Cross` 跳过。
 - 项目搜索不到旧流程事件名。

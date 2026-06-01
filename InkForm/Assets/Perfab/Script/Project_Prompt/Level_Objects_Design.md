@@ -84,7 +84,7 @@ OnCollisionEnter2D(collision)
 
 **Type**: MonoBehaviour (attach to checkpoint prefab)
 
-**Behavior**: When the player enters the checkpoint's trigger area, it fires `S_GameEvent.SpawnPointChanged(transform)`. `S_SceneCheckpointTracker` caches the scene-scoped spawn position and respawns the player there after the death UI button triggers `RespawnRequested()`.
+**Behavior**: When the player enters the checkpoint's trigger area, it fires `S_GameEvent.SpawnPointChanged(transform)`. Checkpoint positions are still cached, but the current death UI restart flow reloads the whole scene through `RespawnRequested()`.
 
 **Event Flow**:
 ```
@@ -275,7 +275,7 @@ OnCollisionExit2D(collision)
 **Important Notes**:
 - This is a Singleton 閳?`S_coleve.Instance` provides global access to `getPlayerOnGround()`
 - Ground detection uses collision contact normals (normal.y > 0.5 means surface is below player)
-- Lava detection fires `OnPlayerDied`, which shows death UI; checkpoint respawn happens after the player clicks `back to checkpoint`
+- Lava detection fires `OnPlayerDied`, which shows death UI; restart reloads the current scene.
 
 ---
 
@@ -530,7 +530,7 @@ ExitGate
 
 ## 12. S_SceneCheckpointTracker (v0.8.0)
 
-`S_SceneCheckpointTracker` is a per-scene checkpoint/respawn tracker that auto-creates itself via `[RuntimeInitializeOnLoadMethod]`. It listens for checkpoint and death events and handles player respawn using the `IPlayerActor` interface.
+`S_SceneCheckpointTracker` is a per-scene restart tracker that auto-creates itself via `[RuntimeInitializeOnLoadMethod]`. It listens for checkpoint updates and death UI restart requests; restart reloads the tracked scene.
 
 ### 12.1 Auto-Creation
 
@@ -541,8 +541,8 @@ The tracker auto-creates per scene via `[RuntimeInitializeOnLoadMethod(RuntimeIn
 | Event | Handler | Action |
 |-------|---------|--------|
 | `OnSpawnPointChanged` | `HandleSpawnPointChanged(Transform)` | Update tracked spawn position (only if checkpoint is in tracked scene) |
-| `OnPlayerDied` | UI only | Death UI is shown first; tracker waits for `OnRespawnRequested` before respawn |
-| `OnRespawnRequested` | `HandleRespawnRequested()` | Teleport to checkpoint or reload current scene |
+| `OnPlayerDied` | UI only | Death UI is shown first; tracker waits for `OnRespawnRequested` before restart |
+| `OnRespawnRequested` | `HandleRespawnRequested()` | Reload current scene |
 
 ### 12.3 Respawn Flow
 
@@ -550,13 +550,10 @@ The tracker auto-creates per scene via `[RuntimeInitializeOnLoadMethod(RuntimeIn
 Player dies
     -> S_GameEvent.PlayerDied()
     -> S_UIManager.ShowDeathUI()
-    -> Player clicks back to checkpoint
+    -> Player clicks restart current level
     -> S_GameEvent.RespawnRequested()
     -> S_SceneCheckpointTracker.HandleRespawnRequested()
-        -> if hasSpawnPosition && player in tracked scene
-            -> IPlayerActor.Teleport(spawnPosition)
-        -> else
-            -> ReloadTrackedScene()
+        -> ReloadTrackedScene()
 ```
 
 ### 12.4 Key Methods
@@ -564,7 +561,7 @@ Player dies
 | Method | Description |
 |--------|-------------|
 | `HandleSpawnPointChanged(Transform)` | Cache spawn position from checkpoint (scene-scoped) |
-| `HandleRespawnRequested()` | Respawn player at last checkpoint or reload scene |
+| `HandleRespawnRequested()` | Reload tracked scene |
 | `CacheDefaultSpawnPosition()` | Store initial player position as default spawn |
 | `IsPlayerInTrackedScene(IPlayerActor)` | Check if player is in this tracker's scene |
 | `ReloadTrackedScene()` | Reload tracked scene via S_GameManager or SceneManager |
@@ -572,6 +569,6 @@ Player dies
 ### 12.5 Dependencies
 
 - **S_PlayerLookup**: Uses `S_PlayerLookup.TryGetActive()` to get IPlayerActor
-- **IPlayerActor**: Uses `IPlayerActor.Teleport()` for respawn
+- **IPlayerActor**: Checkpoint teleport is not used by the death restart flow.
 - **S_GameEvent**: Subscribes to `OnSpawnPointChanged`, `OnPlayerDied`, `OnRespawnRequested`
 - **S_GameManager**: Falls back to `S_GameEvent.SceneLoadRequested()` if available

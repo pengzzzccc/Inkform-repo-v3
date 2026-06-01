@@ -54,7 +54,7 @@ It requests scene loads through `S_GameEvent.SceneLoadRequested(sceneKey)`.
 
 - Pause menu display and input locking.
 - Death UI display.
-- Restart/back-to-checkpoint button sends `RespawnRequested`.
+- Restart button sends `RespawnRequested` to reload the current level.
 - Start button sends `RunStartRequested`.
 - Key count, energy, and suspicion UI.
 
@@ -89,8 +89,7 @@ Player dies
 
 Death UI restart button
   -> S_GameEvent.RespawnRequested()
-  -> S_SceneCheckpointTracker teleports to checkpoint
-     or requests current scene reload through SceneLoadRequested
+  -> S_SceneCheckpointTracker requests current scene reload through SceneLoadRequested
 ```
 
 ## Scene Flow

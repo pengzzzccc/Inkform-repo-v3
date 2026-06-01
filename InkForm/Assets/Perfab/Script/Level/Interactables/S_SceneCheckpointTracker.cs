@@ -88,16 +88,6 @@ public class S_SceneCheckpointTracker : MonoBehaviour
 
     private void HandleRespawnRequested()
     {
-        CacheDefaultSpawnPosition();
-
-        if (hasSpawnPosition
-            && S_PlayerLookup.TryGetActive(out IPlayerActor player)
-            && IsPlayerInTrackedScene(player))
-        {
-            player.Teleport(spawnPosition);
-            return;
-        }
-
         ReloadTrackedScene();
     }
 
@@ -128,9 +118,13 @@ public class S_SceneCheckpointTracker : MonoBehaviour
         if (!trackedScene.IsValid() || string.IsNullOrWhiteSpace(trackedScene.name))
             return;
 
+        string sceneKey = !string.IsNullOrWhiteSpace(trackedScene.path)
+            ? trackedScene.path
+            : trackedScene.name;
+
         if (S_GameManager.Instance != null)
-            S_GameEvent.SceneLoadRequested(trackedScene.name);
+            S_GameEvent.SceneLoadRequested(sceneKey);
         else
-            SceneManager.LoadScene(trackedScene.name);
+            SceneManager.LoadScene(sceneKey);
     }
 }

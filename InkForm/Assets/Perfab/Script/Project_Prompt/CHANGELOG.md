@@ -7,7 +7,8 @@
 - Added `S_SceneReference` for Inspector scene drag references. Runtime loading prefers `scenePath` and keeps `sceneName` as a compatibility fallback.
 - Updated `S_GameManager` and `S_SceneChangeTrigger` to use scene references instead of hand-typed scene names where possible.
 - Added load-time scene validation so missing Build Settings / Build Profile entries produce clear errors and recover transition/input state.
-- Added independent death UI in `S_UIManager` with red death count and a single `back to checkpoint` button. Death no longer opens the normal pause menu or immediately respawns.
+- Death UI restart now reloads the current scene so keys, hazards, NPCs, timers, and local level state reset together.
+- Tutorial voice and camera pan intros can be skipped with keyboard `Enter` / `Numpad Enter` or gamepad `A/Cross`.
 
 ### Shared Player Energy
 - Added `S_PlayerEnergy` on the player with `maxEnergy`, delayed regeneration, reset-on-checkpoint behavior, and `OnPlayerEnergyChanged(current, max)` UI updates.
@@ -54,11 +55,11 @@
   - `AttachPersistent(Transform)`: parents a manager under the root
   - `GetOrCreateChild(string)` / `GetOrCreateComponent<T>(string)`: lazy child/component creation
   - `RuntimeInitializeOnLoadMethod` reset for editor domain reload
-- **`S_SceneCheckpointTracker.cs`** (`Level/Interactables/`): Per-scene checkpoint/respawn tracker
+- **`S_SceneCheckpointTracker.cs`** (`Level/Interactables/`): Per-scene death restart tracker
   - Auto-creates per scene via `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]`
-  - Listens to `OnSpawnPointChanged`, `OnPlayerDied`, `OnRespawnRequested`
-  - Uses `IPlayerActor.Teleport` for respawn; falls back to `SceneManager.LoadScene` if no player
-  - Tracks spawn position per scene to support multi-scene workflows
+  - Listens to `OnSpawnPointChanged` and `OnRespawnRequested`
+  - Reloads the tracked scene on death UI restart
+  - Tracks checkpoint positions for authoring/debug use, but death restart is a full scene reload
 
 ### Interface Abstraction
 - `S_Player` now implements `IPlayerActor`

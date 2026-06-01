@@ -183,7 +183,8 @@ public class S_TutorialController : MonoBehaviour
                 cameraPanTarget.position,
                 GetPanToTargetDuration(),
                 GetPanHoldDuration(),
-                GetPanReturnDuration());
+                GetPanReturnDuration(),
+                S_TutorialSkipInput.WasSkipPressedThisFrame);
         }
 
         float delayBeforeCountdown = GetPreCountdownDelay();

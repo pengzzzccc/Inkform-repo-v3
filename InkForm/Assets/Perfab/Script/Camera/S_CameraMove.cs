@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class S_CameraMove : MonoBehaviour
@@ -108,22 +109,41 @@ public class S_CameraMove : MonoBehaviour
     /// hold, then return to player and resume follow.
     /// </summary>
     public System.Collections.IEnumerator PanToTarget(
-        Vector3 targetWorldPos, float moveDuration, float holdDuration, float returnDuration)
+        Vector3 targetWorldPos,
+        float moveDuration,
+        float holdDuration,
+        float returnDuration,
+        Func<bool> skipRequested = null)
     {
         BeginManualControl();
         S_GameEvent.PushGameplayInputLock(CameraPanInputLockId);
         S_GameEvent.CameraPanStarted();
+        bool skipped = false;
         try
         {
-            yield return LerpCameraTo(targetWorldPos, moveDuration);
+            yield return LerpCameraTo(targetWorldPos, moveDuration, skipRequested, () => skipped = true);
+            if (skipped)
+            {
+                SnapCameraToPlayer();
+                yield break;
+            }
 
             if (holdDuration > 0f)
-                yield return new WaitForSecondsRealtime(holdDuration);
+            {
+                yield return WaitOrSkip(holdDuration, skipRequested, () => skipped = true);
+                if (skipped)
+                {
+                    SnapCameraToPlayer();
+                    yield break;
+                }
+            }
 
             if (target != null)
             {
                 Vector3 playerPos = new Vector3(target.transform.position.x, target.transform.position.y, transform.position.z);
-                yield return LerpCameraTo(playerPos, returnDuration);
+                yield return LerpCameraTo(playerPos, returnDuration, skipRequested, () => skipped = true);
+                if (skipped)
+                    SnapCameraToPlayer();
             }
         }
         finally
@@ -134,33 +154,77 @@ public class S_CameraMove : MonoBehaviour
         }
     }
 
-    private System.Collections.IEnumerator LerpCameraTo(Vector3 destination, float duration)
+    private System.Collections.IEnumerator LerpCameraTo(
+        Vector3 destination,
+        float duration,
+        Func<bool> skipRequested,
+        Action onSkipped)
     {
-        float destX = Mathf.Clamp(destination.x, minX, maxX);
-        float destY = Mathf.Clamp(destination.y, minY, maxY);
+        Vector3 endPos = ClampToBounds(destination);
 
         if (duration <= 0f)
         {
-            transform.position = new Vector3(destX, destY, transform.position.z);
+            transform.position = endPos;
             yield break;
         }
 
         Vector3 startPos = transform.position;
-        Vector3 endPos = new Vector3(destX, destY, transform.position.z);
         float elapsed = 0f;
 
         while (elapsed < duration)
         {
+            if (ShouldSkip(skipRequested))
+            {
+                onSkipped?.Invoke();
+                yield break;
+            }
+
             elapsed += Time.unscaledDeltaTime;
             float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
-            Vector3 pos = Vector3.Lerp(startPos, endPos, t);
-            pos.x = Mathf.Clamp(pos.x, minX, maxX);
-            pos.y = Mathf.Clamp(pos.y, minY, maxY);
-            transform.position = pos;
+            transform.position = ClampToBounds(Vector3.Lerp(startPos, endPos, t));
             yield return null;
         }
 
         transform.position = endPos;
+    }
+
+    private System.Collections.IEnumerator WaitOrSkip(float duration, Func<bool> skipRequested, Action onSkipped)
+    {
+        float endTime = Time.unscaledTime + duration;
+        while (Time.unscaledTime < endTime)
+        {
+            if (ShouldSkip(skipRequested))
+            {
+                onSkipped?.Invoke();
+                yield break;
+            }
+
+            yield return null;
+        }
+    }
+
+    private static bool ShouldSkip(Func<bool> skipRequested)
+    {
+        return skipRequested != null && skipRequested();
+    }
+
+    private void SnapCameraToPlayer()
+    {
+        if (target == null)
+            return;
+
+        transform.position = ClampToBounds(new Vector3(
+            target.transform.position.x,
+            target.transform.position.y,
+            transform.position.z));
+    }
+
+    private Vector3 ClampToBounds(Vector3 position)
+    {
+        return new Vector3(
+            Mathf.Clamp(position.x, minX, maxX),
+            Mathf.Clamp(position.y, minY, maxY),
+            transform.position.z);
     }
 
     /// <summary>

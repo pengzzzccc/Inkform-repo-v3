@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public class S_VoiceLinePlayer : MonoBehaviour
@@ -171,20 +170,7 @@ public class S_VoiceLinePlayer : MonoBehaviour
         if (!allowSkip)
             return false;
 
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard != null
-            && (keyboard.spaceKey.wasPressedThisFrame
-                || keyboard.enterKey.wasPressedThisFrame
-                || keyboard.numpadEnterKey.wasPressedThisFrame
-                || keyboard.escapeKey.wasPressedThisFrame))
-        {
-            return true;
-        }
-
-        Gamepad gamepad = Gamepad.current;
-        return gamepad != null
-            && (gamepad.buttonSouth.wasPressedThisFrame
-                || gamepad.startButton.wasPressedThisFrame);
+        return S_TutorialSkipInput.WasSkipPressedThisFrame();
     }
 
     private void StopPlayback()

@@ -11,7 +11,7 @@
 | Invoker | Event | Meaning | Main consumer |
 | --- | --- | --- | --- |
 | `RunStartRequested()` | `OnRunStartRequested` | Start a fresh run from menu/UI | `S_RunFlowController`, reset listeners |
-| `RespawnRequested()` | `OnRespawnRequested` | Return from death/pause restart | `S_SceneCheckpointTracker`, reset listeners |
+| `RespawnRequested()` | `OnRespawnRequested` | Restart the current level after death UI confirmation | `S_SceneCheckpointTracker`, reset listeners |
 | `ReturnToStartMenuRequested()` | `OnReturnToStartMenuRequested` | Go back to start menu | `S_RunFlowController` |
 | `SceneLoadRequested(string)` | `OnSceneLoadRequested` | Load a scene by runtime key | `S_GameManager` |
 | `LevelCompleted(S_LevelCompletionReason)` | `OnLevelCompleted` | Current training/random level is complete | `S_RunFlowController` |
