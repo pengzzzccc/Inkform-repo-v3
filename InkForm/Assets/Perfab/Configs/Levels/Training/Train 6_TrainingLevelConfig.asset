@@ -21,11 +21,11 @@ MonoBehaviour:
   familiarizeSubtitle: 
   countdownDigitVoiceLibrary: {fileID: 11400000, guid: 969313e650e64c1fa53c081d42db3377, type: 2}
   autoGenerateCountdownSubtitle: 1
-  countdownSubtitle: Reach the goal within 40 seconds.
+  countdownSubtitle: Reach the goal within 35 seconds.
   requiredActions: []
   promptTitle: Final Training
   promptDescription: Reach the exit while avoiding patrol routes.
-  timeLimit: 40
+  timeLimit: 35
   startupDelay: 0.5
   panToTargetDuration: 1.5
   panHoldDuration: 1.5

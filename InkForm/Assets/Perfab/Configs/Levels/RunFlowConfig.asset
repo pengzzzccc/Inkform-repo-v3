@@ -66,10 +66,26 @@ MonoBehaviour:
     displayName: Train 6
     levelKind: 1
     scene:
-      sceneAsset: {fileID: 102900000, guid: 94135adc9f8667f4a93310003cfb03f9, type: 3}
+      sceneAsset: {fileID: 102900000, guid: 84485d2c46c695c42920c49ce8ef943c, type: 3}
       scenePath: Assets/Scenes/For_game/Training Room/Train 6.unity
       sceneName: Train 6
     trainingConfig: {fileID: 11400000, guid: f2181b7c1b95481e884a7e3238a41006, type: 2}
+  - id: random_train_07
+    displayName: Train 7
+    levelKind: 1
+    scene:
+      sceneAsset: {fileID: 102900000, guid: 6ac5c6de6e5e2a94c82b643818871041, type: 3}
+      scenePath: Assets/Scenes/For_game/Training Room/Train 7.unity
+      sceneName: Train 7
+    trainingConfig: {fileID: 11400000, guid: f86e69a76d23eb242ad1a031444c73b0, type: 2}
+  - id: random_train_08
+    displayName: Train 8
+    levelKind: 1
+    scene:
+      sceneAsset: {fileID: 102900000, guid: 7f00d5f8b0cb567479754ef2826a28a5, type: 3}
+      scenePath: Assets/Scenes/For_game/Training Room/Train 8.unity
+      sceneName: Train 8
+    trainingConfig: {fileID: 11400000, guid: a37057e8725a4c34f933c98b82b9a953, type: 2}
   minRandomTrainingRooms: 1
   maxRandomTrainingRooms: 3
   roomGraph: {fileID: 11400000, guid: 0bf6b71119a517740b5065bb253db153, type: 2}
