@@ -41,26 +41,10 @@ MonoBehaviour:
     displayName: Train 3
     levelKind: 0
     scene:
-      sceneAsset: {fileID: 102900000, guid: 651490b125f0b744b893ecdc0d697db0, type: 3}
-      scenePath: Assets/Scenes/For_game/Training Room/Train 3.unity
-      sceneName: Train 3
-    trainingConfig: {fileID: 11400000, guid: f2181b7c1b95481e884a7e3238a41003, type: 2}
-  - id: train_04
-    displayName: Train 4
-    levelKind: 0
-    scene:
       sceneAsset: {fileID: 102900000, guid: 454e9f36b4119c44b84ed7968f864d08, type: 3}
       scenePath: Assets/Scenes/For_game/Training Room/Train 4.unity
       sceneName: Train 4
     trainingConfig: {fileID: 11400000, guid: f2181b7c1b95481e884a7e3238a41004, type: 2}
-  - id: train_05
-    displayName: Train 5
-    levelKind: 0
-    scene:
-      sceneAsset: {fileID: 102900000, guid: f672d913e2acc834f8d44464c50da8ca, type: 3}
-      scenePath: Assets/Scenes/For_game/Training Room/Train 5.unity
-      sceneName: Train 5
-    trainingConfig: {fileID: 11400000, guid: f2181b7c1b95481e884a7e3238a41005, type: 2}
   randomTrainingPool:
   - id: random_train_03
     displayName: Train 3
@@ -86,7 +70,7 @@ MonoBehaviour:
       scenePath: Assets/Scenes/For_game/Training Room/Train 6.unity
       sceneName: Train 6
     trainingConfig: {fileID: 11400000, guid: f2181b7c1b95481e884a7e3238a41006, type: 2}
-  minRandomTrainingRooms: 2
+  minRandomTrainingRooms: 1
   maxRandomTrainingRooms: 3
   roomGraph: {fileID: 11400000, guid: 0bf6b71119a517740b5065bb253db153, type: 2}
   drRoomEndingStoryId: Dialogue_End_DrR
