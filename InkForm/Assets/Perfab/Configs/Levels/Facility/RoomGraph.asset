@@ -26,7 +26,7 @@ MonoBehaviour:
       sceneAsset: {fileID: 102900000, guid: 741d9480b54440a4af92b1a1587b67c0, type: 3}
       scenePath: Assets/Scenes/For_game/Lab Room/PS.unity
       sceneName: PS
-    adjacentRooms: 02000000040000000500000006000000
+    adjacentRooms: 0200000005000000
     isFacilityEntry: 1
     isForEnding: 0
   - id: 4
@@ -34,7 +34,7 @@ MonoBehaviour:
       sceneAsset: {fileID: 102900000, guid: 6ef3b8137111412a98b6361792445e5b, type: 3}
       scenePath: Assets/Scenes/For_game/Lab Room/BF.unity
       sceneName: BF
-    adjacentRooms: 020000000300000005000000
+    adjacentRooms: 0200000000000000
     isFacilityEntry: 1
     isForEnding: 0
   - id: 5
@@ -42,7 +42,7 @@ MonoBehaviour:
       sceneAsset: {fileID: 102900000, guid: 89108baa50ad4b0f83f5f2ec2191551f, type: 3}
       scenePath: Assets/Scenes/For_game/Lab Room/LivA.unity
       sceneName: LivA
-    adjacentRooms: 02000000030000000400000006000000
+    adjacentRooms: 020000000300000006000000
     isFacilityEntry: 1
     isForEnding: 0
   - id: 6

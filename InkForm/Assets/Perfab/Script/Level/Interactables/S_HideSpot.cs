@@ -348,10 +348,10 @@ public class S_HideSpot : MonoBehaviour
         if (hideAction != null && hideAction.WasPerformedThisFrame())
             return true;
 
-        if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
+        if (Keyboard.current != null && Keyboard.current.hKey.wasPressedThisFrame)
             return true;
 
-        return Gamepad.current != null && Gamepad.current.rightShoulder.wasPressedThisFrame;
+        return Gamepad.current != null && Gamepad.current.buttonNorth.wasPressedThisFrame;
     }
 
     private void OnValidate()

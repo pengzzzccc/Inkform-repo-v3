@@ -38,7 +38,7 @@
                     "id": "852140f2-7766-474d-8707-702459ba45f3",
                     "expectedControlType": "",
                     "processors": "",
-                    "interactions": "Hold",
+                    "interactions": "",
                     "initialStateCheck": false
                 },
                 {
@@ -292,7 +292,7 @@
                 {
                     "name": "",
                     "id": "143bb1cd-cc10-4eca-a2f0-a3664166fe91",
-                    "path": "<Gamepad>/buttonWest",
+                    "path": "<Gamepad>/rightTrigger",
                     "interactions": "",
                     "processors": "",
                     "groups": ";Gamepad",
@@ -479,7 +479,7 @@
                 {
                     "name": "",
                     "id": "b3f66d0b-7751-423f-908b-a11c5bd95930",
-                    "path": "<Gamepad>/buttonNorth",
+                    "path": "<Gamepad>/buttonWest",
                     "interactions": "",
                     "processors": "",
                     "groups": "Gamepad",
@@ -515,7 +515,7 @@
                     "path": "<Keyboard>/f",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": "Keyboard&Mouse",
                     "action": "Tranform",
                     "isComposite": false,
                     "isPartOfComposite": false
@@ -523,10 +523,10 @@
                 {
                     "name": "",
                     "id": "84924787-d754-49a1-96f0-3d1590c2592c",
-                    "path": "<Gamepad>/buttonNorth",
+                    "path": "<Gamepad>/leftTrigger",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": "Gamepad",
                     "action": "Tranform",
                     "isComposite": false,
                     "isPartOfComposite": false
@@ -537,7 +537,7 @@
                     "path": "<Keyboard>/g",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": "Keyboard&Mouse",
                     "action": "grep",
                     "isComposite": false,
                     "isPartOfComposite": false
@@ -545,10 +545,10 @@
                 {
                     "name": "",
                     "id": "5bf7059f-aeba-418b-883c-4c755adafdc1",
-                    "path": "<Gamepad>/buttonWest",
+                    "path": "<Gamepad>/rightShoulder",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": "Gamepad",
                     "action": "grep",
                     "isComposite": false,
                     "isPartOfComposite": false
@@ -556,10 +556,10 @@
                 {
                     "name": "",
                     "id": "26aa33ec-fc6e-4506-bbab-8dc3fa580d48",
-                    "path": "<Keyboard>/e",
+                    "path": "<Keyboard>/h",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": "Keyboard&Mouse",
                     "action": "Hide",
                     "isComposite": false,
                     "isPartOfComposite": false
@@ -567,10 +567,10 @@
                 {
                     "name": "",
                     "id": "75028a68-fd52-4584-8aec-0099ae9b6554",
-                    "path": "<Gamepad>/rightShoulder",
+                    "path": "<Gamepad>/buttonNorth",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": "Gamepad",
                     "action": "Hide",
                     "isComposite": false,
                     "isPartOfComposite": false

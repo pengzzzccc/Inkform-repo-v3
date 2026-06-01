@@ -35,6 +35,8 @@ public class S_InputBindingManager : MonoBehaviour
     }
 
     private const string BindingPrefsKey = "InkForm.InputBindingOverrides";
+    private const string BindingDefaultsVersionPrefsKey = "InkForm.InputBindingDefaultsVersion";
+    private const int BindingDefaultsVersion = 2;
     private const string LegacyGameplayInputLockId = "LegacyGameplayInputRequest";
     private static S_InputBindingManager instance;
 
@@ -188,6 +190,7 @@ public class S_InputBindingManager : MonoBehaviour
     {
         Actions.asset.RemoveAllBindingOverrides();
         PlayerPrefs.DeleteKey(BindingPrefsKey);
+        PlayerPrefs.SetInt(BindingDefaultsVersionPrefsKey, BindingDefaultsVersion);
         PlayerPrefs.Save();
         BindingsChanged?.Invoke();
     }
@@ -234,6 +237,7 @@ public class S_InputBindingManager : MonoBehaviour
         if (actions != null) return;
 
         actions = new InputSystem_Actions();
+        ResetOutdatedBindingOverrides();
         LoadBindingOverrides();
 
         if (isActiveAndEnabled)
@@ -245,6 +249,17 @@ public class S_InputBindingManager : MonoBehaviour
         string json = PlayerPrefs.GetString(BindingPrefsKey, string.Empty);
         if (!string.IsNullOrWhiteSpace(json))
             actions.asset.LoadBindingOverridesFromJson(json);
+    }
+
+    private void ResetOutdatedBindingOverrides()
+    {
+        int savedVersion = PlayerPrefs.GetInt(BindingDefaultsVersionPrefsKey, 0);
+        if (savedVersion == BindingDefaultsVersion)
+            return;
+
+        PlayerPrefs.DeleteKey(BindingPrefsKey);
+        PlayerPrefs.SetInt(BindingDefaultsVersionPrefsKey, BindingDefaultsVersion);
+        PlayerPrefs.Save();
     }
 
     private void SaveBindingOverrides()

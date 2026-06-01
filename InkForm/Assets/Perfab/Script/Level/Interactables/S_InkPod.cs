@@ -75,7 +75,8 @@ public class S_InkPod : MonoBehaviour
     {
         if (mode == PodMode.Spawn)
         {
-            StartCoroutine(SpawnSequence());
+            if (ShouldRunSpawnSequence())
+                StartCoroutine(SpawnSequence());
         }
         else
         {
@@ -133,6 +134,15 @@ public class S_InkPod : MonoBehaviour
             isRunning = false;
             S_GameEvent.PopGameplayInputLock(InputLockId);
         }
+    }
+
+    private bool ShouldRunSpawnSequence()
+    {
+        S_RunFlowController runFlow = S_RunFlowController.Instance;
+        if (runFlow == null || runFlow.Phase != S_RunFlowController.RunPhase.Facility)
+            return true;
+
+        return runFlow.TryConsumeInkPodSpawnForCurrentScene();
     }
 
     private IEnumerator EntrySequence()

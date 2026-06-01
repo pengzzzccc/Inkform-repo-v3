@@ -102,6 +102,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetRoom: 0
+  arrivalPoint: {fileID: 0}
+  arrivalOffset: {x: 0, y: 0}
+  arrivalFacingRight: 1
+  shakeTarget: {fileID: 0}
+  shakeDuration: 0.18
+  shakeDistance: 0.08
+  shakeFrequency: 24
 --- !u!61 &7730304107024111339
 BoxCollider2D:
   m_ObjectHideFlags: 0

@@ -40,7 +40,7 @@ public static class S_GameEvent
     public static event Action OnArrestTriggered;
     public static event Action OnSuspicionResetRequested;
     public static event Action<string> OnStoryTrigger;
-    public static event Action<RoomId> OnRoomEnterRequested;
+    public static event Action<S_RoomTransitionRequest> OnRoomEnterRequested;
     public static event Action OnFacilityEntered;
     public static event Action OnEndingRequested;
 
@@ -89,7 +89,8 @@ public static class S_GameEvent
     public static void ArrestTriggered() => OnArrestTriggered?.Invoke();
     public static void SuspicionResetRequested() => OnSuspicionResetRequested?.Invoke();
     public static void StoryTrigger(string triggerID) => OnStoryTrigger?.Invoke(triggerID);
-    public static void RoomEnterRequested(RoomId roomId) => OnRoomEnterRequested?.Invoke(roomId);
+    public static void RoomEnterRequested(RoomId roomId) => RoomEnterRequested(new S_RoomTransitionRequest(roomId, S_RoomEntryMode.Door));
+    public static void RoomEnterRequested(S_RoomTransitionRequest request) => OnRoomEnterRequested?.Invoke(request);
     public static void FacilityEntered() => OnFacilityEntered?.Invoke();
     public static void EndingRequested() => OnEndingRequested?.Invoke();
 

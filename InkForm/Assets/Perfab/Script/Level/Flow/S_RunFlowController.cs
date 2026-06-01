@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -27,6 +28,9 @@ public class S_RunFlowController : MonoBehaviour
     private int completedRandomTrainingRooms;
     private int randomTrainingTargetCount;
     private readonly List<int> drawnRandomTrainingIndices = new List<int>();
+    private bool hasPendingRoomEntry;
+    private S_RoomTransitionRequest pendingRoomEntry;
+    private Coroutine doorEntryRoutine;
 
     public RunPhase Phase => phase;
     public RoomId CurrentRoom => currentRoom;
@@ -101,6 +105,26 @@ public class S_RunFlowController : MonoBehaviour
 
         ResetRunState();
         S_GameEvent.SceneLoadRequested(runFlowConfig.StartMenuSceneKey);
+    }
+
+    public bool TryConsumeInkPodSpawnForCurrentScene()
+    {
+        if (phase != RunPhase.Facility
+            || !hasPendingRoomEntry
+            || pendingRoomEntry.EntryMode != S_RoomEntryMode.InkPod)
+        {
+            return false;
+        }
+
+        if (pendingRoomEntry.TargetRoom != RoomId.None
+            && currentRoom != RoomId.None
+            && pendingRoomEntry.TargetRoom != currentRoom)
+        {
+            return false;
+        }
+
+        ClearPendingRoomEntry();
+        return true;
     }
 
     private void HandleLevelCompleted(S_LevelCompletionReason reason)
@@ -199,12 +223,14 @@ public class S_RunFlowController : MonoBehaviour
             return;
         }
 
+        RoomId entryRoom = entries[Random.Range(0, entries.Count)];
         S_GameEvent.FacilityEntered();
-        LoadRoom(entries[Random.Range(0, entries.Count)]);
+        LoadRoom(entryRoom, S_RoomEntryMode.InkPod, RoomId.TR);
     }
 
-    private void HandleRoomEnterRequested(RoomId targetRoom)
+    private void HandleRoomEnterRequested(S_RoomTransitionRequest request)
     {
+        RoomId targetRoom = request.TargetRoom;
         if (phase != RunPhase.Facility)
         {
             Debug.LogWarning($"[RunFlow] Ignored room request '{targetRoom}' because the run is in phase {phase}.");
@@ -224,9 +250,10 @@ public class S_RunFlowController : MonoBehaviour
             return;
         }
 
-        if (currentRoom != RoomId.None && !roomGraph.AreAdjacent(currentRoom, targetRoom))
+        RoomId sourceRoom = request.SourceRoom != RoomId.None ? request.SourceRoom : currentRoom;
+        if (sourceRoom != RoomId.None && !roomGraph.AreAdjacent(sourceRoom, targetRoom))
         {
-            Debug.LogWarning($"[RunFlow] Room {targetRoom} is not adjacent to {currentRoom}; request ignored.");
+            Debug.LogWarning($"[RunFlow] Room {targetRoom} is not adjacent to {sourceRoom}; request ignored.");
             return;
         }
 
@@ -236,10 +263,10 @@ public class S_RunFlowController : MonoBehaviour
             return;
         }
 
-        LoadRoom(targetRoom);
+        LoadRoom(targetRoom, request.EntryMode, sourceRoom);
     }
 
-    private void LoadRoom(RoomId roomId)
+    private void LoadRoom(RoomId roomId, S_RoomEntryMode entryMode = S_RoomEntryMode.Door, RoomId sourceRoom = RoomId.None)
     {
         string sceneKey = runFlowConfig.RoomGraph != null ? runFlowConfig.RoomGraph.GetSceneKey(roomId) : string.Empty;
         if (string.IsNullOrWhiteSpace(sceneKey))
@@ -248,6 +275,7 @@ public class S_RunFlowController : MonoBehaviour
             return;
         }
 
+        SetPendingRoomEntry(new S_RoomTransitionRequest(roomId, entryMode, sourceRoom));
         currentRoom = roomId;
         S_GameEvent.SceneLoadRequested(sceneKey);
     }
@@ -259,6 +287,7 @@ public class S_RunFlowController : MonoBehaviour
 
         phase = RunPhase.Ending;
         currentRoom = RoomId.None;
+        ClearPendingRoomEntry();
 
         if (runFlowConfig == null || string.IsNullOrWhiteSpace(runFlowConfig.EndingSceneKey))
         {
@@ -291,6 +320,7 @@ public class S_RunFlowController : MonoBehaviour
         }
 
         currentRoom = RoomId.None;
+        ClearPendingRoomEntry();
         S_GameEvent.SceneLoadRequested(entry.SceneKey);
     }
 
@@ -302,6 +332,7 @@ public class S_RunFlowController : MonoBehaviour
         completedRandomTrainingRooms = 0;
         randomTrainingTargetCount = 0;
         drawnRandomTrainingIndices.Clear();
+        ClearPendingRoomEntry();
     }
 
     private bool ValidateConfig()
@@ -316,6 +347,7 @@ public class S_RunFlowController : MonoBehaviour
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         SyncCurrentRoomFromActiveScene();
+        ApplyPendingRoomEntryForScene(scene);
     }
 
     private void SyncCurrentRoomFromActiveScene()
@@ -331,5 +363,93 @@ public class S_RunFlowController : MonoBehaviour
             if (phase == RunPhase.NotStarted)
                 phase = RunPhase.Facility;
         }
+    }
+
+    private void SetPendingRoomEntry(S_RoomTransitionRequest request)
+    {
+        hasPendingRoomEntry = true;
+        pendingRoomEntry = request;
+    }
+
+    private void ClearPendingRoomEntry()
+    {
+        hasPendingRoomEntry = false;
+        pendingRoomEntry = default;
+
+        if (doorEntryRoutine != null)
+        {
+            StopCoroutine(doorEntryRoutine);
+            doorEntryRoutine = null;
+        }
+    }
+
+    private void ApplyPendingRoomEntryForScene(Scene scene)
+    {
+        if (!hasPendingRoomEntry || pendingRoomEntry.EntryMode != S_RoomEntryMode.Door)
+            return;
+
+        if (pendingRoomEntry.TargetRoom != RoomId.None
+            && currentRoom != RoomId.None
+            && pendingRoomEntry.TargetRoom != currentRoom)
+        {
+            return;
+        }
+
+        if (doorEntryRoutine != null)
+            StopCoroutine(doorEntryRoutine);
+
+        doorEntryRoutine = StartCoroutine(ApplyDoorEntryAfterSceneLoad(pendingRoomEntry, scene));
+    }
+
+    private IEnumerator ApplyDoorEntryAfterSceneLoad(S_RoomTransitionRequest request, Scene scene)
+    {
+        yield return null;
+
+        IPlayerActor player = null;
+        for (int i = 0; i < 120 && !S_PlayerLookup.TryGetActive(out player); i++)
+            yield return null;
+
+        if (player == null)
+        {
+            Debug.LogError($"[RunFlow] Door entry from {request.SourceRoom} to {request.TargetRoom} could not find an active player.");
+            ClearPendingRoomEntry();
+            yield break;
+        }
+
+        if (!TryFindArrivalDoor(scene, request.SourceRoom, out S_RoomExit arrivalDoor))
+        {
+            Debug.LogError($"[RunFlow] Door entry into {request.TargetRoom} could not find a reverse door targeting {request.SourceRoom} in scene '{scene.name}'.");
+            ClearPendingRoomEntry();
+            yield break;
+        }
+
+        player.Teleport(arrivalDoor.GetArrivalPosition());
+        if (S_Player.Instance != null)
+            S_Player.Instance.SetFacingRight(arrivalDoor.ArrivalFacingRight);
+
+        ClearPendingRoomEntry();
+    }
+
+    private static bool TryFindArrivalDoor(Scene scene, RoomId sourceRoom, out S_RoomExit arrivalDoor)
+    {
+        arrivalDoor = null;
+        if (sourceRoom == RoomId.None)
+            return false;
+
+        S_RoomExit[] exits = FindObjectsByType<S_RoomExit>(FindObjectsSortMode.None);
+        for (int i = 0; i < exits.Length; i++)
+        {
+            S_RoomExit exit = exits[i];
+            if (exit == null || exit.gameObject.scene != scene)
+                continue;
+
+            if (exit.TargetRoom != sourceRoom)
+                continue;
+
+            arrivalDoor = exit;
+            return true;
+        }
+
+        return false;
     }
 }

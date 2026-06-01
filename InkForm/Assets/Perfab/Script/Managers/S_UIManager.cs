@@ -595,6 +595,10 @@ public class S_UIManager : MonoBehaviour
             BindingTarget.Keyboard("Sprint", null, "Button"),
             BindingTarget.Gamepad("Sprint", null, "Button"));
         AddBindingRow(
+            "Interact",
+            BindingTarget.Keyboard("Interact", null, "Button"),
+            BindingTarget.Gamepad("Interact", null, "Button"));
+        AddBindingRow(
             "Grip",
             BindingTarget.Keyboard("grep", null, "Button"),
             BindingTarget.Gamepad("grep", null, "Button"));

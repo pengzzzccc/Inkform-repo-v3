@@ -204,7 +204,9 @@ public class S_ParallaxLayer : MonoBehaviour
         for (int i = 0; i < renderers.Length; i++)
         {
             Renderer targetRenderer = renderers[i];
-            if (!IsManagedRenderer(targetRenderer) || !SupportsLayerVisualMaterial(targetRenderer))
+            if (!IsManagedRenderer(targetRenderer)
+                || HasLayerVisualMaterialExclusion(targetRenderer)
+                || !SupportsLayerVisualMaterial(targetRenderer))
                 continue;
 
             if (targetRenderer.sharedMaterial != layerVisualMaterial)
@@ -243,6 +245,23 @@ public class S_ParallaxLayer : MonoBehaviour
     private bool IsManagedRenderer(Renderer targetRenderer)
     {
         return targetRenderer != null && targetRenderer.GetComponentInParent<S_ParallaxLayer>() == this;
+    }
+
+    private bool HasLayerVisualMaterialExclusion(Renderer targetRenderer)
+    {
+        Transform current = targetRenderer.transform;
+        while (current != null)
+        {
+            if (current.GetComponent<S_ParallaxLayerMaterialExclusion>() != null)
+                return true;
+
+            if (current == transform)
+                return false;
+
+            current = current.parent;
+        }
+
+        return false;
     }
 
     private static bool SupportsLayerVisualMaterial(Renderer targetRenderer)

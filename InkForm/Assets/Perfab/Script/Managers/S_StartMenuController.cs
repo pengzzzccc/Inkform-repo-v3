@@ -553,6 +553,7 @@ public class S_StartMenuController : MonoBehaviour
         AddBindingRow(content, "Move Stick", null, BindingTarget.Gamepad("Move", null, "Vector2"));
         AddBindingRow(content, "Jump", BindingTarget.Keyboard("Jump", null, "Button"), BindingTarget.Gamepad("Jump", null, "Button"));
         AddBindingRow(content, "Sprint", BindingTarget.Keyboard("Sprint", null, "Button"), BindingTarget.Gamepad("Sprint", null, "Button"));
+        AddBindingRow(content, "Interact", BindingTarget.Keyboard("Interact", null, "Button"), BindingTarget.Gamepad("Interact", null, "Button"));
         AddBindingRow(content, "Grip", BindingTarget.Keyboard("grep", null, "Button"), BindingTarget.Gamepad("grep", null, "Button"));
         AddBindingRow(content, "Hide", BindingTarget.Keyboard("Hide", null, "Button"), BindingTarget.Gamepad("Hide", null, "Button"));
         AddBindingRow(content, "Camera Control", BindingTarget.Keyboard("CameraControl", null, "Button"), BindingTarget.Gamepad("CameraControl", null, "Button"));
