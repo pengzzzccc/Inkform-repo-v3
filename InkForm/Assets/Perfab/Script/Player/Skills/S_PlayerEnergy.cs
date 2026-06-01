@@ -29,14 +29,14 @@ public class S_PlayerEnergy : MonoBehaviour
 
     private void OnEnable()
     {
-        S_GameEvent.OnGameRestart += HandleGameRestart;
-        S_GameEvent.OnGameStart += ResetEnergy;
+        S_GameEvent.OnRespawnRequested += HandleRespawnRequested;
+        S_GameEvent.OnRunStartRequested += ResetEnergy;
     }
 
     private void OnDisable()
     {
-        S_GameEvent.OnGameRestart -= HandleGameRestart;
-        S_GameEvent.OnGameStart -= ResetEnergy;
+        S_GameEvent.OnRespawnRequested -= HandleRespawnRequested;
+        S_GameEvent.OnRunStartRequested -= ResetEnergy;
     }
 
     private void Update()
@@ -108,7 +108,7 @@ public class S_PlayerEnergy : MonoBehaviour
         BroadcastEnergyChanged();
     }
 
-    private void HandleGameRestart()
+    private void HandleRespawnRequested()
     {
         if (resetOnCheckpointRespawn)
             ResetEnergy();

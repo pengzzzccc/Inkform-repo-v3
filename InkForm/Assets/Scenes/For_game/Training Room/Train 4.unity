@@ -459,7 +459,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sectionIndex: 0
   triggerType: 1
-  requestLevelExitOnEnd: 1
+  completeLevelOnEnd: 1
 --- !u!61 &8003
 BoxCollider2D:
   m_ObjectHideFlags: 0

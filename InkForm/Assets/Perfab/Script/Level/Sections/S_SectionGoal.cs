@@ -10,7 +10,7 @@ public class S_SectionGoal : MonoBehaviour
 {
     [SerializeField] private int sectionIndex = 0;
     [SerializeField] private SectionTriggerType triggerType = SectionTriggerType.Start;
-    [SerializeField] private bool requestLevelExitOnEnd = false;
+    [SerializeField] private bool completeLevelOnEnd = false;
 
     private Vector3 fixedWorldPos;
 
@@ -36,8 +36,8 @@ public class S_SectionGoal : MonoBehaviour
         else
         {
             S_GameEvent.SectionEnd(sectionIndex);
-            if (requestLevelExitOnEnd)
-                S_GameEvent.LevelExitRequested();
+            if (completeLevelOnEnd)
+                S_GameEvent.LevelCompleted(S_LevelCompletionReason.SectionEnd);
         }
     }
 }

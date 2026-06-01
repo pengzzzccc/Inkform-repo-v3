@@ -20,7 +20,7 @@ public class S_RoomExit : MonoBehaviour
             return;
         }
 
-        S_GameEvent.RoomEnterRequested(targetRoom.ToString());
+        S_GameEvent.RoomEnterRequested(targetRoom);
     }
 
     private void OnDrawGizmos()

@@ -4,12 +4,10 @@ using UnityEngine;
 public static class S_GameEvent
 {
     public static event Action OnPlayerDied;
-    public static event Action OnGameStart;
-    public static event Action OnGameRestart;
+    public static event Action OnRunStartRequested;
+    public static event Action OnRespawnRequested;
     public static event Action OnExit;
-    public static event Action OnStartFreshGameRequested;
     public static event Action OnReturnToStartMenuRequested;
-    public static event Action OnRestartCurrentLevelRequested;
     public static event Action<string> OnSceneLoadRequested;
     public static event Action<bool> OnGameplayInputEnabledRequested;
     public static event Action<string> OnGameplayInputLockPushed;
@@ -19,7 +17,7 @@ public static class S_GameEvent
     public static event Action<float, float> OnPlayerEnergyChanged;
     public static event Action<Transform> reNewSpwnPoint;
     public static event Action<Transform> OnSpawnPointChanged;
-    public static event Action OnLevelExitRequested;
+    public static event Action<S_LevelCompletionReason> OnLevelCompleted;
     public static event Action<int> OnSectionStart;
     public static event Action<int> OnSectionEnd;
     public static event Action<int> OnSectionDescentStarted;
@@ -42,14 +40,15 @@ public static class S_GameEvent
     public static event Action OnArrestTriggered;
     public static event Action OnSuspicionResetRequested;
     public static event Action<string> OnStoryTrigger;
+    public static event Action<RoomId> OnRoomEnterRequested;
+    public static event Action OnFacilityEntered;
+    public static event Action OnEndingRequested;
 
     public static void PlayerDied() => OnPlayerDied?.Invoke();
-    public static void GameStart() => OnGameStart?.Invoke();
-    public static void GameReStart() => OnGameRestart?.Invoke();
+    public static void RunStartRequested() => OnRunStartRequested?.Invoke();
+    public static void RespawnRequested() => OnRespawnRequested?.Invoke();
     public static void ExitGame() => OnExit?.Invoke();
-    public static void StartFreshGameRequested() => OnStartFreshGameRequested?.Invoke();
     public static void ReturnToStartMenuRequested() => OnReturnToStartMenuRequested?.Invoke();
-    public static void RestartCurrentLevelRequested() => OnRestartCurrentLevelRequested?.Invoke();
     public static void SceneLoadRequested(string sceneName) => OnSceneLoadRequested?.Invoke(sceneName);
     public static void GameplayInputEnabledRequested(bool enabled) => OnGameplayInputEnabledRequested?.Invoke(enabled);
     public static void PushGameplayInputLock(string lockId) => OnGameplayInputLockPushed?.Invoke(lockId);
@@ -61,7 +60,7 @@ public static class S_GameEvent
         OnSpawnPointChanged?.Invoke(spwnPoint);
         reNewSpwnPoint?.Invoke(spwnPoint);
     }
-    public static void LevelExitRequested() => OnLevelExitRequested?.Invoke();
+    public static void LevelCompleted(S_LevelCompletionReason reason = S_LevelCompletionReason.Goal) => OnLevelCompleted?.Invoke(reason);
     public static void ScoreChanged(int score) => OnScoreChanged?.Invoke(score);
     public static void SkillUsed(string skillName) => OnSkillUsed?.Invoke(skillName);
     public static void SectionStart(int index) => OnSectionStart?.Invoke(index);
@@ -90,22 +89,13 @@ public static class S_GameEvent
     public static void ArrestTriggered() => OnArrestTriggered?.Invoke();
     public static void SuspicionResetRequested() => OnSuspicionResetRequested?.Invoke();
     public static void StoryTrigger(string triggerID) => OnStoryTrigger?.Invoke(triggerID);
+    public static void RoomEnterRequested(RoomId roomId) => OnRoomEnterRequested?.Invoke(roomId);
+    public static void FacilityEntered() => OnFacilityEntered?.Invoke();
+    public static void EndingRequested() => OnEndingRequested?.Invoke();
 
     // Key & Gate Invokers
     public static void KeyCollected() => OnKeyCollected?.Invoke();
     public static void KeyCountChanged(int collected, int total) => OnKeyCountChanged?.Invoke(collected, total);
-
-    // Progression Events
-    public static event Action OnFixedTutorialsComplete;
-    public static event Action<string> OnRoomEnterRequested;
-    public static event Action OnFacilityEntered;
-    public static event Action OnReachEnding;
-
-    // Progression Invokers
-    public static void FixedTutorialsComplete() => OnFixedTutorialsComplete?.Invoke();
-    public static void RoomEnterRequested(string roomId) => OnRoomEnterRequested?.Invoke(roomId);
-    public static void FacilityEntered() => OnFacilityEntered?.Invoke();
-    public static void ReachEnding() => OnReachEnding?.Invoke();
 
     // Tutorial & Camera Pan Events
     public static event Action OnCameraPanStarted;

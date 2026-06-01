@@ -13,7 +13,6 @@ public class S_StartMenuController : MonoBehaviour
 {
     private const string StartSceneName = "Start";
     private const string StartScenePathSuffix = "Assets/Scenes/For_game/Start.unity";
-    private const string DefaultFirstLevelSceneName = "Playtest1";
     private static bool sceneHookRegistered;
 
     private Canvas canvas;
@@ -142,6 +141,7 @@ public class S_StartMenuController : MonoBehaviour
 
         bool hasRequiredManagers = true;
         hasRequiredManagers &= HasManagerUnderRoot<S_GameManager>(root, "GameManager");
+        hasRequiredManagers &= HasManagerUnderRoot<S_RunFlowController>(root, "RunFlowController");
         hasRequiredManagers &= HasManagerUnderRoot<S_InputBindingManager>(root, "InputBindingManager");
         hasRequiredManagers &= HasManagerUnderRoot<S_AudioManager>(root, "AudioManager");
         hasRequiredManagers &= HasManagerUnderRoot<S_SuspicionSystem>(root, "SuspicionSystem");
@@ -221,7 +221,7 @@ public class S_StartMenuController : MonoBehaviour
         settingsButton = CreateMenuButton(mainMenuRoot, "Setting", new Vector2(455f, 0f), new Vector2(330f, 64f));
         exitButton = CreateMenuButton(mainMenuRoot, "Exit", new Vector2(305f, -155f), new Vector2(310f, 58f));
 
-        startButton.onClick.AddListener(RequestFreshGameStart);
+        startButton.onClick.AddListener(RequestRunStart);
         settingsButton.onClick.AddListener(ShowSettings);
         exitButton.onClick.AddListener(() => S_GameEvent.ExitGame());
         ConfigureMainMenuNavigation();
@@ -459,12 +459,9 @@ public class S_StartMenuController : MonoBehaviour
         });
     }
 
-    private void RequestFreshGameStart()
+    private void RequestRunStart()
     {
-        S_GameEvent.StartFreshGameRequested();
-
-        if (S_GameManager.Instance == null)
-            SceneManager.LoadScene(DefaultFirstLevelSceneName);
+        S_GameEvent.RunStartRequested();
     }
 
     private Slider CreateSlider(Transform parent)

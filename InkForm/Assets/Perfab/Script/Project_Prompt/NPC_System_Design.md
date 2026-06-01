@@ -224,7 +224,7 @@ foreach (Collider2D hit in hits)
 ### 4. Guards keep chasing after player hides
 - **Symptom**: Player enters S_HideSpot, guards don't lose target
 - **Cause**: Scene reload didn't reset `S_SuspicionSystem.PlayerHidden` (static field retained old value)
-- **Fix**: `S_SuspicionSystem.HandleGameRestart()` must set `PlayerHidden = false`
+- **Fix**: `S_SuspicionSystem.HandleRespawnRequested()` must set `PlayerHidden = false`
 
 ### 5. Projectiles not hitting player
 - **Symptom**: EMProjectile passes through player
@@ -235,8 +235,8 @@ foreach (Collider2D hit in hits)
 - **Symptom**: After arrest, NPC stays red (Discovered color). Cannot arrest again. Game restart doesn't reset NPC color. Death UI never appears.
 - **Cause**: Three bugs stacked:
   1. `TriggerArrest()` set `currentState = State.Disabled` directly, bypassing `EnterState()` — color never reset to white
-  2. `HandleGameStart()`/`HandleGameRestart()` set `currentState = State.Patrol` directly + manual `UpdateStateColor()` — inconsistent with state machine pattern
-  3. `HandleArrest()` immediately called `GameReStart()` → scene reload → `HideUI()` → death UI `ShowUI()` overridden one frame later
+  2. Run/respawn handlers set `currentState = State.Patrol` directly + manual `UpdateStateColor()` — inconsistent with state machine pattern
+  3. `HandleArrest()` immediately forced a restart → scene reload → `HideUI()` → death UI `ShowUI()` overridden one frame later
 - **Fix**: Use `EnterState()` for all three transitions. Remove auto-restart from `HandleArrest` — let `PlayerDied()` event drive the death UI display. Player manually clicks Restart to reload.
 - **Lesson**: Never bypass the state machine. `EnterState()` is the single authority for all state-transition side effects.
 

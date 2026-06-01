@@ -4,7 +4,7 @@ using UnityEngine;
 
 /// <summary>
 /// Runs the tutorial flow for a training level. Attach to a GameObject in each training scene.
-/// Reads S_LevelConfig to determine the tutorial type and available skills.
+/// Reads S_TrainingLevelConfig to determine the tutorial type and available skills.
 ///
 /// Flow for TeachAndPractice:
 ///   1. Fade in (handled by GameManager scene transition)
@@ -32,7 +32,7 @@ public class S_TutorialController : MonoBehaviour
     private const string TutorialInputLockId = "Tutorial";
 
     [Header("Config")]
-    [SerializeField] private S_LevelConfig levelConfig;
+    [SerializeField] private S_TrainingLevelConfig levelConfig;
 
     [Header("References")]
     [SerializeField] private S_CameraMove cameraMove;
@@ -74,13 +74,13 @@ public class S_TutorialController : MonoBehaviour
     void OnEnable()
     {
         S_GameEvent.OnCountdownFinished += HandleCountdownFinished;
-        S_GameEvent.OnLevelExitRequested += HandleGoalReached;
+        S_GameEvent.OnLevelCompleted += HandleGoalReached;
     }
 
     void OnDisable()
     {
         S_GameEvent.OnCountdownFinished -= HandleCountdownFinished;
-        S_GameEvent.OnLevelExitRequested -= HandleGoalReached;
+        S_GameEvent.OnLevelCompleted -= HandleGoalReached;
 
         CleanupActiveTutorialFlow();
     }
@@ -114,10 +114,10 @@ public class S_TutorialController : MonoBehaviour
             yield break;
         }
 
-        TutorialType type = levelConfig.tutorialType;
+        S_TrainingIntroMode type = levelConfig.tutorialType;
 
         // --- TEACH PHASE (TeachAndPractice only) ---
-        if (type == TutorialType.TeachAndPractice)
+        if (type == S_TrainingIntroMode.TeachAndPractice)
         {
             // Voice: "Now get familiar with the controls."
             if (voiceLinePlayer != null && !string.IsNullOrEmpty(levelConfig.familiarizeSubtitle))
@@ -153,7 +153,7 @@ public class S_TutorialController : MonoBehaviour
         }
 
         // --- COUNTDOWN ANNOUNCEMENT PHASE ---
-        if (type != TutorialType.None)
+        if (type != S_TrainingIntroMode.None)
         {
             string countdownSubtitle = levelConfig.GetCountdownSubtitle();
             if (voiceLinePlayer != null && !string.IsNullOrEmpty(countdownSubtitle))
@@ -214,8 +214,7 @@ public class S_TutorialController : MonoBehaviour
         // --- RESULT ---
         if (goalReached)
         {
-            // Success - load next level (GameManager handles via LevelExitRequested)
-            // LevelExitRequested already triggered the load
+            // Success - run flow advances from the LevelCompleted event.
             StopCountdown();
             yield break;
         }
@@ -240,13 +239,9 @@ public class S_TutorialController : MonoBehaviour
             countdownExpired = true;
     }
 
-    private void HandleGoalReached()
+    private void HandleGoalReached(S_LevelCompletionReason reason)
     {
         goalReached = true;
-
-        // Last fixed tutorial: hand off to random training instead of linear advance.
-        if (levelConfig != null && levelConfig.isLastFixedTutorial)
-            S_GameEvent.FixedTutorialsComplete();
 
         // Stop countdown if still running
         if (countdownTimer != null && countdownTimer.IsRunning)

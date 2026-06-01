@@ -53,7 +53,7 @@ public class S_HideSpot : MonoBehaviour
     private void OnEnable()
     {
         EnsureHideAction();
-        S_GameEvent.OnGameRestart += HandleGameRestart;
+        S_GameEvent.OnRespawnRequested += HandleRespawnRequested;
     }
 
     private void Update()
@@ -362,13 +362,13 @@ public class S_HideSpot : MonoBehaviour
 
     private void OnDisable()
     {
-        S_GameEvent.OnGameRestart -= HandleGameRestart;
+        S_GameEvent.OnRespawnRequested -= HandleRespawnRequested;
 
         if (isHiding)
             ExitHide();
     }
 
-    private void HandleGameRestart()
+    private void HandleRespawnRequested()
     {
         if (isHiding)
             ExitHide(false);

@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 /// <summary>
 /// Ink Pod, a cylindrical maintenance chamber for InkForm units.
 /// Spawn mode opens the door, drains fluid, walks the player out, then restores input.
-/// Entry mode detects the player, walks them in, closes the door, fills fluid, then exits the level.
+/// Entry mode detects the player, walks them in, closes the door, fills fluid, then completes the level.
 /// </summary>
 [DefaultExecutionOrder(-50)]
 public class S_InkPod : MonoBehaviour
@@ -146,7 +146,7 @@ public class S_InkPod : MonoBehaviour
             yield return AnimateFluid(0f, 1f, fluidAnimTime);
             yield return new WaitForSecondsRealtime(0.3f);
 
-            S_GameEvent.LevelExitRequested();
+            S_GameEvent.LevelCompleted(S_LevelCompletionReason.InkPodEntry);
         }
         finally
         {

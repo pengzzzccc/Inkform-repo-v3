@@ -9,7 +9,8 @@ using UnityEngine.SceneManagement;
 public static class S_TrainingSceneSetup
 {
     private const string TrainingSceneDirectory = "Assets/Scenes/For_game/Training Room";
-    private const string ConfigDirectory = "Assets/Perfab/Tutorial/LevelConfigs";
+    private const string ConfigDirectory = "Assets/Perfab/Configs/Levels/Training";
+    private const string RunFlowConfigPath = "Assets/Perfab/Configs/Levels/RunFlowConfig.asset";
     private const string TutorialPrefabPath = "Assets/Perfab/Tutorial/Pre_TutorialController.prefab";
     private const string ManagerRootPath = "Assets/Perfab/Player/ManagerRoot.prefab";
     private const string PlayerPrefabPath = "Assets/Perfab/Player/Pre_MainChar.prefab";
@@ -19,12 +20,12 @@ public static class S_TrainingSceneSetup
 
     private static readonly TrainingSceneSpec[] SceneSpecs =
     {
-        new TrainingSceneSpec("Train 1", TutorialType.TeachAndPractice, new string[0], "Movement Controls", "WASD / Arrow Keys - Move\nSpace - Jump", false, 30f),
-        new TrainingSceneSpec("Train 2", TutorialType.TeachAndPractice, new[] { "Sprint" }, "Sprint Controls", "Hold Sprint - Charge\nRelease Sprint - Dash through weak blocks", false, 30f),
-        new TrainingSceneSpec("Train 3", TutorialType.PracticeOnly, new[] { "Sprint" }, "Sprint Practice", "Use Sprint to reach the exit before time runs out.", false, 30f),
-        new TrainingSceneSpec("Train 4", TutorialType.TeachAndPractice, new[] { "Sprint", "FluidClimb" }, "Fluid Climb Controls", "Hold Grip near a wall - Climb\nUse Sprint and Climb together to cross gaps", false, 35f),
-        new TrainingSceneSpec("Train 5", TutorialType.PracticeOnly, new[] { "Sprint", "FluidClimb" }, "Climb Practice", "Combine Sprint and Fluid Climb to reach the goal.", false, 35f),
-        new TrainingSceneSpec("Train 6", TutorialType.None, new[] { "Sprint", "FluidClimb" }, "Final Training", "Reach the exit while avoiding patrol routes.", true, 40f),
+        new TrainingSceneSpec("Train 1", S_TrainingIntroMode.TeachAndPractice, new string[0], "Movement Controls", "WASD / Arrow Keys - Move\nSpace - Jump", false, 30f),
+        new TrainingSceneSpec("Train 2", S_TrainingIntroMode.TeachAndPractice, new[] { "Sprint" }, "Sprint Controls", "Hold Sprint - Charge\nRelease Sprint - Dash through weak blocks", false, 30f),
+        new TrainingSceneSpec("Train 3", S_TrainingIntroMode.PracticeOnly, new[] { "Sprint" }, "Sprint Practice", "Use Sprint to reach the exit before time runs out.", false, 30f),
+        new TrainingSceneSpec("Train 4", S_TrainingIntroMode.TeachAndPractice, new[] { "Sprint", "FluidClimb" }, "Fluid Climb Controls", "Hold Grip near a wall - Climb\nUse Sprint and Climb together to cross gaps", false, 35f),
+        new TrainingSceneSpec("Train 5", S_TrainingIntroMode.PracticeOnly, new[] { "Sprint", "FluidClimb" }, "Climb Practice", "Combine Sprint and Fluid Climb to reach the goal.", false, 35f),
+        new TrainingSceneSpec("Train 6", S_TrainingIntroMode.None, new[] { "Sprint", "FluidClimb" }, "Final Training", "Reach the exit while avoiding patrol routes.", true, 40f),
     };
 
     [MenuItem("InkForm/Setup/Rebuild Training Scenes")]
@@ -32,7 +33,7 @@ public static class S_TrainingSceneSetup
     {
         EnsureDirectories();
 
-        Dictionary<string, S_LevelConfig> configs = CreateOrUpdateLevelConfigs();
+        Dictionary<string, S_TrainingLevelConfig> configs = CreateOrUpdateLevelConfigs();
         GameObject tutorialPrefab = CreateOrUpdateTutorialPrefab();
         ConfigureManagerRootPrefab();
 
@@ -66,21 +67,21 @@ public static class S_TrainingSceneSetup
         AssetDatabase.CreateFolder(parent, name);
     }
 
-    private static Dictionary<string, S_LevelConfig> CreateOrUpdateLevelConfigs()
+    private static Dictionary<string, S_TrainingLevelConfig> CreateOrUpdateLevelConfigs()
     {
-        Dictionary<string, S_LevelConfig> configs = new Dictionary<string, S_LevelConfig>();
+        Dictionary<string, S_TrainingLevelConfig> configs = new Dictionary<string, S_TrainingLevelConfig>();
 
         foreach (TrainingSceneSpec spec in SceneSpecs)
         {
-            string path = $"{ConfigDirectory}/{spec.SceneName}_LevelConfig.asset";
-            S_LevelConfig config = AssetDatabase.LoadAssetAtPath<S_LevelConfig>(path);
+            string path = $"{ConfigDirectory}/{spec.SceneName}_TrainingLevelConfig.asset";
+            S_TrainingLevelConfig config = AssetDatabase.LoadAssetAtPath<S_TrainingLevelConfig>(path);
             if (config == null)
             {
-                config = ScriptableObject.CreateInstance<S_LevelConfig>();
+                config = ScriptableObject.CreateInstance<S_TrainingLevelConfig>();
                 AssetDatabase.CreateAsset(config, path);
             }
 
-            config.tutorialType = spec.TutorialType;
+            config.tutorialType = spec.IntroMode;
             config.skillsToUnlock = spec.Skills;
             config.promptTitle = spec.PromptTitle;
             config.promptDescription = spec.PromptDescription;
@@ -120,7 +121,7 @@ public static class S_TrainingSceneSetup
     {
         GameObject prefabRoot = PrefabUtility.LoadPrefabContents(ManagerRootPath);
         S_SkillTree skillTree = prefabRoot.GetComponentInChildren<S_SkillTree>(true);
-        S_GameManager gameManager = prefabRoot.GetComponentInChildren<S_GameManager>(true);
+        S_RunFlowController runFlowController = prefabRoot.GetComponentInChildren<S_RunFlowController>(true);
 
         if (skillTree != null)
         {
@@ -133,22 +134,18 @@ public static class S_TrainingSceneSetup
             skillObject.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        if (gameManager != null)
+        if (runFlowController != null)
         {
-            SerializedObject managerObject = new SerializedObject(gameManager);
-            SerializedProperty levels = managerObject.FindProperty("levelScenes");
-            levels.arraySize = SceneSpecs.Length + 1;
-            for (int i = 0; i < SceneSpecs.Length; i++)
-                SetSceneReference(levels.GetArrayElementAtIndex(i), $"{TrainingSceneDirectory}/{SceneSpecs[i].SceneName}.unity");
-            SetSceneReference(levels.GetArrayElementAtIndex(SceneSpecs.Length), "Assets/Scenes/For_game/END.unity");
-            managerObject.ApplyModifiedPropertiesWithoutUndo();
+            SerializedObject flowObject = new SerializedObject(runFlowController);
+            flowObject.FindProperty("runFlowConfig").objectReferenceValue = AssetDatabase.LoadAssetAtPath<S_RunFlowConfig>(RunFlowConfigPath);
+            flowObject.ApplyModifiedPropertiesWithoutUndo();
         }
 
         PrefabUtility.SaveAsPrefabAsset(prefabRoot, ManagerRootPath);
         PrefabUtility.UnloadPrefabContents(prefabRoot);
     }
 
-    private static void CreateOrUpdateTrainingScene(TrainingSceneSpec spec, S_LevelConfig config, GameObject tutorialPrefab)
+    private static void CreateOrUpdateTrainingScene(TrainingSceneSpec spec, S_TrainingLevelConfig config, GameObject tutorialPrefab)
     {
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -236,7 +233,7 @@ public static class S_TrainingSceneSetup
         SerializedObject goalObject = new SerializedObject(sectionGoal);
         goalObject.FindProperty("sectionIndex").intValue = 0;
         goalObject.FindProperty("triggerType").enumValueIndex = (int)SectionTriggerType.End;
-        goalObject.FindProperty("requestLevelExitOnEnd").boolValue = true;
+        goalObject.FindProperty("completeLevelOnEnd").boolValue = true;
         goalObject.ApplyModifiedPropertiesWithoutUndo();
         return goal;
     }
@@ -248,7 +245,7 @@ public static class S_TrainingSceneSetup
         placeholder.transform.position = new Vector3(4f, -0.9f, 0f);
     }
 
-    private static void ConfigureTutorialInstance(GameObject tutorial, S_LevelConfig config, Transform cameraTarget)
+    private static void ConfigureTutorialInstance(GameObject tutorial, S_TrainingLevelConfig config, Transform cameraTarget)
     {
         S_TutorialController controller = tutorial.GetComponent<S_TutorialController>();
         SerializedObject controllerObject = new SerializedObject(controller);
@@ -267,34 +264,29 @@ public static class S_TrainingSceneSetup
         foreach (TrainingSceneSpec spec in SceneSpecs)
             scenes.Add(new EditorBuildSettingsScene($"{TrainingSceneDirectory}/{spec.SceneName}.unity", true));
 
+        scenes.Add(new EditorBuildSettingsScene("Assets/Scenes/For_game/Lab Room/ComR.unity", true));
+        scenes.Add(new EditorBuildSettingsScene("Assets/Scenes/For_game/Lab Room/PS.unity", true));
+        scenes.Add(new EditorBuildSettingsScene("Assets/Scenes/For_game/Lab Room/BF.unity", true));
+        scenes.Add(new EditorBuildSettingsScene("Assets/Scenes/For_game/Lab Room/LivA.unity", true));
+        scenes.Add(new EditorBuildSettingsScene("Assets/Scenes/For_game/Lab Room/For.unity", true));
         scenes.Add(new EditorBuildSettingsScene("Assets/Scenes/For_game/END.unity", true));
         EditorBuildSettings.scenes = scenes.ToArray();
-    }
-
-    private static void SetSceneReference(SerializedProperty sceneReference, string scenePath)
-    {
-        sceneReference.FindPropertyRelative("scenePath").stringValue = scenePath;
-        sceneReference.FindPropertyRelative("sceneName").stringValue = Path.GetFileNameWithoutExtension(scenePath);
-
-        SerializedProperty sceneAsset = sceneReference.FindPropertyRelative("sceneAsset");
-        if (sceneAsset != null)
-            sceneAsset.objectReferenceValue = AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath);
     }
 
     private readonly struct TrainingSceneSpec
     {
         public readonly string SceneName;
-        public readonly TutorialType TutorialType;
+        public readonly S_TrainingIntroMode IntroMode;
         public readonly string[] Skills;
         public readonly string PromptTitle;
         public readonly string PromptDescription;
         public readonly bool HasNpc;
         public readonly float TimeLimit;
 
-        public TrainingSceneSpec(string sceneName, TutorialType tutorialType, string[] skills, string promptTitle, string promptDescription, bool hasNpc, float timeLimit)
+        public TrainingSceneSpec(string sceneName, S_TrainingIntroMode tutorialType, string[] skills, string promptTitle, string promptDescription, bool hasNpc, float timeLimit)
         {
             SceneName = sceneName;
-            TutorialType = tutorialType;
+            IntroMode = tutorialType;
             Skills = skills;
             PromptTitle = promptTitle;
             PromptDescription = promptDescription;

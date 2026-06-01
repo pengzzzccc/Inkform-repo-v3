@@ -2718,10 +2718,6 @@ PrefabInstance:
       propertyPath: sfxVolume
       value: 0.113
       objectReference: {fileID: 0}
-    - target: {fileID: 7185668272029566861, guid: 6c5659b1c25e6c24ba4e229cf6bcffad, type: 3}
-      propertyPath: scene
-      value: NpcTest
-      objectReference: {fileID: 0}
     - target: {fileID: 7685610171103954680, guid: 6c5659b1c25e6c24ba4e229cf6bcffad, type: 3}
       propertyPath: m_LocalPosition.x
       value: 69.84566

@@ -84,7 +84,7 @@ OnCollisionEnter2D(collision)
 
 **Type**: MonoBehaviour (attach to checkpoint prefab)
 
-**Behavior**: When the player enters the checkpoint's trigger area, it fires `S_GameEvent.SpawnPointChanged(transform)` through the legacy `ReNewSpwnPoint` bridge. `S_SceneCheckpointTracker` caches the scene-scoped spawn position and respawns the player there after the death UI button triggers `GameReStart()`.
+**Behavior**: When the player enters the checkpoint's trigger area, it fires `S_GameEvent.SpawnPointChanged(transform)`. `S_SceneCheckpointTracker` caches the scene-scoped spawn position and respawns the player there after the death UI button triggers `RespawnRequested()`.
 
 **Event Flow**:
 ```
@@ -541,8 +541,8 @@ The tracker auto-creates per scene via `[RuntimeInitializeOnLoadMethod(RuntimeIn
 | Event | Handler | Action |
 |-------|---------|--------|
 | `OnSpawnPointChanged` | `HandleSpawnPointChanged(Transform)` | Update tracked spawn position (only if checkpoint is in tracked scene) |
-| `OnPlayerDied` | UI only | Death UI is shown first; tracker waits for `OnGameRestart` before respawn |
-| `OnGameRestart` | `HandleRespawnRequested()` | Same as above |
+| `OnPlayerDied` | UI only | Death UI is shown first; tracker waits for `OnRespawnRequested` before respawn |
+| `OnRespawnRequested` | `HandleRespawnRequested()` | Teleport to checkpoint or reload current scene |
 
 ### 12.3 Respawn Flow
 
@@ -551,7 +551,7 @@ Player dies
     -> S_GameEvent.PlayerDied()
     -> S_UIManager.ShowDeathUI()
     -> Player clicks back to checkpoint
-    -> S_GameEvent.GameReStart()
+    -> S_GameEvent.RespawnRequested()
     -> S_SceneCheckpointTracker.HandleRespawnRequested()
         -> if hasSpawnPosition && player in tracked scene
             -> IPlayerActor.Teleport(spawnPosition)
@@ -573,5 +573,5 @@ Player dies
 
 - **S_PlayerLookup**: Uses `S_PlayerLookup.TryGetActive()` to get IPlayerActor
 - **IPlayerActor**: Uses `IPlayerActor.Teleport()` for respawn
-- **S_GameEvent**: Subscribes to `OnSpawnPointChanged`, `OnPlayerDied`, `OnGameRestart`
+- **S_GameEvent**: Subscribes to `OnSpawnPointChanged`, `OnPlayerDied`, `OnRespawnRequested`
 - **S_GameManager**: Falls back to `S_GameEvent.SceneLoadRequested()` if available

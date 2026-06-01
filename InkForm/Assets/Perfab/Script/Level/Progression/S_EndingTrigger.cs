@@ -2,7 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// Fires the ending when the player enters (e.g. the factory exit/vehicle).
-/// Both endings funnel through S_GameEvent.ReachEnding() -> controller loads END.
+/// Both endings funnel through S_GameEvent.EndingRequested() -> controller loads END.
 /// </summary>
 [RequireComponent(typeof(Collider2D))]
 public class S_EndingTrigger : MonoBehaviour
@@ -15,6 +15,6 @@ public class S_EndingTrigger : MonoBehaviour
             return;
 
         triggered = true;
-        S_GameEvent.ReachEnding();
+        S_GameEvent.EndingRequested();
     }
 }

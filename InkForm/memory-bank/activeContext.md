@@ -1,7 +1,16 @@
 # Active Context
 
 ## Current Version
-v0.8.1 (Gameplay UX, Energy, Scene Flow, ManagerRoot Hardening)
+v0.9.0 (Run Flow Configuration Refactor)
+
+## Recent Changes (2026-06-01)
+- **Run Flow Config**: Added `S_RunFlowConfig` as the single authoring entry point for fixed training, random training, facility rooms, and ending.
+- **Run Flow Controller**: Replaced the old progression controller with `S_RunFlowController` under `Assets/Perfab/Script/Level/Flow`.
+- **GameManager Simplification**: `S_GameManager` is now a scene service only: scene loading, transition fade, input lock, frame-rate settings, and exit.
+- **Event Refresh**: Runtime flow now uses `RunStartRequested`, `RespawnRequested`, `LevelCompleted`, `RoomEnterRequested(RoomId)`, and `EndingRequested`.
+- **Training Config Rename**: `S_LevelConfig` became `S_TrainingLevelConfig`; training assets moved to `Assets/Perfab/Configs/Levels/Training/`.
+- **Facility Config Move**: `RoomGraph.asset` moved to `Assets/Perfab/Configs/Levels/Facility/`.
+- **Configuration Guide**: Added `Assets/Perfab/Script/Project_Prompt/Level_Flow_Configuration_Guide.md`.
 
 ## Recent Changes (2026-05-25)
 - **ManagerRoot Single Persistence**: `ManagerRoot.prefab` is now the only `DontDestroyOnLoad` object; child managers no longer self-create, self-reparent, or call `AttachPersistent()` in normal lifecycle.
@@ -20,6 +29,7 @@ Script/
 │   └── Events/       (S_GameEvent)
 ├── Input/            (InputSystem_Actions)
 ├── Level/
+│   ├── Flow/          (RunFlowConfig, RunFlowController, RunFlowTypes)
 │   ├── Interactables/ (BreakableBlock, Checkpoint, ExitGate, HideSpot, Key, SceneCheckpointTracker)
 │   ├── Platforms/     (MoveBlock, MovingPlatform, PlatformCableVisual)
 │   ├── Resources/     (DroppedResourceItem, DropResourceCounter)
@@ -40,9 +50,10 @@ Script/
 - **IPlayerActor interface** abstracts player for NPC/Level systems; `S_PlayerLookup.TryGet` resolves player actors from colliders or active instance.
 - **S_PlayerSkillController** owns sprint charge and camera control, injected by `S_Player`.
 - **ManagerRoot prefab single persistence**: only the root calls `DontDestroyOnLoad`; child managers are authored under the prefab and must not runtime-reparent.
-- **S_SceneReference** is the preferred scene configuration path; old string scene names are compatibility fallback only.
+- **S_RunFlowConfig** is the only place to configure authored level order and facility flow.
+- **S_SceneReference** is the preferred scene configuration path for all flow and scene-load assets.
 - **S_PlayerEnergy** is the shared energy pool for active skills; skill assets configure their own energy costs.
-- **S_SceneCheckpointTracker** auto-creates per scene, tracks spawn position, and respawns only on `OnGameRestart` after death UI confirmation.
+- **S_SceneCheckpointTracker** auto-creates per scene, tracks spawn position, and respawns only on `RespawnRequested` after death UI confirmation.
 - Sprint direction uses release-time facing; quick-tap sprint spends `quickTapEnergyCost`.
 - NPC/player Rigidbody2D setup uses Continuous + Interpolate for more stable high-speed motion.
 
@@ -53,8 +64,9 @@ Script/
 - Skill Tree (S_SkillTree under ManagerRoot prefab)
 - Shared Player Energy (S_PlayerEnergy + skill asset energy costs + UI energy bar)
 - Manager Root (single persistent ManagerRoot.prefab; AttachPersistent compatibility-only)
-- Scene Flow (S_SceneReference, transition fade/SFX, validated runtime scene keys)
-- Scene Checkpoint (S_SceneCheckpointTracker per-scene auto-creation, respawn on GameReStart)
+- Scene Flow (S_RunFlowConfig + S_RunFlowController + S_SceneReference)
+- Scene Loading (S_GameManager transition fade/SFX, validated runtime scene keys)
+- Scene Checkpoint (S_SceneCheckpointTracker per-scene auto-creation, respawn on RespawnRequested)
 - Death UI (independent death panel + back to checkpoint flow)
 - NPC System (S_NPCEnemy 5-state FSM, continuous/interpolated Rigidbody2D, wave spawner)
 - Suspicion System (event-driven via S_GameEvent)
@@ -64,7 +76,7 @@ Script/
 ## Pending
 - Unity Editor testing of v0.8.1 scene flow and ManagerRoot duplicate behavior
 - Balance tuning for energy drain/regen, sprint quick tap cost, NPC jump parameters
-- Verify Build Settings / Build Profiles include Start, Playtest1, NPCPlayTestScene, and END
+- Verify Build Settings / Build Profiles include Start, Train 1-6, ComR, PS, BF, LivA, For, and END
 
 ## Documentation Updated
 - [x] memory-bank/activeContext.md
@@ -78,7 +90,3 @@ Script/
 - [x] Player_Controller_Design.md
 - [x] Level_Objects_Design.md
 
-
-## 新组件功能
-- 创建一个左右摇摆的激光器。它从发射口发射激光，玩家再触碰到这个激光的一瞬间就会死亡。激光的摇摆有几种模式，单向摇摆（向左或者向右），左右摇摆，从左边摇到右边然后再从右边摇到左边。激光可以被某些层级的物品遮挡（暂定地形），激光的渲染跟随遮挡长度。关卡设计师可以设置参数，从多少度旋转到多少度（再视图中使用Gizmos来显示）。
-- 修改功能，oneway需要有两个选择，一个是向左一个是向右。增加一个timer，再每一个循环之间一这个timer为基础做一个等待时间。清除Back and forth 模式。增加一个运行时的音效。如果玩家距离近可以听见，距离远听不见

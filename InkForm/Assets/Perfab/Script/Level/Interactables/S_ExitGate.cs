@@ -2,7 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// Level exit gate. Locked by default, unlocks when enough keys are collected.
-/// When unlocked, player contact loads the next level.
+/// When unlocked, player contact completes the current level through the run flow.
 /// </summary>
 public class S_ExitGate : MonoBehaviour
 {
@@ -68,6 +68,6 @@ public class S_ExitGate : MonoBehaviour
         if (!isUnlocked) return;
         if (!S_PlayerLookup.IsPlayer(collision)) return;
 
-        S_GameEvent.LevelExitRequested();
+        S_GameEvent.LevelCompleted(S_LevelCompletionReason.Goal);
     }
 }

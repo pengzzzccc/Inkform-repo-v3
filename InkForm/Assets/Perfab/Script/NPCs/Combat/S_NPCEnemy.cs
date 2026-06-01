@@ -1052,9 +1052,9 @@ public class S_NPCEnemy : S_NPCbase
         UpdateFacingIndicator();
     }
 
-    protected override void HandleGameStart()
+    protected override void HandleRunStarted()
     {
-        base.HandleGameStart();
+        base.HandleRunStarted();
         RestoreAliveState();
         currentWaypointIndex = 0;
         waypointWaitTimer = 0f;
@@ -1066,10 +1066,10 @@ public class S_NPCEnemy : S_NPCbase
         EnterState(State.Patrol);
     }
 
-    protected override void HandleGameRestart()
+    protected override void HandleRespawnRequested()
     {
         isPlayerHidden = false;
-        base.HandleGameRestart();
+        base.HandleRespawnRequested();
         RestoreAliveState();
         currentWaypointIndex = 0;
         waypointWaitTimer = 0f;

@@ -45,14 +45,14 @@ public class S_NPCbase : MonoBehaviour
 
     protected virtual void OnEnable()
     {
-        S_GameEvent.OnGameStart += HandleGameStart;
-        S_GameEvent.OnGameRestart += HandleGameRestart;
+        S_GameEvent.OnRunStartRequested += HandleRunStarted;
+        S_GameEvent.OnRespawnRequested += HandleRespawnRequested;
     }
 
     protected virtual void OnDisable()
     {
-        S_GameEvent.OnGameStart -= HandleGameStart;
-        S_GameEvent.OnGameRestart -= HandleGameRestart;
+        S_GameEvent.OnRunStartRequested -= HandleRunStarted;
+        S_GameEvent.OnRespawnRequested -= HandleRespawnRequested;
     }
 
     /// <summary>Called when player presses interact near this NPC.</summary>
@@ -62,8 +62,8 @@ public class S_NPCbase : MonoBehaviour
         S_GameEvent.NPCInteract(npcID);
     }
 
-    protected virtual void HandleGameStart() { }
-    protected virtual void HandleGameRestart() { }
+    protected virtual void HandleRunStarted() { }
+    protected virtual void HandleRespawnRequested() { }
 
     /// <summary>Flip sprite to face a world-space X direction.</summary>
     protected void FlipSprite(float directionX)

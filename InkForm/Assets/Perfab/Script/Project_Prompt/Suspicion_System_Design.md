@@ -101,7 +101,7 @@ float percent = S_SuspicionSystem.Instance.SuspicionPercent; // 0-1
 - `S_GameEvent.ArrestTriggered()` — when arrest fires
 
 ## Game Restart Safety
-The `HandleGameRestart()` method resets ALL state:
+The `HandleRespawnRequested()` method resets ALL state:
 - `currentSuspicion = 0`
 - `completedMissions = 0`
 - `arrestTriggered = false`
@@ -122,7 +122,7 @@ Player presses `E` within trigger to toggle hide.
 ### 1. PlayerHidden not reset on game restart
 - **Symptom**: After restarting, guards ignore player (stuck in Patrol); player can't be detected
 - **Root Cause**: `PlayerHidden` is a **static field** — it survives scene reload. If the player was hiding when restart occurred, `PlayerHidden = true` persists
-- **Fix**: `HandleGameRestart()` includes `PlayerHidden = false`
+- **Fix**: `HandleRespawnRequested()` includes `PlayerHidden = false`
 
 ### 2. Suspicion meter not updating
 - **Symptom**: `SuspicionChanged` event fires but UI doesn't update

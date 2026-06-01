@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0fa3a639ac01754a8d6598243d87dec, type: 3}
+  m_Name: Train 5_TrainingLevelConfig
+  m_EditorClassIdentifier: 
+  tutorialType: 2
+  skillsToUnlock:
+  - Sprint
+  - FluidClimb
+  - CameraControl
+  familiarizeVoiceClip: {fileID: 8300000, guid: d69399b36d126fc4e9dd27de8cb2bbf2, type: 3}
+  familiarizeSubtitle: Now get familiar with the controls.
+  countdownDigitVoiceLibrary: {fileID: 11400000, guid: 969313e650e64c1fa53c081d42db3377, type: 2}
+  autoGenerateCountdownSubtitle: 1
+  countdownSubtitle: Reach the goal within 73 seconds.
+  requiredActions: []
+  promptTitle: Climb Practice
+  promptDescription: Combine Sprint and Fluid Climb to reach the goal.
+  timeLimit: 73
+  startupDelay: 0.5
+  panToTargetDuration: 1.5
+  panHoldDuration: 1.5
+  panReturnDuration: 1
+  preCountdownDelay: 0
+  timeoutDeathDelay: 0.5
+  hasNPC: 0
+  isLastFixedTutorial: 1

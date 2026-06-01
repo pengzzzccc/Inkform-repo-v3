@@ -57,7 +57,7 @@ public class S_SuspicionSystem : MonoBehaviour
 
     private void OnEnable()
     {
-        S_GameEvent.OnGameRestart += HandleGameRestart;
+        S_GameEvent.OnRespawnRequested += HandleRespawnRequested;
         S_GameEvent.OnSuspicionResetRequested += HandleSuspicionResetRequested;
         S_GameEvent.OnSuspicionChangeRequested += HandleSuspicionChangeRequested;
         S_GameEvent.OnHiddenSuspicionDecayRequested += HandleHiddenSuspicionDecayRequested;
@@ -66,7 +66,7 @@ public class S_SuspicionSystem : MonoBehaviour
 
     private void OnDisable()
     {
-        S_GameEvent.OnGameRestart -= HandleGameRestart;
+        S_GameEvent.OnRespawnRequested -= HandleRespawnRequested;
         S_GameEvent.OnSuspicionResetRequested -= HandleSuspicionResetRequested;
         S_GameEvent.OnSuspicionChangeRequested -= HandleSuspicionChangeRequested;
         S_GameEvent.OnHiddenSuspicionDecayRequested -= HandleHiddenSuspicionDecayRequested;
@@ -166,7 +166,7 @@ public class S_SuspicionSystem : MonoBehaviour
         S_GameEvent.ArrestTriggered();
     }
 
-    private void HandleGameRestart()
+    private void HandleRespawnRequested()
     {
         ResetSuspicionState();
     }

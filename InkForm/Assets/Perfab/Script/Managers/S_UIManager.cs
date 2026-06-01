@@ -4,7 +4,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class S_UIManager : MonoBehaviour
@@ -13,7 +12,6 @@ public class S_UIManager : MonoBehaviour
     private const string DeathUIInputLockId = "UIManager.DeathUI";
 
     public static S_UIManager Instance { get; private set; }
-    private const string DefaultFirstLevelSceneName = "Playtest1";
 
     [SerializeField] private GameObject background;
     [SerializeField] private Button StartButton;
@@ -108,11 +106,11 @@ public class S_UIManager : MonoBehaviour
     {
         if (StartButton != null)
         {
-            StartButton.onClick.AddListener(RequestFreshGameStart);
+            StartButton.onClick.AddListener(RequestRunStart);
         }
 
         if (ReStartButton != null)
-            ReStartButton.onClick.AddListener(() => S_GameEvent.GameReStart());
+            ReStartButton.onClick.AddListener(() => S_GameEvent.RespawnRequested());
 
         if (ExitButton != null)
             ExitButton.onClick.AddListener(() => S_GameEvent.ExitGame());
@@ -177,8 +175,8 @@ public class S_UIManager : MonoBehaviour
 
     void OnEnable()
     {
-        S_GameEvent.OnGameStart += HideAllGameplayBlockingUI;
-        S_GameEvent.OnGameRestart += HideAllGameplayBlockingUI;
+        S_GameEvent.OnRunStartRequested += HideAllGameplayBlockingUI;
+        S_GameEvent.OnRespawnRequested += HideAllGameplayBlockingUI;
         S_GameEvent.OnPlayerDied += ShowDeathUI;
         S_GameEvent.OnSuspicionValueChanged += UpdateSuspicionBar;
         S_GameEvent.OnSuspicionChanged += UpdateSuspicionBar;
@@ -191,8 +189,8 @@ public class S_UIManager : MonoBehaviour
 
     void OnDisable()
     {
-        S_GameEvent.OnGameStart -= HideAllGameplayBlockingUI;
-        S_GameEvent.OnGameRestart -= HideAllGameplayBlockingUI;
+        S_GameEvent.OnRunStartRequested -= HideAllGameplayBlockingUI;
+        S_GameEvent.OnRespawnRequested -= HideAllGameplayBlockingUI;
         S_GameEvent.OnPlayerDied -= ShowDeathUI;
         S_GameEvent.OnSuspicionValueChanged -= UpdateSuspicionBar;
         S_GameEvent.OnSuspicionChanged -= UpdateSuspicionBar;
@@ -294,7 +292,7 @@ public class S_UIManager : MonoBehaviour
 
         HideDeathUI(false);
         Time.timeScale = 1f;
-        S_GameEvent.RestartCurrentLevelRequested();
+        S_GameEvent.RespawnRequested();
     }
 
     private void SelectDeathDefaultIfNeeded()
@@ -531,12 +529,9 @@ public class S_UIManager : MonoBehaviour
             keyCountText.text = collected + " / " + total;
     }
 
-    private void RequestFreshGameStart()
+    private void RequestRunStart()
     {
-        S_GameEvent.StartFreshGameRequested();
-
-        if (S_GameManager.Instance == null)
-            SceneManager.LoadScene(DefaultFirstLevelSceneName);
+        S_GameEvent.RunStartRequested();
     }
 
     private void UpdateSuspicionBar(float value)

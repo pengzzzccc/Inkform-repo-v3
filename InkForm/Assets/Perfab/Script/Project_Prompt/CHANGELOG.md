@@ -56,7 +56,7 @@
   - `RuntimeInitializeOnLoadMethod` reset for editor domain reload
 - **`S_SceneCheckpointTracker.cs`** (`Level/Interactables/`): Per-scene checkpoint/respawn tracker
   - Auto-creates per scene via `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]`
-  - Listens to `OnSpawnPointChanged`, `OnPlayerDied`, `OnGameRestart`
+  - Listens to `OnSpawnPointChanged`, `OnPlayerDied`, `OnRespawnRequested`
   - Uses `IPlayerActor.Teleport` for respawn; falls back to `SceneManager.LoadScene` if no player
   - Tracks spawn position per scene to support multi-scene workflows
 
@@ -66,7 +66,7 @@
 - This decouples gameplay systems from the concrete `S_Player` class
 
 ### S_GameEvent Expansion (30+ events, up from 19)
-- **Scene management**: `OnStartFreshGameRequested`, `OnReturnToStartMenuRequested`, `OnSceneLoadRequested`, `OnGameplayInputEnabledRequested`, `OnLevelExitRequested`
+- **Scene management**: `OnRunStartRequested`, `OnReturnToStartMenuRequested`, `OnSceneLoadRequested`, `OnGameplayInputEnabledRequested`, `OnLevelCompleted`
 - **Spawn point**: `OnSpawnPointChanged` (replaces `reNewSpwnPoint` — old event kept as compatibility bridge)
 - **Volume control**: `OnBgmVolumeChangeRequested`, `OnSfxVolumeChangeRequested`
 - **Suspicion refinement**: `OnSuspicionValueChanged`, `OnSuspicionChangeRequested`, `OnHiddenSuspicionDecayRequested`, `OnPlayerHiddenChangeRequested`, `OnPlayerHiddenChanged`, `OnSuspicionResetRequested`
@@ -301,13 +301,13 @@ Comprehensive audit of all 9 design documents against 40+ source files:
 - Fix `S_NPCEnemy.ValidatePlayerReference()` referencing root GameObject instead of body Transform
   - Guards now correctly chase the player's moving body, not the static root
 - Fix `S_NPCbase.DistanceToPlayer()` using `S_Player.Instance.transform` (root) instead of `GetBodyTransform()`
-- Fix `S_SuspicionSystem.HandleGameRestart()` not resetting `PlayerHidden` static field
+- Fix suspicion respawn handling not resetting `PlayerHidden` static field
   - Guards now correctly detect player after scene restart
 - Fix `S_Soild_sprint` OverlapCircle using player root transform position instead of body position
 - Fix NPC arrest flow: state bypass + death UI race condition (2026-05-07)
   - `TriggerArrest()` now uses `EnterState(State.Disabled)` instead of directly assigning `currentState`, ensuring color reset
-  - `HandleGameStart()`/`HandleGameRestart()` now use `EnterState(State.Patrol)` for consistent state reset
-  - `HandleArrest()` no longer calls `GameReStart()` immediately — death UI now displays correctly via `PlayerDied → ShowUI()`
+  - Run/respawn handlers now use `EnterState(State.Patrol)` for consistent state reset
+  - `HandleArrest()` no longer forces an immediate restart; death UI now displays correctly via `PlayerDied -> ShowUI()`
   - **Rule established**: All state transitions MUST go through `EnterState()` — never set `currentState` directly
 
 ### Layer & Physics Configuration
