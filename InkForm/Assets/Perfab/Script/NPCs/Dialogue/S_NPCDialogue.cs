@@ -4,6 +4,10 @@ using UnityEngine;
 /// NPC with dialogue capabilities. Supports linear and branching dialogue.
 /// Used for Ruth (Ch1 Branch1), Arthur (Ch3), and other story NPCs.
 /// Branching mode changes dialogue flow based on collected documents and Branch 1/2 history.
+///
+/// Interaction: when the player is within interactRange and presses Interact, the lines
+/// are shown through the shared S_DialogueUI dialogue box (which handles typing,
+/// advancing, and the gameplay input lock).
 /// </summary>
 public class S_NPCDialogue : S_NPCbase
 {
@@ -21,8 +25,6 @@ public class S_NPCDialogue : S_NPCbase
     [SerializeField] private float textSpeed = 0.05f;
 
     private enum DialogueMode { Linear, Branching }
-    private int currentLineIndex = 0;
-    private bool dialogueActive = false;
 
     protected override void OnEnable()
     {
@@ -38,62 +40,40 @@ public class S_NPCDialogue : S_NPCbase
 
     private void Update()
     {
-        if (!isActive || !dialogueActive) return;
-        // TODO: Handle dialogue advancement input (skip, next line)
+        if (!isActive || !canInteract)
+            return;
+
+        if (S_DialogueUI.Instance != null && S_DialogueUI.Instance.IsActive)
+            return;
+
+        if (PlayerInRange() && S_PlayerInteractInput.WasPressedThisFrame())
+            StartDialogue();
     }
 
-    /// <summary>Start dialogue when player interacts.</summary>
+    /// <summary>Start dialogue when the player interacts (also callable by a future interaction system).</summary>
     public override void OnInteract()
     {
         if (!canInteract || !isActive) return;
         base.OnInteract();
-
-        if (dialogueAsset != null)
-        {
-            // TODO: Parse and load dialogue from TextAsset
-        }
-
         StartDialogue();
     }
 
-    /// <summary>Begin the dialogue sequence.</summary>
+    /// <summary>Begin the dialogue sequence through the shared dialogue box.</summary>
     public void StartDialogue()
     {
-        dialogueActive = true;
-        currentLineIndex = 0;
-
         string[] lines = GetDialogueLines();
         if (lines == null || lines.Length == 0)
-        {
-            EndDialogue();
             return;
-        }
 
-        // TODO: Show dialogue UI, display first line
+        if (S_DialogueUI.Instance != null && S_DialogueUI.Instance.IsActive)
+            return;
+
         S_GameEvent.StoryTrigger("Dialogue_Start_" + npcID);
-    }
-
-    /// <summary>Advance to next line, or end if complete.</summary>
-    public void AdvanceDialogue()
-    {
-        currentLineIndex++;
-        string[] lines = GetDialogueLines();
-
-        if (currentLineIndex >= lines.Length)
-        {
-            EndDialogue();
-            return;
-        }
-
-        // TODO: Display next line
-    }
-
-    private void EndDialogue()
-    {
-        dialogueActive = false;
-        currentLineIndex = 0;
-        // TODO: Hide dialogue UI
-        S_GameEvent.StoryTrigger("Dialogue_End_" + npcID);
+        S_DialogueUI.EnsureExists().Begin(
+            npcName,
+            lines,
+            textSpeed,
+            onFinished: () => S_GameEvent.StoryTrigger("Dialogue_End_" + npcID));
     }
 
     /// <summary>Selects dialogue lines based on mode and game state.</summary>
@@ -116,10 +96,7 @@ public class S_NPCDialogue : S_NPCbase
 
     private void HandleStoryTrigger(string triggerID)
     {
-        // TODO: React to story triggers (e.g., start dialogue automatically)
         if (triggerID == "Trigger_Dialogue_" + npcID)
-        {
             StartDialogue();
-        }
     }
 }

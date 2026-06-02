@@ -25,6 +25,7 @@ public static class S_GameEvent
     public static event Action<AudioClip> OnPlaySFX;
     public static event Action<AudioClip, float, float> OnPlaySFXPitched;
     public static event Action<AudioClip> OnBGMChange;
+    public static event Action OnStopBgmRequested;
     public static event Action<float> OnBgmVolumeChangeRequested;
     public static event Action<float> OnSfxVolumeChangeRequested;
 
@@ -70,6 +71,7 @@ public static class S_GameEvent
     public static void PlaySFX(AudioClip clip) => OnPlaySFX?.Invoke(clip);
     public static void PlaySFX(AudioClip clip, float pitch, float volumeMultiplier = 1f) => OnPlaySFXPitched?.Invoke(clip, pitch, volumeMultiplier);
     public static void BGMChange(AudioClip clip) => OnBGMChange?.Invoke(clip);
+    public static void StopBgmRequested() => OnStopBgmRequested?.Invoke();
     public static void BgmVolumeChangeRequested(float value) => OnBgmVolumeChangeRequested?.Invoke(value);
     public static void SfxVolumeChangeRequested(float value) => OnSfxVolumeChangeRequested?.Invoke(value);
 

@@ -256,6 +256,61 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+--- !u!1 &1016841271
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1016841273}
+  - component: {fileID: 1016841272}
+  m_Layer: 0
+  m_Name: endSq
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1016841272
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1016841271}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 81fc1023530c4a3f9691c175890d1e28, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier:
+  stopBackgroundMusic: 1
+  endingClip: {fileID: 8300000, guid: c05db94ebb6d6e247bc0d2a65fb3799e, type: 3}
+  fallbackAudioDuration: 4
+  subtitleText: To be continued...
+  subtitleFadeInTime: 1.5
+  subtitleHoldTime: 3
+  subtitleFadeOutTime: 1
+  thanksText: Thanks for playing
+  thanksFadeInTime: 1
+  delayBeforeAudio: 0.5
+  gapBeforeThanks: 0.5
+--- !u!4 &1016841273
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1016841271}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -45.58777, y: 3.53404, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1090454834
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -319,3 +374,4 @@ SceneRoots:
   m_Roots:
   - {fileID: 753921578}
   - {fileID: 1090454834}
+  - {fileID: 1016841273}

@@ -42,6 +42,7 @@ public class S_AudioManager : MonoBehaviour
     private AudioSource bgmSource;
     private AudioSource sfxSource;
     private AudioSource platformAlarmSource;
+    private bool bgmAutoPlaySuppressed;
     private PlatformAlarmFadeState platformAlarmFadeState = PlatformAlarmFadeState.None;
     private float platformAlarmFadeTimer;
     private float platformAlarmFadeDuration;
@@ -85,8 +86,9 @@ public class S_AudioManager : MonoBehaviour
 
     void Start()
     {
-        // Auto-play BGM if a clip is assigned
-        if (bgmClip != null)
+        // Auto-play BGM if a clip is assigned, unless a stop request already suppressed it
+        // (e.g. the END scene asks for silence before Start runs).
+        if (bgmClip != null && !bgmAutoPlaySuppressed)
             PlayBGM(bgmClip);
     }
 
@@ -100,6 +102,7 @@ public class S_AudioManager : MonoBehaviour
         S_GameEvent.OnPlaySFX += PlaySFX;
         S_GameEvent.OnPlaySFXPitched += PlaySFX;
         S_GameEvent.OnBGMChange += PlayBGM;
+        S_GameEvent.OnStopBgmRequested += HandleStopBgmRequested;
         S_GameEvent.OnBgmVolumeChangeRequested += SetBgmVolume;
         S_GameEvent.OnSfxVolumeChangeRequested += SetSfxVolume;
         S_GameEvent.OnSectionDescentStarted += StartPlatformAlarm;
@@ -111,6 +114,7 @@ public class S_AudioManager : MonoBehaviour
         S_GameEvent.OnPlaySFX -= PlaySFX;
         S_GameEvent.OnPlaySFXPitched -= PlaySFX;
         S_GameEvent.OnBGMChange -= PlayBGM;
+        S_GameEvent.OnStopBgmRequested -= HandleStopBgmRequested;
         S_GameEvent.OnBgmVolumeChangeRequested -= SetBgmVolume;
         S_GameEvent.OnSfxVolumeChangeRequested -= SetSfxVolume;
         S_GameEvent.OnSectionDescentStarted -= StartPlatformAlarm;
@@ -157,6 +161,13 @@ public class S_AudioManager : MonoBehaviour
     {
         if (bgmSource != null)
             bgmSource.Stop();
+    }
+
+    // Called via S_GameEvent.StopBgmRequested(); stops BGM and prevents Start() auto-play.
+    private void HandleStopBgmRequested()
+    {
+        bgmAutoPlaySuppressed = true;
+        StopBGM();
     }
 
     public void SetBgmVolume(float value)
