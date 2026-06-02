@@ -37,27 +37,17 @@ public class S_UITutorialPrompt : MonoBehaviour
 
     void Update()
     {
+        // Enter / Numpad Enter / gamepad South can skip whichever prompt is showing.
+        bool skipPressed = S_TutorialSkipInput.WasSkipPressedThisFrame();
+
         if (waitingForInput)
         {
-            // Original: dismiss on any key
-            if (Keyboard.current != null && Keyboard.current.anyKey.wasPressedThisFrame)
+            // Dismiss only on the deliberate skip input so practice key presses
+            // (movement etc.) don't accidentally close the prompt.
+            if (skipPressed)
             {
                 waitingForInput = false;
                 return;
-            }
-
-            if (Gamepad.current != null)
-            {
-                if (Gamepad.current.buttonSouth.wasPressedThisFrame ||
-                    Gamepad.current.buttonEast.wasPressedThisFrame ||
-                    Gamepad.current.buttonNorth.wasPressedThisFrame ||
-                    Gamepad.current.buttonWest.wasPressedThisFrame ||
-                    Gamepad.current.startButton.wasPressedThisFrame ||
-                    Gamepad.current.leftStick.ReadValue().sqrMagnitude > 0.25f)
-                {
-                    waitingForInput = false;
-                    return;
-                }
             }
         }
 
@@ -65,6 +55,14 @@ public class S_UITutorialPrompt : MonoBehaviour
         {
             TrackRequiredInputs();
             UpdateChecklistDisplay();
+
+            // Skip closes the checklist immediately without performing every action.
+            if (skipPressed)
+            {
+                allInputsComplete = true;
+                waitingForAllInputs = false;
+                return;
+            }
 
             // Check completion: keyboard group OR gamepad group fully done
             if (IsKeyboardGroupComplete() || IsGamepadGroupComplete())
@@ -303,6 +301,7 @@ public class S_UITutorialPrompt : MonoBehaviour
             case "E": return Key.E;
             case "Q": return Key.Q;
             case "F": return Key.F;
+            case "G": return Key.G;
             case "R": return Key.R;
             case "TAB": return Key.Tab;
             case "ENTER": return Key.Enter;
@@ -383,7 +382,7 @@ public class S_UITutorialPrompt : MonoBehaviour
             panel.anchorMax = new Vector2(1f, 0.5f);
             panel.pivot = new Vector2(1f, 0.5f);
             panel.anchoredPosition = new Vector2(offScreenX, 0f);
-            panel.sizeDelta = new Vector2(390f, 300f);
+            panel.sizeDelta = new Vector2(420f, 340f);
 
             Image panelImage = panelObject.GetComponent<Image>();
             panelImage.color = new Color(0.04f, 0.05f, 0.06f, 0.88f);
@@ -405,9 +404,10 @@ public class S_UITutorialPrompt : MonoBehaviour
         // Checklist text for required actions tracking
         if (checklistText == null)
         {
-            checklistText = CreateText("Checklist", panel, -175f, 100f, 22f, FontStyles.Normal);
+            checklistText = CreateText("Checklist", panel, -184f, 120f, 24f, FontStyles.Normal);
             checklistText.alignment = TextAlignmentOptions.TopLeft;
             checklistText.color = new Color(0.9f, 0.95f, 1f, 1f);
+            checklistText.lineSpacing = 18f;
             checklistText.gameObject.SetActive(false);
         }
 
@@ -422,7 +422,7 @@ public class S_UITutorialPrompt : MonoBehaviour
         hintRect.offsetMax = new Vector2(-24f, 44f);
 
         TMP_Text hintText = hintObject.GetComponent<TMP_Text>();
-        hintText.text = "Press any key";
+        hintText.text = "Press Enter / × to skip";
         hintText.fontSize = 18f;
         hintText.alignment = TextAlignmentOptions.BottomRight;
         hintText.color = new Color(0.75f, 0.85f, 0.9f, 0.82f);

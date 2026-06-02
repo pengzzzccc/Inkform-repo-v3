@@ -19,11 +19,24 @@ MonoBehaviour:
   countdownDigitVoiceLibrary: {fileID: 11400000, guid: 969313e650e64c1fa53c081d42db3377, type: 2}
   autoGenerateCountdownSubtitle: 1
   countdownSubtitle: Reach the goal within 30 seconds.
-  requiredActions: []
+  requiredActions:
+  - actionName: Move
+    keyboardKeys:
+    - W
+    - A
+    - S
+    - D
+    gamepadKeys:
+    - LeftStick
+  - actionName: Jump
+    keyboardKeys:
+    - Space
+    gamepadKeys:
+    - ButtonSouth
   promptTitle: Movement Controls
   promptDescription: 'WASD / Left Stick - Move
 
-    Space / south bottom - Jump'
+    Space / × Button - Jump'
   timeLimit: 30
   startupDelay: 1
   panToTargetDuration: 1.5

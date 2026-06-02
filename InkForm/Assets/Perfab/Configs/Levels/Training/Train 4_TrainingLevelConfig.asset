@@ -22,14 +22,19 @@ MonoBehaviour:
   countdownDigitVoiceLibrary: {fileID: 11400000, guid: 969313e650e64c1fa53c081d42db3377, type: 2}
   autoGenerateCountdownSubtitle: 1
   countdownSubtitle: Reach the goal within 36 seconds.
-  requiredActions: []
+  requiredActions:
+  - actionName: Climb
+    keyboardKeys:
+    - G
+    gamepadKeys:
+    - RightShoulder
   promptTitle: Fluid Climb Controls
   promptDescription: 'Hold Grip near a wall - Climb
 
     Use Sprint and Climb together
     to cross gaps
 
-    Hold G/east bottom to grip on a wall'
+    Hold G / Right Shoulder to grip on a wall'
   timeLimit: 36
   startupDelay: 0.5
   panToTargetDuration: 1.5

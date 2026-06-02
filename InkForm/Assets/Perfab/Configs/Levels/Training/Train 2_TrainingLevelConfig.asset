@@ -21,11 +21,16 @@ MonoBehaviour:
   countdownDigitVoiceLibrary: {fileID: 11400000, guid: 969313e650e64c1fa53c081d42db3377, type: 2}
   autoGenerateCountdownSubtitle: 1
   countdownSubtitle: Reach the goal within 50 seconds.
-  requiredActions: []
+  requiredActions:
+  - actionName: Sprint
+    keyboardKeys:
+    - LShift
+    gamepadKeys:
+    - ButtonEast
   promptTitle: Sprint Controls
-  promptDescription: "Hold Sprint - Charge\nRelease Sprint - Dash through weak blocks\nusing
-    shift/east bottom to sprint\n\nTo Control camera movement \nHold Q/Left shoulder
-    button\nand using wasd/Left stick to Navigate"
+  promptDescription: "Hold Sprint - Charge\nRelease Sprint - Dash through weak blocks\nShift
+    / East (×) Button to sprint\n\nTo control the camera:\nHold Q / Left Shoulder\nand
+    use WASD / Left Stick to navigate"
   timeLimit: 50
   startupDelay: 0.5
   panToTargetDuration: 1.5
