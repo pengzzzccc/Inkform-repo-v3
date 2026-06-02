@@ -16,6 +16,7 @@ MonoBehaviour:
   skillsToUnlock:
   - Sprint
   - CameraControl
+  - FluidClimb
   familiarizeVoiceClip: {fileID: 8300000, guid: d69399b36d126fc4e9dd27de8cb2bbf2, type: 3}
   familiarizeSubtitle: Now get familiar with the controls.
   countdownDigitVoiceLibrary: {fileID: 11400000, guid: 969313e650e64c1fa53c081d42db3377, type: 2}
@@ -32,3 +33,4 @@ MonoBehaviour:
   preCountdownDelay: 0
   timeoutDeathDelay: 0.5
   hasNPC: 0
+  isLastFixedTutorial: 0

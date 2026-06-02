@@ -38,6 +38,9 @@ public class S_Player : MonoBehaviour, IPlayerActor
     [Header("Camera Control")]
     [SerializeField] private S_CameraMove cameraController;
 
+    [Header("Hook Skill")]
+    [SerializeField] private S_HookTentacleRenderer hookTentacleRenderer;
+
     private S_PlayerSkillController skillController;
     private S_PlayerEnergy playerEnergy;
 
@@ -117,6 +120,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
 
     public bool IsSprintCharging => skillController != null && skillController.IsSprintCharging;
     public bool IsCameraControlActive => skillController != null && skillController.IsCameraControlActive;
+    public bool IsHookActive => skillController != null && skillController.IsHookActive;
     public S_PlayerEnergy Energy => playerEnergy;
 
     private bool movementLocked = false;
@@ -191,6 +195,10 @@ public class S_Player : MonoBehaviour, IPlayerActor
             return;
         }
 
+        skillController?.HandleHookInput();
+        if (IsHookActive)
+            return;
+
         Jump();
         StateRunner();
 
@@ -205,6 +213,8 @@ public class S_Player : MonoBehaviour, IPlayerActor
     void LateUpdate()
     {
         UpdateSprite();
+        if (IsHookActive)
+            skillController.HookRenderTick();
     }
     void StateRunner()
     {
@@ -219,6 +229,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
     void Jump()
     {
         if (IsCameraControlActive) return;
+        if (IsHookActive) return;
         if (movementLocked) return;
 
         if (inkform == form.solid || (inkform == form.fluid && !gripping))
@@ -247,6 +258,13 @@ public class S_Player : MonoBehaviour, IPlayerActor
     {
         if (IsCameraControlActive)
         {
+            UpdateDynamicCollider();
+            return;
+        }
+
+        if (IsHookActive)
+        {
+            skillController.FixedTickHook();
             UpdateDynamicCollider();
             return;
         }
@@ -410,6 +428,8 @@ public class S_Player : MonoBehaviour, IPlayerActor
         if (skillController == null)
             skillController = gameObject.AddComponent<S_PlayerSkillController>();
 
+        SetupHookTentacleRenderer();
+
         skillController.Initialize(
             this,
             m_PlayerMove,
@@ -421,7 +441,23 @@ public class S_Player : MonoBehaviour, IPlayerActor
             body,
             b_Rig,
             solidGravityScale,
-            useDynamicCollider);
+            useDynamicCollider,
+            m_PlayerJump,
+            hookTentacleRenderer);
+    }
+
+    private void SetupHookTentacleRenderer()
+    {
+        if (body == null)
+            return;
+
+        if (hookTentacleRenderer == null)
+            hookTentacleRenderer = body.GetComponent<S_HookTentacleRenderer>();
+
+        if (hookTentacleRenderer == null)
+            hookTentacleRenderer = body.AddComponent<S_HookTentacleRenderer>();
+
+        hookTentacleRenderer.Initialize(body.transform, b_Sprite);
     }
 
     private void SetupEnergy()
@@ -653,6 +689,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
     {
         CancelSprintCharge();
         EndCameraControl();
+        skillController?.CancelHook();
         ClearGripState();
     }
 

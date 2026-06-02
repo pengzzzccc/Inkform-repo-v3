@@ -115,6 +115,13 @@ public class S_SkillTree : MonoBehaviour
             : null;
     }
 
+    public S_HookSkill GetHookSkill()
+    {
+        return unlockedMap.TryGetValue("Hook", out S_SkillBase skill)
+            ? skill as S_HookSkill
+            : null;
+    }
+
     public void ApplyTutorialSkillSet(string[] skillNames)
     {
         ResetUnlockedSkills();

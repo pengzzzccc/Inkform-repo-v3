@@ -34,9 +34,7 @@ MonoBehaviour:
     gamepadKeys:
     - ButtonSouth
   promptTitle: Movement Controls
-  promptDescription: 'WASD / Left Stick - Move
-
-    Space / × Button - Jump'
+  promptDescription: "WASD / Left Stick - Move\nSpace / \xD7 Button - Jump"
   timeLimit: 30
   startupDelay: 1
   panToTargetDuration: 1.5
@@ -45,3 +43,4 @@ MonoBehaviour:
   preCountdownDelay: 0.3
   timeoutDeathDelay: 0.5
   hasNPC: 0
+  isLastFixedTutorial: 0

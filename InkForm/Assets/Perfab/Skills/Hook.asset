@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5506706d4a34edca017f35461c12851, type: 3}
+  m_Name: Hook
+  m_EditorClassIdentifier:
+  skillName: Hook
+  description: Fluid-form grappling tentacle. Swing on a shortening rope and launch off with jump.
+  icon: {fileID: 0}
+  requiredPoints: 0
+  prerequisites: []
+  availableSolid: 0
+  availableFluid: 1
+  minEnergyToStart: 10
+  energyDrainPerSecond: 15
+  detectionRadius: 6
+  maxRopeLength: 8
+  minRopeLength: 0.6
+  riseSpeed: 1.5
+  swingAccel: 40
+  maxSwingSpeed: 18
+  jumpOffBoost: 4

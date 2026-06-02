@@ -33,8 +33,18 @@ public class S_PlayerSkillController : MonoBehaviour
     private float timeScaleBeforeCameraControl = 1f;
     private float fixedDeltaTimeBeforeCameraControl = 0.02f;
 
+    private InputAction jumpAction;
+    private S_HookTentacleRenderer tentacleRenderer;
+    private bool isHookActive;
+    private S_HookSkill hookSkill;
+    private S_Hook currentHook;
+    private S_Hook promptedHook;
+    private float ropeLength;
+    private float hookGravityScaleBackup;
+
     public bool IsSprintCharging => isSprintCharging;
     public bool IsCameraControlActive => isCameraControlActive;
+    public bool IsHookActive => isHookActive;
 
     public void Initialize(
         S_Player owner,
@@ -47,7 +57,9 @@ public class S_PlayerSkillController : MonoBehaviour
         GameObject bodyObject,
         Rigidbody2D rigidbody,
         float gravityScale,
-        bool dynamicColliderEnabled)
+        bool dynamicColliderEnabled,
+        InputAction jump = null,
+        S_HookTentacleRenderer tentacle = null)
     {
         player = owner;
         moveAction = move;
@@ -60,6 +72,8 @@ public class S_PlayerSkillController : MonoBehaviour
         bodyRigidbody = rigidbody;
         solidGravityScale = gravityScale;
         useDynamicCollider = dynamicColliderEnabled;
+        jumpAction = jump;
+        tentacleRenderer = tentacle;
 
         SetupSprintChargeAudioSource();
     }
@@ -379,5 +393,220 @@ public class S_PlayerSkillController : MonoBehaviour
         sprintChargeSource.loop = true;
         sprintChargeSource.spatialBlend = 0f;
         sprintChargeSource.pitch = 1f;
+    }
+
+    // ──────────────────────────────────────────────
+    //  Hook (grappling tentacle) skill
+    // ──────────────────────────────────────────────
+
+    /// <summary>Update() hook: scan/select anchors and show the prompt, or detach on jump.</summary>
+    public void HandleHookInput()
+    {
+        if (player == null)
+            return;
+
+        if (isHookActive)
+        {
+            // Jump releases the hook with the current swing momentum.
+            if (jumpAction != null && jumpAction.WasPerformedThisFrame())
+                DetachHook(true);
+            return;
+        }
+
+        // Only selectable in fluid form, when nothing else owns the player.
+        if (!CanStartHook())
+        {
+            SetPromptedHook(null);
+            return;
+        }
+
+        if (hookSkill == null && S_SkillTree.Instance != null)
+            hookSkill = S_SkillTree.Instance.GetHookSkill();
+
+        if (hookSkill == null)
+        {
+            SetPromptedHook(null);
+            return;
+        }
+
+        S_Hook best = FindBestHook(hookSkill.DetectionRadius);
+        SetPromptedHook(best);
+
+        if (best == null)
+            return;
+
+        if (S_PlayerInteractInput.WasPressedThisFrame()
+            && (player.Energy == null || player.Energy.CanStartSkill(hookSkill)))
+        {
+            BeginHook(best);
+        }
+    }
+
+    private bool CanStartHook()
+    {
+        if (!player.IsFluidForm || player.IsParalyzed || player.IsMovementLocked)
+            return false;
+
+        if (isCameraControlActive || isSprintCharging)
+            return false;
+
+        return S_SkillTree.Instance == null || S_SkillTree.Instance.IsUnlocked("Hook");
+    }
+
+    private S_Hook FindBestHook(float radius)
+    {
+        Vector2 origin = bodyRigidbody != null ? bodyRigidbody.position : (Vector2)player.BodyTransform.position;
+        float facing = player.FacingRight ? 1f : -1f;
+        float radiusSqr = radius * radius;
+
+        S_Hook best = null;
+        float bestScore = float.NegativeInfinity;
+
+        for (int i = 0; i < S_Hook.All.Count; i++)
+        {
+            S_Hook hook = S_Hook.All[i];
+            if (hook == null)
+                continue;
+
+            Vector2 toHook = hook.AnchorPosition - origin;
+            float distSqr = toHook.sqrMagnitude;
+            if (distSqr > radiusSqr || distSqr < 0.0001f)
+                continue;
+
+            float dist = Mathf.Sqrt(distSqr);
+            Vector2 dir = toHook / dist;
+            // Prefer hooks aligned with the facing direction, then closer ones.
+            float alignment = dir.x * facing;            // -1..1
+            float score = alignment - dist / radius;     // facing dominates, distance breaks ties
+            if (score > bestScore)
+            {
+                bestScore = score;
+                best = hook;
+            }
+        }
+
+        return best;
+    }
+
+    private void SetPromptedHook(S_Hook hook)
+    {
+        if (promptedHook == hook)
+            return;
+
+        if (promptedHook != null)
+            promptedHook.SetPromptVisible(false);
+
+        promptedHook = hook;
+
+        if (promptedHook != null)
+            promptedHook.SetPromptVisible(true);
+    }
+
+    private void BeginHook(S_Hook hook)
+    {
+        if (hook == null || bodyRigidbody == null)
+            return;
+
+        currentHook = hook;
+        isHookActive = true;
+
+        Vector2 pos = bodyRigidbody.position;
+        float dist = Vector2.Distance(pos, hook.AnchorPosition);
+        ropeLength = Mathf.Clamp(dist, hookSkill.MinRopeLength, hookSkill.MaxRopeLength);
+
+        player.ClearGripState();
+        SetPromptedHook(null);
+
+        hookGravityScaleBackup = bodyRigidbody.gravityScale;
+
+        if (tentacleRenderer != null)
+            tentacleRenderer.SetActive(true);
+    }
+
+    /// <summary>FixedUpdate hook: pendulum + rope shortening + energy drain.</summary>
+    public void FixedTickHook()
+    {
+        if (!isHookActive || bodyRigidbody == null || hookSkill == null || currentHook == null)
+            return;
+
+        float dt = Time.fixedDeltaTime;
+
+        if (player.Energy != null && !player.Energy.TryConsumeSkillEnergy(hookSkill, dt))
+        {
+            DetachHook(false);
+            return;
+        }
+
+        // Rope steadily shortens so the player rises toward the hook.
+        ropeLength = Mathf.MoveTowards(ropeLength, hookSkill.MinRopeLength, hookSkill.RiseSpeed * dt);
+
+        Vector2 anchor = currentHook.AnchorPosition;
+        Vector2 pos = bodyRigidbody.position;
+        Vector2 toPlayer = pos - anchor;
+        float dist = toPlayer.magnitude;
+        if (dist < 0.0001f)
+        {
+            DetachHook(false);
+            return;
+        }
+
+        Vector2 radial = toPlayer / dist;
+        Vector2 tangent = new Vector2(-radial.y, radial.x);
+
+        Vector2 v = bodyRigidbody.linearVelocity;
+        // Constrain to the circle: remove the radial velocity component (gravity stays tangential).
+        v -= radial * Vector2.Dot(v, radial);
+        // Move keys push the swing along the tangent.
+        float moveX = moveAction != null ? moveAction.ReadValue<Vector2>().x : 0f;
+        v += tangent * (moveX * hookSkill.SwingAccel * dt);
+        v = Vector2.ClampMagnitude(v, hookSkill.MaxSwingSpeed);
+        bodyRigidbody.linearVelocity = v;
+
+        // Hard length constraint (pulls the player inward as the rope shortens).
+        bodyRigidbody.position = anchor + radial * ropeLength;
+
+        if (ropeLength <= hookSkill.MinRopeLength + 0.001f)
+            DetachHook(false);
+    }
+
+    private void DetachHook(bool launched)
+    {
+        if (!isHookActive)
+            return;
+
+        isHookActive = false;
+
+        if (bodyRigidbody != null)
+        {
+            bodyRigidbody.gravityScale = hookGravityScaleBackup > 0f ? hookGravityScaleBackup : solidGravityScale;
+            if (launched && hookSkill != null)
+                bodyRigidbody.linearVelocity += Vector2.up * hookSkill.JumpOffBoost;
+        }
+
+        if (tentacleRenderer != null)
+            tentacleRenderer.SetActive(false);
+
+        if (player != null && player.Energy != null)
+            player.Energy.NotifySkillUseStopped();
+
+        currentHook = null;
+    }
+
+    /// <summary>LateUpdate hook: draw the tentacle while attached.</summary>
+    public void HookRenderTick()
+    {
+        if (!isHookActive || tentacleRenderer == null || currentHook == null || bodyRigidbody == null)
+            return;
+
+        float swingSpeed = bodyRigidbody.linearVelocity.magnitude;
+        tentacleRenderer.RenderTick(bodyRigidbody.position, currentHook.AnchorPosition, swingSpeed);
+    }
+
+    /// <summary>Called when the player cancels all active skills (form switch, scene change, etc.).</summary>
+    public void CancelHook()
+    {
+        SetPromptedHook(null);
+        if (isHookActive)
+            DetachHook(false);
     }
 }
