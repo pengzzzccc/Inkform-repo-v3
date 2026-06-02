@@ -118,6 +118,12 @@ public class S_Player : MonoBehaviour, IPlayerActor
     private ContactPoint2D[] groundContacts;
     private float slopeAssistDisabledTimer;
 
+    [Header("Hook Launch Momentum")]
+    [SerializeField, Min(0f)] private float hookLaunchMomentumTime = 1.2f;
+    private float hookLaunchMomentumTimer;
+    public void BeginHookLaunchMomentum() => hookLaunchMomentumTimer = hookLaunchMomentumTime;
+    private bool HookLaunchMomentumActive => hookLaunchMomentumTimer > 0f;
+
     public bool IsSprintCharging => skillController != null && skillController.IsSprintCharging;
     public bool IsCameraControlActive => skillController != null && skillController.IsCameraControlActive;
     public bool IsHookActive => skillController != null && skillController.IsHookActive;
@@ -281,6 +287,13 @@ public class S_Player : MonoBehaviour, IPlayerActor
         SampleWalkableGround();
         ResetJumpCountIfGrounded();
 
+        if (hookLaunchMomentumTimer > 0f)
+        {
+            hookLaunchMomentumTimer -= Time.fixedDeltaTime;
+            if (isGroundedOnWalkableSurface)
+                hookLaunchMomentumTimer = 0f;
+        }
+
         if (inkform == form.solid)
             SolidMovement();
         else
@@ -319,9 +332,26 @@ public class S_Player : MonoBehaviour, IPlayerActor
         {
             moveV = input;
             float speed = isParalyzed ? moveSpeed * paralyzeSlowMultiplier : moveSpeed;
-            b_Rig.linearVelocity = ShouldUseSlopeMovement(moveV)
-                ? GetSlopeVelocity(moveV, speed)
-                : new Vector2(moveV * speed, b_Rig.linearVelocity.y);
+            if (HookLaunchMomentumActive)
+            {
+                // Keep the swing-launch inertia; allow light air steering but never kill speed.
+                float currentX = b_Rig.linearVelocity.x;
+                float desiredX = moveV * speed;
+                float newX;
+                if (Mathf.Abs(moveV) < 0.01f)
+                    newX = currentX;
+                else if (Mathf.Sign(desiredX) == Mathf.Sign(currentX))
+                    newX = Mathf.Abs(desiredX) > Mathf.Abs(currentX) ? desiredX : currentX;
+                else
+                    newX = desiredX;
+                b_Rig.linearVelocity = new Vector2(newX, b_Rig.linearVelocity.y);
+            }
+            else
+            {
+                b_Rig.linearVelocity = ShouldUseSlopeMovement(moveV)
+                    ? GetSlopeVelocity(moveV, speed)
+                    : new Vector2(moveV * speed, b_Rig.linearVelocity.y);
+            }
         }
 
         if (moveV > 0 && !facingRight)

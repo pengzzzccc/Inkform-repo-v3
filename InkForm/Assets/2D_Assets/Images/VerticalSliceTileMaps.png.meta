@@ -1,28 +1,10 @@
 fileFormatVersion: 2
-guid: 9c0916d6e9bb41c45bccbc8c08cd593f
+guid: de90988f67f01054db38af0b1ac03248
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -8008386434924409948
-    second: NuclearReactorSprites2_0
-  - first:
-      213: 8658874730643006926
-    second: NuclearReactorSprites2_1
-  - first:
-      213: -4510777647535662451
-    second: NuclearReactorSprites2_2
-  - first:
-      213: 3652951500936425144
-    second: NuclearReactorSprites2_3
-  - first:
-      213: 5652318085957847588
-    second: NuclearReactorSprites2_4
-  - first:
-      213: 8582015783430262058
-    second: NuclearReactorSprites2_5
-  - first:
-      213: -3827749121001875339
-    second: NuclearReactorSprites2_6
+      213: 190056626790794716
+    second: VerticalSliceTileMaps_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -69,7 +51,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 32
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -115,7 +97,7 @@ TextureImporter:
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 4
-    buildTarget: WebGL
+    buildTarget: Android
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
@@ -128,7 +110,7 @@ TextureImporter:
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 4
-    buildTarget: Android
+    buildTarget: WebGL
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
@@ -144,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: NuclearReactorSprites2_0
+      name: VerticalSliceTileMaps_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 1024
-        width: 801
-        height: 251
+        y: 64
+        width: 32
+        height: 32
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -159,140 +141,184 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 4ab064ab7fe7cd090800000000000000
-      internalID: -8008386434924409948
+      spriteID: cd5031fbe7733a200800000000000000
+      internalID: 190056626790794716
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: NuclearReactorSprites2_1
+      name: VerticalSliceTileMaps_1
       rect:
         serializedVersion: 2
-        x: 1017
-        y: 799
-        width: 366
-        height: 789
+        x: 32
+        y: 64
+        width: 32
+        height: 32
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: ec5259ad0b08a2870800000000000000
-      internalID: 8658874730643006926
+      spriteID: af4d1a0bb67f60445a658725fcf62deb
+      internalID: 524230767
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: NuclearReactorSprites2_2
+      name: VerticalSliceTileMaps_2
       rect:
         serializedVersion: 2
-        x: 1807
-        y: 876
-        width: 384
-        height: 724
+        x: 64
+        y: 64
+        width: 32
+        height: 32
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: d8a5dd1f0af7661c0800000000000000
-      internalID: -4510777647535662451
+      spriteID: 3f2062136b97f4344a882d0a586cdf7e
+      internalID: -1025366480
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: NuclearReactorSprites2_3
+      name: VerticalSliceTileMaps_3
       rect:
         serializedVersion: 2
-        x: 2545
-        y: 799
-        width: 501
-        height: 712
+        x: 0
+        y: 32
+        width: 32
+        height: 32
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 8beab033904e1b230800000000000000
-      internalID: 3652951500936425144
+      spriteID: 80a4871ba46e59a4483faa76b2d65b54
+      internalID: 1496649229
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: NuclearReactorSprites2_4
+      name: VerticalSliceTileMaps_4
       rect:
         serializedVersion: 2
-        x: 130
-        y: 15
-        width: 490
-        height: 773
+        x: 32
+        y: 32
+        width: 32
+        height: 32
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 42a88071a51117e40800000000000000
-      internalID: 5652318085957847588
+      spriteID: 7398ef7a06d055541894688b34d5debc
+      internalID: -965765611
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: NuclearReactorSprites2_5
+      name: VerticalSliceTileMaps_5
       rect:
         serializedVersion: 2
-        x: 972
-        y: 15
-        width: 457
-        height: 772
+        x: 64
+        y: 32
+        width: 32
+        height: 32
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: a2d0824b2e1791770800000000000000
-      internalID: 8582015783430262058
+      spriteID: 129ae7378e860ee4c96341d2d124e078
+      internalID: 1626744292
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: NuclearReactorSprites2_6
+      name: VerticalSliceTileMaps_6
       rect:
         serializedVersion: 2
-        x: 1771
-        y: 14
-        width: 457
-        height: 772
+        x: 0
+        y: 0
+        width: 32
+        height: 32
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 5789e59647a11eac0800000000000000
-      internalID: -3827749121001875339
+      spriteID: c796cef05bcc2774187376ff98606625
+      internalID: 1108273373
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: VerticalSliceTileMaps_7
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 0
+        width: 32
+        height: 32
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 90c3586540b3f2b4195638fe72e26ff1
+      internalID: 454371355
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: VerticalSliceTileMaps_8
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 0
+        width: 32
+        height: 32
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 914f8b188f4f8ba42a93e159f13c95db
+      internalID: 90077024
       vertices: []
       indices: 
       edges: []
@@ -301,7 +327,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: f4a4abffc071cb04781d680ef878dfd6
     internalID: 0
     vertices: []
     indices: 
@@ -309,15 +335,19 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     spriteCustomMetadata:
-      entries: []
+      entries:
+      - key: SpriteEditor.SliceSettings
+        value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":32.0,"y":32.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"slicingType":1,"keepEmptyRects":false,"isAlternate":false}'
     nameFileIdTable:
-      NuclearReactorSprites2_0: -8008386434924409948
-      NuclearReactorSprites2_1: 8658874730643006926
-      NuclearReactorSprites2_2: -4510777647535662451
-      NuclearReactorSprites2_3: 3652951500936425144
-      NuclearReactorSprites2_4: 5652318085957847588
-      NuclearReactorSprites2_5: 8582015783430262058
-      NuclearReactorSprites2_6: -3827749121001875339
+      VerticalSliceTileMaps_0: 190056626790794716
+      VerticalSliceTileMaps_1: 524230767
+      VerticalSliceTileMaps_2: -1025366480
+      VerticalSliceTileMaps_3: 1496649229
+      VerticalSliceTileMaps_4: -965765611
+      VerticalSliceTileMaps_5: 1626744292
+      VerticalSliceTileMaps_6: 1108273373
+      VerticalSliceTileMaps_7: 454371355
+      VerticalSliceTileMaps_8: 90077024
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

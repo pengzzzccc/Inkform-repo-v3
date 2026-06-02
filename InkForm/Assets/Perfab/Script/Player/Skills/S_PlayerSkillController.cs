@@ -589,6 +589,10 @@ public class S_PlayerSkillController : MonoBehaviour
         if (player != null && player.Energy != null)
             player.Energy.NotifySkillUseStopped();
 
+        // Preserve the swing momentum so the player flies out instead of stopping mid-air.
+        if (player != null)
+            player.BeginHookLaunchMomentum();
+
         currentHook = null;
     }
 

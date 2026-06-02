@@ -11,9 +11,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b5506706d4a34edca017f35461c12851, type: 3}
   m_Name: Hook
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   skillName: Hook
-  description: Fluid-form grappling tentacle. Swing on a shortening rope and launch off with jump.
+  description: Fluid-form grappling tentacle. Swing on a shortening rope and launch
+    off with jump.
   icon: {fileID: 0}
   requiredPoints: 0
   prerequisites: []
@@ -21,7 +22,7 @@ MonoBehaviour:
   availableFluid: 1
   minEnergyToStart: 10
   energyDrainPerSecond: 15
-  detectionRadius: 6
+  detectionRadius: 10
   maxRopeLength: 8
   minRopeLength: 0.6
   riseSpeed: 1.5
