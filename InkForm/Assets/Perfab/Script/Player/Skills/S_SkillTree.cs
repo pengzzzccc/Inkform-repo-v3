@@ -122,6 +122,21 @@ public class S_SkillTree : MonoBehaviour
             : null;
     }
 
+    /// <summary>All authored skill names (for the command console: completion + unlockall).</summary>
+    public IReadOnlyList<string> GetAllSkillNames()
+    {
+        List<string> names = new List<string>();
+        if (allSkills == null)
+            return names;
+
+        foreach (S_SkillBase skill in allSkills)
+        {
+            if (skill != null && !string.IsNullOrEmpty(skill.skillName))
+                names.Add(skill.skillName);
+        }
+        return names;
+    }
+
     public void ApplyTutorialSkillSet(string[] skillNames)
     {
         ResetUnlockedSkills();

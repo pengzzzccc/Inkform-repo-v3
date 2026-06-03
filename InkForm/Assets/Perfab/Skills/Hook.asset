@@ -23,7 +23,7 @@ MonoBehaviour:
   minEnergyToStart: 10
   energyDrainPerSecond: 15
   detectionRadius: 10
-  maxRopeLength: 8
+  maxRopeLength: 10
   minRopeLength: 0.6
   riseSpeed: 1.5
   swingAccel: 40

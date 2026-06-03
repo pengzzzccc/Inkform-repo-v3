@@ -108,6 +108,13 @@ public class S_PlayerEnergy : MonoBehaviour
         BroadcastEnergyChanged();
     }
 
+    /// <summary>Set energy to an absolute value (clamped). Used by the debug command console.</summary>
+    public void SetEnergy(float value)
+    {
+        currentEnergy = Mathf.Clamp(value, 0f, maxEnergy);
+        BroadcastEnergyChanged();
+    }
+
     private void HandleRespawnRequested()
     {
         if (resetOnCheckpointRespawn)
