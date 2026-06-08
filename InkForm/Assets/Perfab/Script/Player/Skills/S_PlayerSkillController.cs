@@ -28,10 +28,10 @@ public class S_PlayerSkillController : MonoBehaviour
     private bool chargeVisualsActive;
     private AudioSource sprintChargeSource;
 
+    private const string CameraLookInputLockId = "CameraLook";
+
     private bool isCameraControlActive;
     private S_CameraControlSkill cameraControlSkill;
-    private float timeScaleBeforeCameraControl = 1f;
-    private float fixedDeltaTimeBeforeCameraControl = 0.02f;
 
     private InputAction jumpAction;
     private S_HookTentacleRenderer tentacleRenderer;
@@ -101,17 +101,14 @@ public class S_PlayerSkillController : MonoBehaviour
 
     public void CameraControlTick()
     {
-        if (player != null
-            && cameraControlSkill != null
-            && player.Energy != null
-            && !player.Energy.TryConsumeSkillEnergy(cameraControlSkill, Time.unscaledDeltaTime))
-        {
-            EndCameraControl();
+        if (cameraController == null)
             return;
-        }
 
-        if (cameraController != null && moveAction != null)
-            cameraController.ManualControlTick(moveAction.ReadValue<Vector2>());
+        InputSystem_Actions.CameraActions camera = S_Input.Actions.Camera;
+        Vector2 pan = camera.CameraPan.ReadValue<Vector2>();
+        bool zoomIn = camera.ZoomIn.IsPressed();
+        bool zoomOut = camera.ZoomOut.IsPressed();
+        cameraController.LookTick(pan, zoomIn, zoomOut);
     }
 
     public void TickCooldown()
@@ -138,12 +135,8 @@ public class S_PlayerSkillController : MonoBehaviour
         if (cameraController == null)
             cameraController = FindAnyObjectByType<S_CameraMove>();
 
-        timeScaleBeforeCameraControl = Time.timeScale;
-        fixedDeltaTimeBeforeCameraControl = Time.fixedDeltaTime;
-
-        float bulletScale = cameraControlSkill.BulletTimeScale;
-        Time.timeScale = timeScaleBeforeCameraControl * bulletScale;
-        Time.fixedDeltaTime = fixedDeltaTimeBeforeCameraControl * bulletScale;
+        // Lock the player's gameplay input so the look-mode keys only drive the camera.
+        S_GameEvent.PushGameplayInputLock(CameraLookInputLockId);
 
         if (cameraController != null)
             cameraController.BeginManualControl();
@@ -156,8 +149,7 @@ public class S_PlayerSkillController : MonoBehaviour
 
         isCameraControlActive = false;
 
-        Time.timeScale = timeScaleBeforeCameraControl;
-        Time.fixedDeltaTime = fixedDeltaTimeBeforeCameraControl;
+        S_GameEvent.PopGameplayInputLock(CameraLookInputLockId);
 
         if (cameraController != null)
             cameraController.EndManualControl();

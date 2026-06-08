@@ -1,10 +1,7 @@
-using System;
 using UnityEngine;
 
 public class S_CameraMove : MonoBehaviour
 {
-    private const string CameraPanInputLockId = "CameraPan";
-
     [Header("Follow Target")]
     [SerializeField] private GameObject target;
     [SerializeField] private float smoothSpeed = 8f;
@@ -22,6 +19,13 @@ public class S_CameraMove : MonoBehaviour
     [Header("Manual Control")]
     [SerializeField] private float manualMoveSpeed = 8f;
     [SerializeField] private float manualMaxDistanceFromTarget = 8f;
+    [SerializeField] private float recenterSpeed = 6f;
+
+    [Header("Look Mode Zoom")]
+    [SerializeField] private Camera cam;
+    [SerializeField, Min(0.5f)] private float minZoom = 3f;
+    [SerializeField, Min(0.5f)] private float maxZoom = 12f;
+    [SerializeField, Min(0.1f)] private float zoomSpeed = 8f;
 
     [Header("Gizmos")]
     [SerializeField] private bool drawDeadZoneGizmo = true;
@@ -31,9 +35,17 @@ public class S_CameraMove : MonoBehaviour
 
     private bool manualControlActive = false;
     private float cameraCenterY;
+    private float defaultZoom;
 
     void Start()
     {
+        if (cam == null)
+            cam = GetComponent<Camera>();
+        if (cam == null)
+            cam = Camera.main;
+        if (cam != null)
+            defaultZoom = cam.orthographicSize;
+
         if (target != null)
         {
             Vector3 tPos = target.transform.position;
@@ -49,6 +61,10 @@ public class S_CameraMove : MonoBehaviour
 
         if (manualControlActive)
             return;
+
+        // Smoothly restore default zoom once look mode ends.
+        if (cam != null && !Mathf.Approximately(cam.orthographicSize, defaultZoom))
+            cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, defaultZoom, 1f - Mathf.Exp(-zoomSpeed * Time.deltaTime));
 
         Vector3 targetPos = target.transform.position;
 
@@ -78,23 +94,44 @@ public class S_CameraMove : MonoBehaviour
         manualControlActive = true;
     }
 
-    public void ManualControlTick(Vector2 moveInput)
+    /// <summary>
+    /// Drive the camera while in look mode: pan with input, zoom with the zoom buttons
+    /// (persists, clamped), and linearly recenter on the player when there is no pan input.
+    /// </summary>
+    public void LookTick(Vector2 pan, bool zoomIn, bool zoomOut)
     {
         if (!manualControlActive || target == null)
             return;
 
-        Vector3 delta = new Vector3(moveInput.x, moveInput.y, 0f);
-        if (delta.sqrMagnitude > 1f)
-            delta.Normalize();
-
-        transform.position += delta * (manualMoveSpeed * Time.unscaledDeltaTime);
+        if (cam != null && (zoomIn ^ zoomOut))
+        {
+            float dir = zoomIn ? -1f : 1f; // zoom in -> smaller orthographic size
+            cam.orthographicSize = Mathf.Clamp(
+                cam.orthographicSize + dir * zoomSpeed * Time.unscaledDeltaTime,
+                minZoom, maxZoom);
+        }
 
         Vector3 targetCenter = new Vector3(target.transform.position.x, target.transform.position.y, transform.position.z);
-        Vector3 offset = transform.position - targetCenter;
-        offset.z = 0f;
 
-        if (offset.magnitude > manualMaxDistanceFromTarget)
-            transform.position = targetCenter + offset.normalized * manualMaxDistanceFromTarget;
+        if (pan.sqrMagnitude > 0.0001f)
+        {
+            Vector3 delta = new Vector3(pan.x, pan.y, 0f);
+            if (delta.sqrMagnitude > 1f)
+                delta.Normalize();
+
+            transform.position += delta * (manualMoveSpeed * Time.unscaledDeltaTime);
+
+            Vector3 offset = transform.position - targetCenter;
+            offset.z = 0f;
+            if (offset.magnitude > manualMaxDistanceFromTarget)
+                transform.position = targetCenter + offset.normalized * manualMaxDistanceFromTarget;
+        }
+        else
+        {
+            transform.position = Vector3.Lerp(transform.position, targetCenter, 1f - Mathf.Exp(-recenterSpeed * Time.unscaledDeltaTime));
+        }
+
+        transform.position = ClampToBounds(transform.position);
     }
 
     public void EndManualControl()
@@ -102,121 +139,6 @@ public class S_CameraMove : MonoBehaviour
         manualControlActive = false;
         if (target != null)
             cameraCenterY = transform.position.y;
-    }
-
-    /// <summary>
-    /// Coroutine: pause player follow, pan camera to target world position,
-    /// hold, then return to player and resume follow.
-    /// </summary>
-    public System.Collections.IEnumerator PanToTarget(
-        Vector3 targetWorldPos,
-        float moveDuration,
-        float holdDuration,
-        float returnDuration,
-        Func<bool> skipRequested = null)
-    {
-        BeginManualControl();
-        S_GameEvent.PushGameplayInputLock(CameraPanInputLockId);
-        S_GameEvent.CameraPanStarted();
-        bool skipped = false;
-        try
-        {
-            yield return LerpCameraTo(targetWorldPos, moveDuration, skipRequested, () => skipped = true);
-            if (skipped)
-            {
-                SnapCameraToPlayer();
-                yield break;
-            }
-
-            if (holdDuration > 0f)
-            {
-                yield return WaitOrSkip(holdDuration, skipRequested, () => skipped = true);
-                if (skipped)
-                {
-                    SnapCameraToPlayer();
-                    yield break;
-                }
-            }
-
-            if (target != null)
-            {
-                Vector3 playerPos = new Vector3(target.transform.position.x, target.transform.position.y, transform.position.z);
-                yield return LerpCameraTo(playerPos, returnDuration, skipRequested, () => skipped = true);
-                if (skipped)
-                    SnapCameraToPlayer();
-            }
-        }
-        finally
-        {
-            EndManualControl();
-            S_GameEvent.CameraPanEnded();
-            S_GameEvent.PopGameplayInputLock(CameraPanInputLockId);
-        }
-    }
-
-    private System.Collections.IEnumerator LerpCameraTo(
-        Vector3 destination,
-        float duration,
-        Func<bool> skipRequested,
-        Action onSkipped)
-    {
-        Vector3 endPos = ClampToBounds(destination);
-
-        if (duration <= 0f)
-        {
-            transform.position = endPos;
-            yield break;
-        }
-
-        Vector3 startPos = transform.position;
-        float elapsed = 0f;
-
-        while (elapsed < duration)
-        {
-            if (ShouldSkip(skipRequested))
-            {
-                onSkipped?.Invoke();
-                yield break;
-            }
-
-            elapsed += Time.unscaledDeltaTime;
-            float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
-            transform.position = ClampToBounds(Vector3.Lerp(startPos, endPos, t));
-            yield return null;
-        }
-
-        transform.position = endPos;
-    }
-
-    private System.Collections.IEnumerator WaitOrSkip(float duration, Func<bool> skipRequested, Action onSkipped)
-    {
-        float endTime = Time.unscaledTime + duration;
-        while (Time.unscaledTime < endTime)
-        {
-            if (ShouldSkip(skipRequested))
-            {
-                onSkipped?.Invoke();
-                yield break;
-            }
-
-            yield return null;
-        }
-    }
-
-    private static bool ShouldSkip(Func<bool> skipRequested)
-    {
-        return skipRequested != null && skipRequested();
-    }
-
-    private void SnapCameraToPlayer()
-    {
-        if (target == null)
-            return;
-
-        transform.position = ClampToBounds(new Vector3(
-            target.transform.position.x,
-            target.transform.position.y,
-            transform.position.z));
     }
 
     private Vector3 ClampToBounds(Vector3 position)

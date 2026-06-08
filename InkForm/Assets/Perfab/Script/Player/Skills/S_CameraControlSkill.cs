@@ -3,11 +3,6 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "Skill_CameraControl", menuName = "InkForm/Skills/CameraControl")]
 public class S_CameraControlSkill : S_SkillBase
 {
-    [Header("Bullet Time")]
-    [SerializeField, Range(0.01f, 1f)] private float bulletTimeScale = 0.2f;
-
-    public float BulletTimeScale => Mathf.Clamp(bulletTimeScale, 0.01f, 1f);
-
     private void OnEnable()
     {
         if (string.IsNullOrWhiteSpace(skillName))

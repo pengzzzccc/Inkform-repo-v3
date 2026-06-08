@@ -168,7 +168,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
         m_PlayerJump = actions.Player.Jump;
         m_PlayerSprint = actions.Player.Sprint;
         m_PlayerGrep = actions.Player.grep;
-        m_PlayerCameraControl = actions.Player.CameraControl;
+        m_PlayerCameraControl = actions.Camera.CameraControl;
 
         b_Sprite.sprite = sprites[0];
         b_Rig.gravityScale = solidGravityScale;
