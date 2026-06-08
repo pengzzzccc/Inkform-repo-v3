@@ -337,10 +337,7 @@ public class S_HideSpot : MonoBehaviour
         if (hideAction != null)
             return;
 
-        if (!S_InputBindingManager.TryGetExisting(out S_InputBindingManager inputManager))
-            return;
-
-        hideAction = inputManager.Actions.Player.Hide;
+        hideAction = S_Input.Actions.Player.Hide;
     }
 
     private bool HidePressedThisFrame()

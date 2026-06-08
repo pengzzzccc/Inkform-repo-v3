@@ -24,10 +24,6 @@ public class S_RunFlowController : MonoBehaviour
 
     private RunPhase phase = RunPhase.NotStarted;
     private RoomId currentRoom = RoomId.None;
-    private int fixedTrainingIndex;
-    private int completedRandomTrainingRooms;
-    private int randomTrainingTargetCount;
-    private readonly List<int> drawnRandomTrainingIndices = new List<int>();
     private bool hasPendingRoomEntry;
     private S_RoomTransitionRequest pendingRoomEntry;
     private Coroutine doorEntryRoutine;
@@ -55,7 +51,6 @@ public class S_RunFlowController : MonoBehaviour
         S_GameEvent.OnRoomEnterRequested += HandleRoomEnterRequested;
         S_GameEvent.OnEndingRequested += EnterEnding;
         S_GameEvent.OnReturnToStartMenuRequested += ReturnToStartMenu;
-        S_GameEvent.OnStoryTrigger += HandleStoryTrigger;
         SceneManager.sceneLoaded += HandleSceneLoaded;
     }
 
@@ -66,7 +61,6 @@ public class S_RunFlowController : MonoBehaviour
         S_GameEvent.OnRoomEnterRequested -= HandleRoomEnterRequested;
         S_GameEvent.OnEndingRequested -= EnterEnding;
         S_GameEvent.OnReturnToStartMenuRequested -= ReturnToStartMenu;
-        S_GameEvent.OnStoryTrigger -= HandleStoryTrigger;
         SceneManager.sceneLoaded -= HandleSceneLoaded;
     }
 
@@ -83,16 +77,7 @@ public class S_RunFlowController : MonoBehaviour
 
         ResetRunState();
         S_GameEvent.SuspicionResetRequested();
-
-        if (runFlowConfig.FixedTrainingCount > 0)
-        {
-            phase = RunPhase.FixedTraining;
-            fixedTrainingIndex = 0;
-            LoadLevelEntry(runFlowConfig.GetFixedTrainingLevel(fixedTrainingIndex));
-            return;
-        }
-
-        BeginRandomTrainingOrFacility();
+        EnterFacility();
     }
 
     public void ReturnToStartMenu()
@@ -131,12 +116,6 @@ public class S_RunFlowController : MonoBehaviour
     {
         switch (phase)
         {
-            case RunPhase.FixedTraining:
-                AdvanceFixedTraining();
-                break;
-            case RunPhase.RandomTraining:
-                AdvanceRandomTraining();
-                break;
             case RunPhase.Facility:
                 Debug.LogWarning($"[RunFlow] Ignored level completion '{reason}' during facility phase. Use RoomExit or EndingTrigger for facility navigation.");
                 break;
@@ -147,69 +126,6 @@ public class S_RunFlowController : MonoBehaviour
                 Debug.LogWarning($"[RunFlow] Level completed while no run is active. Reason: {reason}.");
                 break;
         }
-    }
-
-    private void AdvanceFixedTraining()
-    {
-        fixedTrainingIndex++;
-        if (fixedTrainingIndex < runFlowConfig.FixedTrainingCount)
-        {
-            LoadLevelEntry(runFlowConfig.GetFixedTrainingLevel(fixedTrainingIndex));
-            return;
-        }
-
-        BeginRandomTrainingOrFacility();
-    }
-
-    private void BeginRandomTrainingOrFacility()
-    {
-        if (runFlowConfig.RandomTrainingPoolCount <= 0)
-        {
-            EnterFacility();
-            return;
-        }
-
-        randomTrainingTargetCount = runFlowConfig.GetRandomTrainingTargetCount();
-        if (randomTrainingTargetCount <= 0)
-        {
-            EnterFacility();
-            return;
-        }
-
-        phase = RunPhase.RandomTraining;
-        completedRandomTrainingRooms = 0;
-        drawnRandomTrainingIndices.Clear();
-        LoadLevelEntry(runFlowConfig.GetRandomTrainingLevel(DrawRandomTrainingIndex()));
-    }
-
-    private void AdvanceRandomTraining()
-    {
-        completedRandomTrainingRooms++;
-        if (completedRandomTrainingRooms >= randomTrainingTargetCount
-            || drawnRandomTrainingIndices.Count >= runFlowConfig.RandomTrainingPoolCount)
-        {
-            EnterFacility();
-            return;
-        }
-
-        LoadLevelEntry(runFlowConfig.GetRandomTrainingLevel(DrawRandomTrainingIndex()));
-    }
-
-    private int DrawRandomTrainingIndex()
-    {
-        List<int> available = new List<int>();
-        for (int i = 0; i < runFlowConfig.RandomTrainingPoolCount; i++)
-        {
-            if (!drawnRandomTrainingIndices.Contains(i))
-                available.Add(i);
-        }
-
-        if (available.Count == 0)
-            return -1;
-
-        int picked = available[Random.Range(0, available.Count)];
-        drawnRandomTrainingIndices.Add(picked);
-        return picked;
     }
 
     private void EnterFacility()
@@ -298,40 +214,10 @@ public class S_RunFlowController : MonoBehaviour
         S_GameEvent.SceneLoadRequested(runFlowConfig.EndingSceneKey);
     }
 
-    private void HandleStoryTrigger(string triggerID)
-    {
-        if (phase != RunPhase.Facility
-            || runFlowConfig == null
-            || string.IsNullOrWhiteSpace(runFlowConfig.DrRoomEndingStoryId)
-            || triggerID != runFlowConfig.DrRoomEndingStoryId)
-        {
-            return;
-        }
-
-        EnterEnding();
-    }
-
-    private void LoadLevelEntry(S_LevelSceneEntry entry)
-    {
-        if (entry == null || !entry.HasScene)
-        {
-            Debug.LogError("[RunFlow] Tried to load an empty level entry.");
-            return;
-        }
-
-        currentRoom = RoomId.None;
-        ClearPendingRoomEntry();
-        S_GameEvent.SceneLoadRequested(entry.SceneKey);
-    }
-
     private void ResetRunState()
     {
         phase = RunPhase.NotStarted;
         currentRoom = RoomId.None;
-        fixedTrainingIndex = 0;
-        completedRandomTrainingRooms = 0;
-        randomTrainingTargetCount = 0;
-        drawnRandomTrainingIndices.Clear();
         ClearPendingRoomEntry();
     }
 

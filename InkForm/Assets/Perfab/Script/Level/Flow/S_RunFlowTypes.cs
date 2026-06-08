@@ -24,13 +24,11 @@ public class S_LevelSceneEntry
     [SerializeField] private string displayName;
     [SerializeField] private S_LevelKind levelKind;
     [SerializeField] private S_SceneReference scene = new S_SceneReference();
-    [SerializeField] private S_TrainingLevelConfig trainingConfig;
 
     public string Id => id;
     public string DisplayName => string.IsNullOrWhiteSpace(displayName) ? id : displayName;
     public S_LevelKind LevelKind => levelKind;
     public S_SceneReference Scene => scene;
-    public S_TrainingLevelConfig TrainingConfig => trainingConfig;
     public string SceneKey => scene != null ? scene.RuntimeKey : string.Empty;
     public bool HasScene => scene != null && scene.IsValid;
 

@@ -18,18 +18,12 @@ public class S_StartMenuController : MonoBehaviour
     private Canvas canvas;
     private RectTransform mainMenuRoot;
     private RectTransform settingsPanel;
-    private TMP_Text rebindStatusText;
-    private Button cancelRebindButton;
-    private Coroutine rebindStartCoroutine;
-    private BindingButtonView activeRebind;
+    private Button settingsBackButton;
     private InputAction cancelAction;
     private Button startButton;
     private Button settingsButton;
     private Button exitButton;
     private Coroutine selectStartNextFrameRoutine;
-
-    private readonly List<BindingButtonView> bindingButtons = new List<BindingButtonView>();
-    private readonly List<Button> settingsButtons = new List<Button>();
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void RegisterSceneHook()
@@ -80,22 +74,9 @@ public class S_StartMenuController : MonoBehaviour
             return;
         }
 
-        S_InputBindingManager inputBindingManager = S_InputBindingManager.Instance;
-        if (inputBindingManager == null)
-        {
-            enabled = false;
-            return;
-        }
-
-        cancelAction = inputBindingManager.Actions.UI.Cancel;
+        cancelAction = S_Input.Actions.UI.Cancel;
         BuildStartMenu();
         Time.timeScale = 1f;
-    }
-
-    private void OnEnable()
-    {
-        if (S_InputBindingManager.HasInstance)
-            S_InputBindingManager.Instance.BindingsChanged += RefreshBindingLabels;
     }
 
     private void OnDisable()
@@ -105,19 +86,12 @@ public class S_StartMenuController : MonoBehaviour
             StopCoroutine(selectStartNextFrameRoutine);
             selectStartNextFrameRoutine = null;
         }
-
-        if (S_InputBindingManager.HasInstance)
-        {
-            S_InputBindingManager.Instance.CancelRebind();
-            S_InputBindingManager.Instance.BindingsChanged -= RefreshBindingLabels;
-        }
     }
 
     private void Update()
     {
         if (settingsPanel != null
             && settingsPanel.gameObject.activeSelf
-            && !S_InputBindingManager.Instance.IsRebinding
             && cancelAction != null
             && cancelAction.WasPressedThisFrame())
         {
@@ -142,7 +116,6 @@ public class S_StartMenuController : MonoBehaviour
         bool hasRequiredManagers = true;
         hasRequiredManagers &= HasManagerUnderRoot<S_GameManager>(root, "GameManager");
         hasRequiredManagers &= HasManagerUnderRoot<S_RunFlowController>(root, "RunFlowController");
-        hasRequiredManagers &= HasManagerUnderRoot<S_InputBindingManager>(root, "InputBindingManager");
         hasRequiredManagers &= HasManagerUnderRoot<S_AudioManager>(root, "AudioManager");
         hasRequiredManagers &= HasManagerUnderRoot<S_SuspicionSystem>(root, "SuspicionSystem");
         hasRequiredManagers &= HasManagerUnderRoot<S_UIManager>(root, "UIManager");
@@ -179,14 +152,7 @@ public class S_StartMenuController : MonoBehaviour
         if (inputModule == null)
             inputModule = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
 
-        S_InputBindingManager inputBindingManager = S_InputBindingManager.Instance;
-        if (inputBindingManager == null)
-        {
-            Debug.LogError("[StartMenu] Cannot configure EventSystem because S_InputBindingManager is missing.");
-            return false;
-        }
-
-        InputSystem_Actions actions = inputBindingManager.Actions;
+        InputSystem_Actions actions = S_Input.Actions;
         inputModule.actionsAsset = actions.asset;
         inputModule.point = InputActionReference.Create(actions.UI.Point);
         inputModule.leftClick = InputActionReference.Create(actions.UI.Click);
@@ -405,18 +371,7 @@ public class S_StartMenuController : MonoBehaviour
         CreateVolumeRow(panel, "BGM Volume", new Vector2(0f, -88f), true);
         CreateVolumeRow(panel, "SFX Volume", new Vector2(0f, -136f), false);
 
-        TMP_Text controlsTitle = CreateText("ControlsTitle", panel, "Controls", 24f, TextAlignmentOptions.Left);
-        RectTransform controlsTitleRect = controlsTitle.GetComponent<RectTransform>();
-        controlsTitleRect.anchorMin = new Vector2(0f, 1f);
-        controlsTitleRect.anchorMax = new Vector2(1f, 1f);
-        controlsTitleRect.pivot = new Vector2(0.5f, 1f);
-        controlsTitleRect.anchoredPosition = new Vector2(0f, -188f);
-        controlsTitleRect.sizeDelta = new Vector2(-88f, 34f);
-
-        RectTransform scroll = CreateControlsScroll(panel);
-        AddBindingRows(scroll);
         CreateSettingsFooter(panel);
-        RefreshBindingLabels();
 
         return panel;
     }
@@ -495,120 +450,8 @@ public class S_StartMenuController : MonoBehaviour
         return slider;
     }
 
-    private RectTransform CreateControlsScroll(RectTransform parent)
-    {
-        GameObject scrollObject = new GameObject("ControlsScroll", typeof(RectTransform), typeof(ScrollRect));
-        scrollObject.transform.SetParent(parent, false);
-
-        RectTransform scrollRectTransform = scrollObject.GetComponent<RectTransform>();
-        scrollRectTransform.anchorMin = new Vector2(0.5f, 1f);
-        scrollRectTransform.anchorMax = new Vector2(0.5f, 1f);
-        scrollRectTransform.pivot = new Vector2(0.5f, 1f);
-        scrollRectTransform.anchoredPosition = new Vector2(0f, -228f);
-        scrollRectTransform.sizeDelta = new Vector2(790f, 315f);
-
-        GameObject viewport = new GameObject("Viewport", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Mask));
-        viewport.transform.SetParent(scrollObject.transform, false);
-        RectTransform viewportRect = viewport.GetComponent<RectTransform>();
-        Stretch(viewportRect);
-        viewport.GetComponent<Image>().color = new Color(0.02f, 0.025f, 0.06f, 0.55f);
-        viewport.GetComponent<Mask>().showMaskGraphic = true;
-
-        GameObject content = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
-        content.transform.SetParent(viewport.transform, false);
-        RectTransform contentRect = content.GetComponent<RectTransform>();
-        contentRect.anchorMin = new Vector2(0f, 1f);
-        contentRect.anchorMax = new Vector2(1f, 1f);
-        contentRect.pivot = new Vector2(0.5f, 1f);
-        contentRect.anchoredPosition = Vector2.zero;
-        contentRect.sizeDelta = new Vector2(0f, 0f);
-
-        VerticalLayoutGroup layout = content.GetComponent<VerticalLayoutGroup>();
-        layout.padding = new RectOffset(12, 12, 10, 10);
-        layout.spacing = 6f;
-        layout.childControlWidth = true;
-        layout.childControlHeight = false;
-        layout.childForceExpandWidth = true;
-        layout.childForceExpandHeight = false;
-
-        ContentSizeFitter fitter = content.GetComponent<ContentSizeFitter>();
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        ScrollRect scrollRect = scrollObject.GetComponent<ScrollRect>();
-        scrollRect.viewport = viewportRect;
-        scrollRect.content = contentRect;
-        scrollRect.horizontal = false;
-        scrollRect.vertical = true;
-        scrollRect.scrollSensitivity = 28f;
-
-        return contentRect;
-    }
-
-    private void AddBindingRows(RectTransform content)
-    {
-        AddBindingRow(content, "Move Up", BindingTarget.Keyboard("Move", "up", "Button"), null);
-        AddBindingRow(content, "Move Down", BindingTarget.Keyboard("Move", "down", "Button"), null);
-        AddBindingRow(content, "Move Left", BindingTarget.Keyboard("Move", "left", "Button"), null);
-        AddBindingRow(content, "Move Right", BindingTarget.Keyboard("Move", "right", "Button"), null);
-        AddBindingRow(content, "Move Stick", null, BindingTarget.Gamepad("Move", null, "Vector2"));
-        AddBindingRow(content, "Jump", BindingTarget.Keyboard("Jump", null, "Button"), BindingTarget.Gamepad("Jump", null, "Button"));
-        AddBindingRow(content, "Sprint", BindingTarget.Keyboard("Sprint", null, "Button"), BindingTarget.Gamepad("Sprint", null, "Button"));
-        AddBindingRow(content, "Interact", BindingTarget.Keyboard("Interact", null, "Button"), BindingTarget.Gamepad("Interact", null, "Button"));
-        AddBindingRow(content, "Grip", BindingTarget.Keyboard("grep", null, "Button"), BindingTarget.Gamepad("grep", null, "Button"));
-        AddBindingRow(content, "Hide", BindingTarget.Keyboard("Hide", null, "Button"), BindingTarget.Gamepad("Hide", null, "Button"));
-        AddBindingRow(content, "Camera Control", BindingTarget.Keyboard("CameraControl", null, "Button"), BindingTarget.Gamepad("CameraControl", null, "Button"));
-        AddBindingRow(content, "Open Menu", BindingTarget.Keyboard("OpenMenu", null, "Button", "<Keyboard>"), BindingTarget.Gamepad("OpenMenu", null, "Button"));
-    }
-
-    private void AddBindingRow(RectTransform parent, string label, BindingTarget keyboardTarget, BindingTarget gamepadTarget)
-    {
-        GameObject row = new GameObject(label.Replace(" ", string.Empty) + "Row", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
-        row.transform.SetParent(parent, false);
-
-        HorizontalLayoutGroup layout = row.GetComponent<HorizontalLayoutGroup>();
-        layout.spacing = 10f;
-        layout.childAlignment = TextAnchor.MiddleCenter;
-        layout.childControlHeight = true;
-        layout.childForceExpandHeight = false;
-
-        LayoutElement element = row.GetComponent<LayoutElement>();
-        element.preferredHeight = 36f;
-
-        TMP_Text labelText = CreateText("Label", row.transform, label, 16f, TextAlignmentOptions.Left);
-        AddLayout(labelText.gameObject, 190f, 30f);
-
-        CreateBindingButton(row.transform, keyboardTarget);
-        CreateBindingButton(row.transform, gamepadTarget);
-    }
-
-    private void CreateBindingButton(Transform parent, BindingTarget target)
-    {
-        if (target == null)
-        {
-            TMP_Text placeholder = CreateText("Empty", parent, "-", 15f, TextAlignmentOptions.Center);
-            AddLayout(placeholder.gameObject, 255f, 30f);
-            return;
-        }
-
-        Button button = CreateSmallButton(parent, "-");
-        AddLayout(button.gameObject, 255f, 30f);
-
-        TMP_Text text = button.GetComponentInChildren<TMP_Text>();
-        BindingButtonView view = new BindingButtonView(button, text, target);
-        bindingButtons.Add(view);
-        settingsButtons.Add(button);
-        button.onClick.AddListener(() => BeginRebind(view));
-    }
-
     private void CreateSettingsFooter(RectTransform parent)
     {
-        rebindStatusText = CreateText("RebindStatus", parent, string.Empty, 15f, TextAlignmentOptions.Center);
-        RectTransform statusRect = rebindStatusText.GetComponent<RectTransform>();
-        statusRect.anchorMin = statusRect.anchorMax = new Vector2(0.5f, 0f);
-        statusRect.pivot = new Vector2(0.5f, 0f);
-        statusRect.anchoredPosition = new Vector2(0f, 78f);
-        statusRect.sizeDelta = new Vector2(600f, 24f);
-
         RectTransform footer = CreateRect("Footer", parent);
         footer.anchorMin = footer.anchorMax = new Vector2(0.5f, 0f);
         footer.pivot = new Vector2(0.5f, 0f);
@@ -622,25 +465,9 @@ public class S_StartMenuController : MonoBehaviour
         layout.childControlHeight = true;
         layout.childForceExpandWidth = false;
 
-        Button reset = CreateSmallButton(footer, "Reset All");
-        reset.onClick.AddListener(() =>
-        {
-            S_InputBindingManager.Instance.CancelRebind();
-            S_InputBindingManager.Instance.ResetAllBindings();
-            RefreshBindingLabels();
-        });
-        AddLayout(reset.gameObject, 160f, 34f);
-        settingsButtons.Add(reset);
-
-        cancelRebindButton = CreateSmallButton(footer, "Cancel Rebind");
-        cancelRebindButton.onClick.AddListener(() => S_InputBindingManager.Instance.CancelRebind());
-        cancelRebindButton.interactable = false;
-        AddLayout(cancelRebindButton.gameObject, 170f, 34f);
-
-        Button back = CreateSmallButton(footer, "Back");
-        back.onClick.AddListener(ShowMainMenu);
-        AddLayout(back.gameObject, 150f, 34f);
-        settingsButtons.Add(back);
+        settingsBackButton = CreateSmallButton(footer, "Back");
+        settingsBackButton.onClick.AddListener(ShowMainMenu);
+        AddLayout(settingsBackButton.gameObject, 150f, 34f);
     }
 
     private Button CreateSmallButton(Transform parent, string label)
@@ -678,129 +505,14 @@ public class S_StartMenuController : MonoBehaviour
     {
         mainMenuRoot.gameObject.SetActive(false);
         settingsPanel.gameObject.SetActive(true);
-        RefreshBindingLabels();
-        SelectFirstSettingsButton();
+        SelectButton(settingsBackButton);
     }
 
     private void ShowMainMenu()
     {
-        if (S_InputBindingManager.HasInstance)
-            S_InputBindingManager.Instance.CancelRebind();
-
         settingsPanel.gameObject.SetActive(false);
         mainMenuRoot.gameObject.SetActive(true);
-        activeRebind = null;
-        SetSettingsInteractable(true);
         SelectButtonNextFrame(startButton);
-    }
-
-    private void BeginRebind(BindingButtonView view)
-    {
-        if (rebindStartCoroutine != null)
-            StopCoroutine(rebindStartCoroutine);
-
-        rebindStartCoroutine = StartCoroutine(StartRebindAfterFrame(view));
-    }
-
-    private IEnumerator StartRebindAfterFrame(BindingButtonView view)
-    {
-        yield return null;
-        rebindStartCoroutine = null;
-        StartRebind(view);
-    }
-
-    private void StartRebind(BindingButtonView view)
-    {
-        activeRebind = view;
-        SetSettingsInteractable(false);
-        view.Label.text = "press input...";
-
-        if (rebindStatusText != null)
-            rebindStatusText.text = "waiting for input";
-
-        SelectButton(cancelRebindButton);
-
-        bool started = S_InputBindingManager.Instance.StartInteractiveRebind(
-            view.Target.ActionName,
-            view.Target.BindingGroup,
-            view.Target.PartName,
-            view.Target.DevicePath,
-            view.Target.ExpectedControlType,
-            CompleteRebind,
-            CancelRebind);
-
-        if (started) return;
-
-        activeRebind = null;
-        SetSettingsInteractable(true);
-        RefreshBindingLabels();
-
-        if (rebindStatusText != null)
-            rebindStatusText.text = "binding unavailable";
-    }
-
-    private void CompleteRebind()
-    {
-        BindingButtonView completed = activeRebind;
-        activeRebind = null;
-        SetSettingsInteractable(true);
-        RefreshBindingLabels();
-        SelectButton(completed != null ? completed.Button : null);
-
-        if (rebindStatusText != null)
-            rebindStatusText.text = "saved";
-    }
-
-    private void CancelRebind()
-    {
-        BindingButtonView cancelled = activeRebind;
-        activeRebind = null;
-        SetSettingsInteractable(true);
-        RefreshBindingLabels();
-        SelectButton(cancelled != null ? cancelled.Button : null);
-
-        if (rebindStatusText != null)
-            rebindStatusText.text = "cancelled";
-    }
-
-    private void SetSettingsInteractable(bool interactable)
-    {
-        foreach (Button button in settingsButtons)
-        {
-            if (button != null)
-                button.interactable = interactable;
-        }
-
-        if (cancelRebindButton != null)
-            cancelRebindButton.interactable = !interactable;
-    }
-
-    private void RefreshBindingLabels()
-    {
-        foreach (BindingButtonView view in bindingButtons)
-        {
-            if (view == null || view.Label == null || activeRebind == view)
-                continue;
-
-            BindingTarget target = view.Target;
-            view.Label.text = S_InputBindingManager.Instance.GetBindingDisplayString(
-                target.ActionName,
-                target.BindingGroup,
-                target.PartName,
-                target.DevicePath);
-        }
-    }
-
-    private void SelectFirstSettingsButton()
-    {
-        foreach (BindingButtonView view in bindingButtons)
-        {
-            if (view.Button != null && view.Button.interactable)
-            {
-                SelectButton(view.Button);
-                return;
-            }
-        }
     }
 
     private void SelectButton(Button button)
@@ -1054,52 +766,6 @@ public class S_StartMenuController : MonoBehaviour
         return Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(radius, radius, radius, radius));
     }
 
-    private class BindingTarget
-    {
-        public string ActionName { get; private set; }
-        public string BindingGroup { get; private set; }
-        public string PartName { get; private set; }
-        public string DevicePath { get; private set; }
-        public string ExpectedControlType { get; private set; }
-
-        public static BindingTarget Keyboard(string actionName, string partName, string expectedControlType, string devicePath = null)
-        {
-            return new BindingTarget
-            {
-                ActionName = actionName,
-                BindingGroup = "Keyboard&Mouse",
-                PartName = partName,
-                DevicePath = devicePath,
-                ExpectedControlType = expectedControlType
-            };
-        }
-
-        public static BindingTarget Gamepad(string actionName, string partName, string expectedControlType)
-        {
-            return new BindingTarget
-            {
-                ActionName = actionName,
-                BindingGroup = "Gamepad",
-                PartName = partName,
-                DevicePath = "<Gamepad>",
-                ExpectedControlType = expectedControlType
-            };
-        }
-    }
-
-    private class BindingButtonView
-    {
-        public Button Button { get; private set; }
-        public TMP_Text Label { get; private set; }
-        public BindingTarget Target { get; private set; }
-
-        public BindingButtonView(Button button, TMP_Text label, BindingTarget target)
-        {
-            Button = button;
-            Label = label;
-            Target = target;
-        }
-    }
 }
 
 public class StartMenuStar : MonoBehaviour

@@ -163,7 +163,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
         b_CircleCol = body.GetComponent<CircleCollider2D>();
         b_Col = b_CircleCol;
 
-        InputSystem_Actions actions = S_InputBindingManager.Instance.Actions;
+        InputSystem_Actions actions = S_Input.Actions;
         m_PlayerMove = actions.Player.Move;
         m_PlayerJump = actions.Player.Jump;
         m_PlayerSprint = actions.Player.Sprint;
@@ -695,8 +695,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
 
     void OnEnable()
     {
-        if (S_InputBindingManager.TryGetExisting(out S_InputBindingManager inputManager))
-            inputManager.Actions.Player.Enable();
+        S_Input.Actions.Player.Enable();
     }
 
 
@@ -705,8 +704,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
         CancelSprintCharge();
         EndCameraControl();
 
-        if (S_InputBindingManager.TryGetExisting(out S_InputBindingManager inputManager))
-            inputManager.Actions.Player.Disable();
+        S_Input.Actions.Player.Disable();
     }
 
     private void BeginSprintCharge() => skillController?.BeginSprintCharge();

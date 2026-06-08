@@ -46,18 +46,11 @@ public class S_Hook : MonoBehaviour
     {
         if (!All.Contains(this))
             All.Add(this);
-
-        if (S_InputBindingManager.HasInstance)
-            S_InputBindingManager.Instance.BindingsChanged += RefreshLabel;
     }
 
     private void OnDisable()
     {
         All.Remove(this);
-
-        if (S_InputBindingManager.HasInstance)
-            S_InputBindingManager.Instance.BindingsChanged -= RefreshLabel;
-
         SetPromptVisible(false);
     }
 
@@ -82,9 +75,9 @@ public class S_Hook : MonoBehaviour
 
     private string ResolveDisplay()
     {
-        if (!string.IsNullOrWhiteSpace(actionName) && S_InputBindingManager.HasInstance)
+        if (!string.IsNullOrWhiteSpace(actionName))
         {
-            string display = S_InputBindingManager.Instance.GetBindingDisplayString(actionName, bindingGroup, partName, devicePath);
+            string display = S_Input.GetBindingDisplayString(actionName, bindingGroup, partName, devicePath);
             if (!string.IsNullOrWhiteSpace(display) && display != "-")
                 return display;
         }
