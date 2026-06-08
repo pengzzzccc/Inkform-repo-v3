@@ -68,8 +68,12 @@ public class S_NPCDialogue : S_NPCbase
         if (S_DialogueUI.Instance != null && S_DialogueUI.Instance.IsActive)
             return;
 
+        S_DialogueUI dialogue = S_DialogueUI.EnsureExists();
+        if (dialogue == null)
+            return;
+
         S_GameEvent.StoryTrigger("Dialogue_Start_" + npcID);
-        S_DialogueUI.EnsureExists().Begin(
+        dialogue.Begin(
             npcName,
             lines,
             textSpeed,

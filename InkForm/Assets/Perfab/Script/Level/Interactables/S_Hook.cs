@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 /// <summary>
 /// A grappling hook anchor point. Passive: it registers itself in a static list so the
 /// player's Hook skill can scan nearby anchors (no per-hook trigger / layer setup needed).
-/// Builds a small world-space "interact key" prompt at runtime that the skill toggles on
-/// the currently selected hook via SetPromptVisible.
+/// Its own authored world-space prompt (an inactive child object) is toggled by the skill via
+/// SetPromptVisible, so the prompt doubles as the "this hook is selected" highlight. The key
+/// label follows the current input mapping.
 /// </summary>
 public class S_Hook : MonoBehaviour
 {
@@ -15,81 +15,81 @@ public class S_Hook : MonoBehaviour
     public static readonly List<S_Hook> All = new List<S_Hook>();
 
     [Header("Prompt")]
-    [Tooltip("Text shown in the world-space prompt (the interact key).")]
-    [SerializeField] private string interactKeyLabel = "E";
+    [Tooltip("Input action whose mapped key is shown. Leave empty to always use Fallback Label.")]
+    [SerializeField] private string actionName;
+    [SerializeField] private string bindingGroup = "Keyboard&Mouse";
+    [SerializeField] private string partName;
+    [SerializeField] private string devicePath;
+    [Tooltip("Shown when no action is set or the binding can't be resolved.")]
+    [SerializeField] private string fallbackLabel = "E";
     [SerializeField] private Vector2 promptWorldOffset = new Vector2(0f, 0.9f);
-    [SerializeField] private float promptWorldScale = 0.01f;
+
+    [Header("Prompt Refs")]
+    [SerializeField] private GameObject promptRoot;
+    [SerializeField] private TMP_Text promptLabel;
 
     [Header("Gizmos")]
     [SerializeField] private bool drawGizmos = true;
     [SerializeField] private Color gizmoColor = new Color(1f, 0.6f, 0.2f, 0.85f);
 
-    private Canvas promptCanvas;
-    private GameObject promptRoot;
-    private TMP_Text promptLabel;
-    private bool promptBuilt;
-
     public Vector2 AnchorPosition => transform.position;
+
+    private void Awake()
+    {
+        if (promptRoot != null)
+            promptRoot.SetActive(false);
+
+        RefreshLabel();
+    }
 
     private void OnEnable()
     {
         if (!All.Contains(this))
             All.Add(this);
+
+        if (S_InputBindingManager.HasInstance)
+            S_InputBindingManager.Instance.BindingsChanged += RefreshLabel;
     }
 
     private void OnDisable()
     {
         All.Remove(this);
+
+        if (S_InputBindingManager.HasInstance)
+            S_InputBindingManager.Instance.BindingsChanged -= RefreshLabel;
+
         SetPromptVisible(false);
     }
 
     /// <summary>Show or hide the world-space interact prompt above this hook.</summary>
     public void SetPromptVisible(bool visible)
     {
-        if (visible && !promptBuilt)
-            BuildPrompt();
-
         if (promptRoot != null)
             promptRoot.SetActive(visible);
+
+        if (visible)
+            RefreshLabel();
     }
 
-    private void BuildPrompt()
+    /// <summary>Re-resolve the mapped key and update the prompt label.</summary>
+    private void RefreshLabel()
     {
-        promptBuilt = true;
+        if (promptLabel == null)
+            return;
 
-        promptRoot = new GameObject("HookPrompt", typeof(RectTransform), typeof(Canvas));
-        promptRoot.transform.SetParent(transform, false);
-        promptRoot.transform.localPosition = promptWorldOffset;
+        promptLabel.text = ResolveDisplay();
+    }
 
-        promptCanvas = promptRoot.GetComponent<Canvas>();
-        promptCanvas.renderMode = RenderMode.WorldSpace;
+    private string ResolveDisplay()
+    {
+        if (!string.IsNullOrWhiteSpace(actionName) && S_InputBindingManager.HasInstance)
+        {
+            string display = S_InputBindingManager.Instance.GetBindingDisplayString(actionName, bindingGroup, partName, devicePath);
+            if (!string.IsNullOrWhiteSpace(display) && display != "-")
+                return display;
+        }
 
-        RectTransform canvasRect = promptRoot.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(120f, 120f);
-        canvasRect.localScale = Vector3.one * promptWorldScale;
-
-        GameObject bg = new GameObject("Bg", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        bg.transform.SetParent(promptRoot.transform, false);
-        RectTransform bgRect = bg.GetComponent<RectTransform>();
-        bgRect.sizeDelta = new Vector2(96f, 96f);
-        Image bgImage = bg.GetComponent<Image>();
-        bgImage.color = new Color(0f, 0f, 0f, 0.55f);
-        bgImage.raycastTarget = false;
-
-        GameObject label = new GameObject("Key", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
-        label.transform.SetParent(promptRoot.transform, false);
-        RectTransform labelRect = label.GetComponent<RectTransform>();
-        labelRect.sizeDelta = new Vector2(96f, 96f);
-
-        promptLabel = label.GetComponent<TextMeshProUGUI>();
-        promptLabel.text = interactKeyLabel;
-        promptLabel.alignment = TextAlignmentOptions.Center;
-        promptLabel.fontSize = 64f;
-        promptLabel.fontStyle = FontStyles.Bold;
-        promptLabel.color = new Color(0.94f, 0.98f, 1f, 1f);
-        promptLabel.raycastTarget = false;
-
-        promptRoot.SetActive(false);
+        return fallbackLabel;
     }
 
     private void OnDrawGizmos()

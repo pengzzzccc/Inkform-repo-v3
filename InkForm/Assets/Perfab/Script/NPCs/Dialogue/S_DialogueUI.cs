@@ -3,15 +3,14 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 /// <summary>
-/// Minimal reusable dialogue box. Builds its own screen-space canvas at runtime
-/// (bottom panel with a speaker name and a typed-out body line) and advances on the
-/// player's Interact input. Gameplay input is locked for the duration via the
-/// shared input-lock events.
+/// Minimal reusable dialogue box. The bottom panel (speaker name + typed-out body
+/// line) is an authored prefab placed under ManagerRoot; advances on the player's
+/// Interact input. Gameplay input is locked for the duration via the shared
+/// input-lock events.
 ///
-/// Lazy singleton: callers use S_DialogueUI.EnsureExists().Begin(...). Driven by
+/// Singleton: callers use S_DialogueUI.EnsureExists().Begin(...). Driven by
 /// S_NPCDialogue, but any system can show a linear dialogue through Begin().
 /// </summary>
 public class S_DialogueUI : MonoBehaviour
@@ -21,13 +20,12 @@ public class S_DialogueUI : MonoBehaviour
     public static S_DialogueUI Instance { get; private set; }
 
     [Header("Layout")]
-    [SerializeField] private int canvasSortingOrder = 840;
     [SerializeField] private float defaultTextSpeed = 0.04f;
 
-    private Canvas canvas;
-    private GameObject panel;
-    private TMP_Text speakerLabel;
-    private TMP_Text bodyLabel;
+    [Header("UI Refs")]
+    [SerializeField] private GameObject panel;
+    [SerializeField] private TMP_Text speakerLabel;
+    [SerializeField] private TMP_Text bodyLabel;
 
     private Coroutine dialogueRoutine;
     private bool inputLockHeld;
@@ -39,8 +37,12 @@ public class S_DialogueUI : MonoBehaviour
         if (Instance != null)
             return Instance;
 
-        GameObject host = new GameObject("DialogueUI");
-        return host.AddComponent<S_DialogueUI>();
+        S_DialogueUI found = FindAnyObjectByType<S_DialogueUI>(FindObjectsInactive.Include);
+        if (found != null)
+            return found;
+
+        Debug.LogError("[DialogueUI] No S_DialogueUI found. Place the DialogueUI prefab under ManagerRoot.");
+        return null;
     }
 
     private void Awake()
@@ -52,7 +54,6 @@ public class S_DialogueUI : MonoBehaviour
         }
         Instance = this;
 
-        BuildUI();
         HidePanel();
     }
 
@@ -176,67 +177,4 @@ public class S_DialogueUI : MonoBehaviour
             bodyLabel.text = string.Empty;
     }
 
-    private void BuildUI()
-    {
-        GameObject canvasObject = new GameObject(
-            "DialogueCanvas",
-            typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-        canvasObject.transform.SetParent(transform, false);
-
-        canvas = canvasObject.GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = canvasSortingOrder;
-
-        CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1366f, 768f);
-        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        scaler.matchWidthOrHeight = 0.5f;
-
-        panel = new GameObject("DialoguePanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        panel.transform.SetParent(canvasObject.transform, false);
-
-        RectTransform panelRect = panel.GetComponent<RectTransform>();
-        panelRect.anchorMin = new Vector2(0.5f, 0f);
-        panelRect.anchorMax = new Vector2(0.5f, 0f);
-        panelRect.pivot = new Vector2(0.5f, 0f);
-        panelRect.anchoredPosition = new Vector2(0f, 48f);
-        panelRect.sizeDelta = new Vector2(1040f, 170f);
-
-        Image panelImage = panel.GetComponent<Image>();
-        panelImage.color = new Color(0f, 0f, 0f, 0.42f);
-        panelImage.raycastTarget = false;
-
-        speakerLabel = CreateLabel("SpeakerText", panel.transform, 26f, FontStyles.Bold);
-        RectTransform speakerRect = speakerLabel.rectTransform;
-        speakerRect.anchorMin = new Vector2(0f, 1f);
-        speakerRect.anchorMax = new Vector2(1f, 1f);
-        speakerRect.pivot = new Vector2(0f, 1f);
-        speakerRect.offsetMin = new Vector2(28f, -46f);
-        speakerRect.offsetMax = new Vector2(-28f, -12f);
-        speakerLabel.alignment = TextAlignmentOptions.Left;
-        speakerLabel.color = new Color(0.7f, 0.88f, 1f, 1f);
-
-        bodyLabel = CreateLabel("BodyText", panel.transform, 28f, FontStyles.Normal);
-        RectTransform bodyRect = bodyLabel.rectTransform;
-        bodyRect.anchorMin = Vector2.zero;
-        bodyRect.anchorMax = Vector2.one;
-        bodyRect.offsetMin = new Vector2(28f, 16f);
-        bodyRect.offsetMax = new Vector2(-28f, -52f);
-        bodyLabel.alignment = TextAlignmentOptions.TopLeft;
-        bodyLabel.textWrappingMode = TextWrappingModes.Normal;
-    }
-
-    private TMP_Text CreateLabel(string objectName, Transform parent, float fontSize, FontStyles fontStyle)
-    {
-        GameObject textObject = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
-        textObject.transform.SetParent(parent, false);
-
-        TextMeshProUGUI label = textObject.GetComponent<TextMeshProUGUI>();
-        label.fontSize = fontSize;
-        label.fontStyle = fontStyle;
-        label.color = Color.white;
-        label.raycastTarget = false;
-        return label;
-    }
 }

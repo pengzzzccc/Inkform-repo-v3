@@ -24,9 +24,11 @@ public class S_GameManager : MonoBehaviour
     [SerializeField] private Color transitionColor = new Color(0f, 0f, 0f, 1f);
     [SerializeField] private AudioClip transitionClip;
 
+    [Header("Scene Transition Refs")]
+    [SerializeField] private Canvas transitionCanvas;
+    [SerializeField] private Image transitionImage;
+
     private bool isFrameRateUnlocked;
-    private Canvas transitionCanvas;
-    private Image transitionImage;
     private Coroutine sceneLoadRoutine;
     private float defaultFixedDeltaTime;
 
@@ -147,7 +149,7 @@ public class S_GameManager : MonoBehaviour
         try
         {
             PrepareForSceneChange();
-            EnsureTransitionOverlay();
+            ShowTransitionOverlay();
 
             if (transitionClip != null)
                 S_GameEvent.PlaySFX(transitionClip);
@@ -196,46 +198,21 @@ public class S_GameManager : MonoBehaviour
         S_GameEvent.SuspicionResetRequested();
     }
 
-    private void EnsureTransitionOverlay()
+    private void ShowTransitionOverlay()
     {
-        if (transitionCanvas != null && transitionImage != null)
+        if (transitionCanvas == null || transitionImage == null)
         {
-            transitionCanvas.gameObject.SetActive(true);
-            transitionCanvas.transform.SetAsLastSibling();
+            Debug.LogError("[GameManager] Scene transition overlay is not assigned. Assign Transition Canvas / Transition Image in the inspector.");
             return;
         }
 
-        GameObject canvasObject = new GameObject("SceneTransitionCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-        canvasObject.transform.SetParent(transform, false);
-
-        transitionCanvas = canvasObject.GetComponent<Canvas>();
-        transitionCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        transitionCanvas.sortingOrder = 1000;
-
-        CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1366f, 768f);
-        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        scaler.matchWidthOrHeight = 0.5f;
-
-        GameObject imageObject = new GameObject("InkFade", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        imageObject.transform.SetParent(canvasObject.transform, false);
-
-        RectTransform imageRect = imageObject.GetComponent<RectTransform>();
-        imageRect.anchorMin = Vector2.zero;
-        imageRect.anchorMax = Vector2.one;
-        imageRect.offsetMin = Vector2.zero;
-        imageRect.offsetMax = Vector2.zero;
-
-        transitionImage = imageObject.GetComponent<Image>();
-        transitionImage.raycastTarget = true;
+        transitionCanvas.gameObject.SetActive(true);
+        transitionCanvas.transform.SetAsLastSibling();
         SetTransitionAlpha(0f);
     }
 
     private IEnumerator FadeTransitionOverlay(float from, float to, float duration)
     {
-        EnsureTransitionOverlay();
-
         if (duration <= 0f)
         {
             SetTransitionAlpha(to);

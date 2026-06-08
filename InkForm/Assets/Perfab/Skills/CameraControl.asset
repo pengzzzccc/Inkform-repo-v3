@@ -19,6 +19,6 @@ MonoBehaviour:
   prerequisites: []
   availableSolid: 1
   availableFluid: 1
-  minEnergyToStart: 10
-  energyDrainPerSecond: 20
-  bulletTimeScale: 0.2
+  minEnergyToStart: 0
+  energyDrainPerSecond: 0
+  bulletTimeScale: 0.1

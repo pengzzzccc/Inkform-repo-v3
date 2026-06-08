@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.UI;
 
 public class S_UITutorialPrompt : MonoBehaviour
 {
@@ -11,6 +10,7 @@ public class S_UITutorialPrompt : MonoBehaviour
     [SerializeField] private RectTransform panel;
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private TMP_Text descriptionText;
+    [SerializeField] private TMP_Text checklistText;
 
     [Header("Animation")]
     [SerializeField] private float slideDuration = 0.4f;
@@ -25,12 +25,10 @@ public class S_UITutorialPrompt : MonoBehaviour
     // Tracking state for required actions
     private HashSet<string> keyboardActionsCompleted = new HashSet<string>();
     private HashSet<string> gamepadActionsCompleted = new HashSet<string>();
-    private TMP_Text checklistText;
     private TutorialRequiredAction[] activeRequiredActions;
 
     void Awake()
     {
-        EnsureUIBuilt();
         if (panel != null)
             SetPanelOffScreen();
     }
@@ -350,102 +348,4 @@ public class S_UITutorialPrompt : MonoBehaviour
         SetPanelOffScreen();
     }
 
-    private void EnsureUIBuilt()
-    {
-        if (panel != null && titleText != null && descriptionText != null)
-            return;
-
-        Canvas canvas = GetComponentInChildren<Canvas>(true);
-        if (canvas == null)
-        {
-            GameObject canvasObject = new GameObject("TutorialPromptCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-            canvasObject.transform.SetParent(transform, false);
-
-            canvas = canvasObject.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 830;
-
-            CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1366f, 768f);
-            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-            scaler.matchWidthOrHeight = 0.5f;
-        }
-
-        if (panel == null)
-        {
-            GameObject panelObject = new GameObject("TutorialPromptPanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            panelObject.transform.SetParent(canvas.transform, false);
-            panel = panelObject.GetComponent<RectTransform>();
-
-            panel.anchorMin = new Vector2(1f, 0.5f);
-            panel.anchorMax = new Vector2(1f, 0.5f);
-            panel.pivot = new Vector2(1f, 0.5f);
-            panel.anchoredPosition = new Vector2(offScreenX, 0f);
-            panel.sizeDelta = new Vector2(420f, 340f);
-
-            Image panelImage = panelObject.GetComponent<Image>();
-            panelImage.color = new Color(0.04f, 0.05f, 0.06f, 0.88f);
-            panelImage.raycastTarget = false;
-        }
-
-        if (titleText == null)
-        {
-            titleText = CreateText("PromptTitle", panel, -26f, 52f, 30f, FontStyles.Bold);
-            titleText.alignment = TextAlignmentOptions.TopLeft;
-        }
-
-        if (descriptionText == null)
-        {
-            descriptionText = CreateText("PromptDescription", panel, -86f, 80f, 23f, FontStyles.Normal);
-            descriptionText.alignment = TextAlignmentOptions.TopLeft;
-        }
-
-        // Checklist text for required actions tracking
-        if (checklistText == null)
-        {
-            checklistText = CreateText("Checklist", panel, -184f, 120f, 24f, FontStyles.Normal);
-            checklistText.alignment = TextAlignmentOptions.TopLeft;
-            checklistText.color = new Color(0.9f, 0.95f, 1f, 1f);
-            checklistText.lineSpacing = 18f;
-            checklistText.gameObject.SetActive(false);
-        }
-
-        GameObject hintObject = new GameObject("DismissHint", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
-        hintObject.transform.SetParent(panel, false);
-
-        RectTransform hintRect = hintObject.GetComponent<RectTransform>();
-        hintRect.anchorMin = new Vector2(0f, 0f);
-        hintRect.anchorMax = new Vector2(1f, 0f);
-        hintRect.pivot = new Vector2(0.5f, 0f);
-        hintRect.offsetMin = new Vector2(24f, 16f);
-        hintRect.offsetMax = new Vector2(-24f, 44f);
-
-        TMP_Text hintText = hintObject.GetComponent<TMP_Text>();
-        hintText.text = "Press Enter / × to skip";
-        hintText.fontSize = 18f;
-        hintText.alignment = TextAlignmentOptions.BottomRight;
-        hintText.color = new Color(0.75f, 0.85f, 0.9f, 0.82f);
-        hintText.raycastTarget = false;
-    }
-
-    private TMP_Text CreateText(string objectName, RectTransform parent, float topY, float height, float fontSize, FontStyles style)
-    {
-        GameObject textObject = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
-        textObject.transform.SetParent(parent, false);
-
-        RectTransform rect = textObject.GetComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0f, 1f);
-        rect.anchorMax = new Vector2(1f, 1f);
-        rect.pivot = new Vector2(0.5f, 1f);
-        rect.anchoredPosition = new Vector2(0f, topY);
-        rect.sizeDelta = new Vector2(-48f, height);
-
-        TMP_Text text = textObject.GetComponent<TMP_Text>();
-        text.fontSize = fontSize;
-        text.fontStyle = style;
-        text.textWrappingMode = TextWrappingModes.Normal;
-        text.raycastTarget = false;
-        return text;
-    }
 }
