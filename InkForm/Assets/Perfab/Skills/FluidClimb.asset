@@ -20,7 +20,7 @@ MonoBehaviour:
   availableSolid: 0
   availableFluid: 1
   minEnergyToStart: 10
-  energyDrainPerSecond: 20
+  energyDrainPerSecond: 25
   stickyForce: 7.96
   climbSpeed: 8
   fluidGravityScale: 4
