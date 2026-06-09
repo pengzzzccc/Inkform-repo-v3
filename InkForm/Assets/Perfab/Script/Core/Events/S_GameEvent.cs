@@ -79,6 +79,7 @@ public static class S_GameEvent
     // Key & Gate Events
     public static event Action OnKeyCollected;
     public static event Action<int, int> OnKeyCountChanged;
+    public static event Action OnZoneEntry;
 
     // NPC & Story Invokers
     public static void NPCInteract(string npcID) => OnNPCInteract?.Invoke(npcID);
@@ -101,6 +102,7 @@ public static class S_GameEvent
     // Key & Gate Invokers
     public static void KeyCollected() => OnKeyCollected?.Invoke();
     public static void KeyCountChanged(int collected, int total) => OnKeyCountChanged?.Invoke(collected, total);
+    public static void ZoneEntry() => OnZoneEntry?.Invoke();
 
     // Tutorial & Camera Pan Events
     public static event Action OnCameraPanStarted;
