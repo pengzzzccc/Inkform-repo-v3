@@ -467,6 +467,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 997d68688739e364aa85563e40cd100f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  subtitleRoot: {fileID: 8286540885800605849}
   subtitleText: {fileID: 8706616631186598301}
   fallbackDisplayDuration: 3
   typeSpeed: 0.04

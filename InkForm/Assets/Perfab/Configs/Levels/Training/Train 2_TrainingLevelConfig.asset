@@ -28,9 +28,9 @@ MonoBehaviour:
     gamepadKeys:
     - ButtonEast
   promptTitle: Sprint Controls
-  promptDescription: "Hold Sprint - Charge\nRelease Sprint - Dash through weak blocks\nShift
-    / East (×) Button to sprint\n\nTo control the camera:\nHold Q / Left Shoulder\nand
-    use WASD / Left Stick to navigate"
+  promptDescription: "Hold Sprint - Charge Release Sprint - Dash\nShift / East (\xD7)
+    Button to sprint\n\n\nTo control the camera:\nHold Q / Left Shoulder\nand use
+    WASD / Left Stick to navigate"
   timeLimit: 50
   startupDelay: 0.5
   panToTargetDuration: 1.5
@@ -39,3 +39,4 @@ MonoBehaviour:
   preCountdownDelay: 0
   timeoutDeathDelay: 0.5
   hasNPC: 0
+  isLastFixedTutorial: 0

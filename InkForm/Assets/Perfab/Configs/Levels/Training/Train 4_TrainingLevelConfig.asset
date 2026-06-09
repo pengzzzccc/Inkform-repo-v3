@@ -29,12 +29,14 @@ MonoBehaviour:
     gamepadKeys:
     - RightShoulder
   promptTitle: Fluid Climb Controls
-  promptDescription: 'Hold Grip near a wall - Climb
+  promptDescription: 'Hold G / Right Shoulder to grip on a wall
 
-    Use Sprint and Climb together
-    to cross gaps
+    Use Sprint and
+    Climb together to cross gaps
 
-    Hold G / Right Shoulder to grip on a wall'
+
+
+'
   timeLimit: 36
   startupDelay: 0.5
   panToTargetDuration: 1.5
@@ -43,3 +45,4 @@ MonoBehaviour:
   preCountdownDelay: 0
   timeoutDeathDelay: 0.5
   hasNPC: 0
+  isLastFixedTutorial: 0

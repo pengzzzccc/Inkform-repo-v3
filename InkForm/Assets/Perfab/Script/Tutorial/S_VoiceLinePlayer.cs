@@ -6,6 +6,7 @@ using UnityEngine;
 public class S_VoiceLinePlayer : MonoBehaviour
 {
     [Header("Subtitle UI")]
+    [SerializeField] private GameObject subtitleRoot;
     [SerializeField] private TMP_Text subtitleText;
 
     [Header("Settings")]
@@ -24,8 +25,8 @@ public class S_VoiceLinePlayer : MonoBehaviour
 
         audioSource.playOnAwake = false;
 
-        if (subtitleText != null)
-            subtitleText.text = string.Empty;
+        ClearSubtitleText();
+        SetSubtitleVisible(false);
     }
 
     /// <summary>
@@ -51,10 +52,16 @@ public class S_VoiceLinePlayer : MonoBehaviour
         if (hasAudio)
             audioRoutine = StartCoroutine(PlayAudioSequence(clips, Mathf.Max(0f, clipGap), () => audioFinished = true));
 
-        if (subtitleText != null)
+        bool hasSubtitle = subtitleText != null && !string.IsNullOrEmpty(subtitle);
+        if (hasSubtitle)
         {
-            subtitleText.gameObject.SetActive(true);
+            SetSubtitleVisible(true);
             yield return TypeSubtitle(subtitle);
+        }
+        else
+        {
+            ClearSubtitleText();
+            SetSubtitleVisible(false);
         }
 
         if (hasAudio)
@@ -87,8 +94,8 @@ public class S_VoiceLinePlayer : MonoBehaviour
             StopPlayback();
         }
 
-        if (subtitleText != null)
-            subtitleText.text = string.Empty;
+        ClearSubtitleText();
+        SetSubtitleVisible(false);
 
         S_GameEvent.VoiceLineFinished();
     }
@@ -117,8 +124,40 @@ public class S_VoiceLinePlayer : MonoBehaviour
     {
         StopPlayback();
 
+        ClearSubtitleText();
+        SetSubtitleVisible(false);
+    }
+
+    private void ClearSubtitleText()
+    {
         if (subtitleText != null)
             subtitleText.text = string.Empty;
+    }
+
+    private void SetSubtitleVisible(bool visible)
+    {
+        GameObject root = GetSubtitleRoot();
+        if (root != null)
+        {
+            root.SetActive(visible);
+            return;
+        }
+
+        if (subtitleText != null)
+            subtitleText.gameObject.SetActive(visible);
+    }
+
+    private GameObject GetSubtitleRoot()
+    {
+        if (subtitleRoot != null)
+            return subtitleRoot;
+
+        if (subtitleText == null)
+            return null;
+
+        return subtitleText.transform.parent != null
+            ? subtitleText.transform.parent.gameObject
+            : subtitleText.gameObject;
     }
 
     private IEnumerator PlayAudioSequence(IReadOnlyList<AudioClip> clips, float clipGap, System.Action onFinished)
@@ -183,5 +222,7 @@ public class S_VoiceLinePlayer : MonoBehaviour
     private void OnDisable()
     {
         StopPlayback();
+        ClearSubtitleText();
+        SetSubtitleVisible(false);
     }
 }
