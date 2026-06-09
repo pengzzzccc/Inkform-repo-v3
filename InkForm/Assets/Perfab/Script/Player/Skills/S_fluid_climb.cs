@@ -29,6 +29,10 @@ public class S_fluid_climb : S_SkillBase
 
     [System.NonSerialized] private SurfaceType surface = SurfaceType.None;
     [System.NonSerialized] private Vector2 surfNormal = Vector2.up;
+    [System.NonSerialized] private Vector2 gravityUp = Vector2.up;
+    private Vector2 GravityRight => new Vector2(gravityUp.y, -gravityUp.x);
+
+    public void SetGravity(Vector2 up) => gravityUp = up.sqrMagnitude > 0.0001f ? up.normalized : Vector2.up;
     [System.NonSerialized] private ContactPoint2D[] contacts;
     [System.NonSerialized] private RaycastHit2D[] gripBufferHits;
     [System.NonSerialized] private int noContactFrames = 0;
@@ -128,14 +132,15 @@ public class S_fluid_climb : S_SkillBase
             if (surfaceLayer != (~0) && (surfaceLayer.value & (1 << contacts[i].collider.gameObject.layer)) == 0)
                 continue;
 
-            float dot = Vector2.Dot(n, Vector2.up);
+            float dot = Vector2.Dot(n, gravityUp);
 
             if (dot > floorDotThreshold) { onFloor = true; surfNormal = n; }
             else if (dot < -ceilingDotThreshold) { onCeill = true; surfNormal = n; }
             else
             {
-                if (n.x > 0.1f) { onWallL = true; wallNormal = n; }
-                else if (n.x < -0.1f) { onWallR = true; wallNormal = n; }
+                float rd = Vector2.Dot(n, GravityRight);
+                if (rd > 0.1f) { onWallL = true; wallNormal = n; }
+                else if (rd < -0.1f) { onWallR = true; wallNormal = n; }
             }
         }
 
@@ -202,7 +207,7 @@ public class S_fluid_climb : S_SkillBase
         if (gripBufferHits == null) gripBufferHits = new RaycastHit2D[6];
 
         float directionX = GetGripDirection(player, inputX);
-        Vector2 direction = new Vector2(directionX, 0f);
+        Vector2 direction = GravityRight * directionX;
         ContactFilter2D filter = CreateSurfaceFilter();
         int hitCount = col.Cast(direction, filter, gripBufferHits, gripBufferDistance + gripSnapSkin);
 
@@ -259,10 +264,11 @@ public class S_fluid_climb : S_SkillBase
 
     private bool IsWallHitForDirection(Vector2 normal, float directionX)
     {
+        float rd = Vector2.Dot(normal, GravityRight);
         if (directionX < 0f)
-            return normal.x > 0.1f;
+            return rd > 0.1f;
 
-        return normal.x < -0.1f;
+        return rd < -0.1f;
     }
 
     private ContactFilter2D CreateSurfaceFilter()
@@ -321,7 +327,7 @@ public class S_fluid_climb : S_SkillBase
         {
             bool hasClimbInput = Mathf.Abs(inputY) > 0.01f;
             if (hasClimbInput)
-                return stick + Vector2.up * (inputY * climbSpeed);
+                return stick + gravityUp * (inputY * climbSpeed);
             else
                 return stick;
         }
@@ -329,7 +335,7 @@ public class S_fluid_climb : S_SkillBase
         {
             bool hasInput = Mathf.Abs(inputX) > 0.01f;
             if (hasInput)
-                return stick + Vector2.right * (inputX * climbSpeed);
+                return stick + GravityRight * (inputX * climbSpeed);
             else
                 return stick;
         }

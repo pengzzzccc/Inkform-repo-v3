@@ -44,6 +44,7 @@ public static class S_GameEvent
     public static event Action<S_RoomTransitionRequest> OnRoomEnterRequested;
     public static event Action OnFacilityEntered;
     public static event Action OnEndingRequested;
+    public static event Action<Vector2> OnGravityChanged;
 
     public static void PlayerDied() => OnPlayerDied?.Invoke();
     public static void RunStartRequested() => OnRunStartRequested?.Invoke();
@@ -95,6 +96,7 @@ public static class S_GameEvent
     public static void RoomEnterRequested(S_RoomTransitionRequest request) => OnRoomEnterRequested?.Invoke(request);
     public static void FacilityEntered() => OnFacilityEntered?.Invoke();
     public static void EndingRequested() => OnEndingRequested?.Invoke();
+    public static void GravityChanged(Vector2 gravityUp) => OnGravityChanged?.Invoke(gravityUp);
 
     // Key & Gate Invokers
     public static void KeyCollected() => OnKeyCollected?.Invoke();

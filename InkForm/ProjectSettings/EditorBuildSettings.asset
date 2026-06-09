@@ -9,47 +9,8 @@ EditorBuildSettings:
     path: Assets/Scenes/For_game/Start.unity
     guid: 665b7399a8720754497d27f28bbc3aa9
   - enabled: 1
-    path: Assets/Scenes/For_game/Training Room/Train 1.unity
-    guid: 8ae0b4ce0e765794d913e902e35918ce
-  - enabled: 1
-    path: Assets/Scenes/For_game/Training Room/Train 2.unity
-    guid: f2559c9a19286dc4fb8d7a05180abdad
-  - enabled: 1
-    path: Assets/Scenes/For_game/Training Room/Train 3.unity
-    guid: 651490b125f0b744b893ecdc0d697db0
-  - enabled: 1
-    path: Assets/Scenes/For_game/Training Room/Train 4.unity
-    guid: 454e9f36b4119c44b84ed7968f864d08
-  - enabled: 1
-    path: Assets/Scenes/For_game/Training Room/Train 5.unity
-    guid: f672d913e2acc834f8d44464c50da8ca
-  - enabled: 1
-    path: Assets/Scenes/For_game/Training Room/Train 6.unity
-    guid: 94135adc9f8667f4a93310003cfb03f9
-  - enabled: 1
-    path: Assets/Scenes/For_game/Training Room/Lab Room/ComR.unity
-    guid: e78f7a360c2b4409bdd1a9bd8967987b
-  - enabled: 1
-    path: Assets/Scenes/For_game/Training Room/Lab Room/PS.unity
-    guid: 741d9480b54440a4af92b1a1587b67c0
-  - enabled: 1
-    path: Assets/Scenes/For_game/Training Room/Lab Room/BF.unity
-    guid: 6ef3b8137111412a98b6361792445e5b
-  - enabled: 1
-    path: Assets/Scenes/For_game/Training Room/Lab Room/LivA.unity
-    guid: 89108baa50ad4b0f83f5f2ec2191551f
-  - enabled: 1
-    path: Assets/Scenes/For_game/Training Room/Lab Room/For.unity
-    guid: 9c549f8d6c3c4e58906f9c12f48b3baf
-  - enabled: 1
     path: Assets/Scenes/For_game/END.unity
     guid: b7dea1b62d0ff7941a1670f24b89c4d6
-  - enabled: 1
-    path: Assets/Scenes/For_game/Training Room/Train 7.unity
-    guid: 6ac5c6de6e5e2a94c82b643818871041
-  - enabled: 1
-    path: Assets/Scenes/For_game/Training Room/Train 8.unity
-    guid: 7f00d5f8b0cb567479754ef2826a28a5
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0

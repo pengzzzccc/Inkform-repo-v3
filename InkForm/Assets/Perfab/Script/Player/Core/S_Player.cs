@@ -16,6 +16,10 @@ public class S_Player : MonoBehaviour, IPlayerActor
     [SerializeField] private S_fluid_climb fluidClimbSkill;
     [Header("Gravity Control")]
     [SerializeField] private float solidGravityScale = 4f;
+    [SerializeField] private float gravityAlignSpeed = 540f;
+    private Vector2 gravityUp = Vector2.up;
+    public Vector2 GravityUp => gravityUp;
+    public Vector2 GravityRight => new Vector2(gravityUp.y, -gravityUp.x);
     [Header("Slope Movement")]
     [SerializeField] private LayerMask groundLayer = ~0;
     [SerializeField, Range(0.1f, 1f)] private float walkableSlopeMinDot = 0.55f;
@@ -221,6 +225,27 @@ public class S_Player : MonoBehaviour, IPlayerActor
         UpdateSprite();
         if (IsHookActive)
             skillController.HookRenderTick();
+
+        AlignToGravity();
+    }
+
+    private void HandleGravityChanged(Vector2 newUp)
+    {
+        gravityUp = newUp.sqrMagnitude > 0.0001f ? newUp.normalized : Vector2.up;
+        if (fluidClimbSkill != null)
+            fluidClimbSkill.SetGravity(gravityUp);
+    }
+
+    private void AlignToGravity()
+    {
+        if (body == null)
+            return;
+
+        // Rotate the body (which holds the Rigidbody2D) around its own centre. Rotating the
+        // S_Player root instead would swing the offset body in an arc and fling it via physics.
+        float targetAngle = Mathf.Atan2(gravityUp.y, gravityUp.x) * Mathf.Rad2Deg - 90f;
+        Quaternion targetRot = Quaternion.Euler(0f, 0f, targetAngle);
+        body.transform.rotation = Quaternion.RotateTowards(body.transform.rotation, targetRot, gravityAlignSpeed * Time.deltaTime);
     }
     void StateRunner()
     {
@@ -246,8 +271,10 @@ public class S_Player : MonoBehaviour, IPlayerActor
             {
                 S_GameEvent.PlaySFX(jumpClip);
                 slopeAssistDisabledTimer = slopeAssistDisableTime;
-                b_Rig.linearVelocity = new Vector2(b_Rig.linearVelocity.x, 0);
-                b_Rig.AddForce(new Vector2(0, jumpSpeed), ForceMode2D.Impulse);
+                Vector2 jumpVel = b_Rig.linearVelocity;
+                jumpVel -= gravityUp * Vector2.Dot(jumpVel, gravityUp);
+                b_Rig.linearVelocity = jumpVel;
+                b_Rig.AddForce(gravityUp * jumpSpeed, ForceMode2D.Impulse);
                 jumpCount++;
                 jumpCoolDownTimer = jumpCoolDownTime;
             }
@@ -350,7 +377,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
             {
                 b_Rig.linearVelocity = ShouldUseSlopeMovement(moveV)
                     ? GetSlopeVelocity(moveV, speed)
-                    : new Vector2(moveV * speed, b_Rig.linearVelocity.y);
+                    : GravityRight * (moveV * speed) + gravityUp * Vector2.Dot(b_Rig.linearVelocity, gravityUp);
             }
         }
 
@@ -516,7 +543,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
     private void SampleWalkableGround()
     {
         isGroundedOnWalkableSurface = false;
-        groundNormal = Vector2.up;
+        groundNormal = gravityUp;
 
         Collider2D activeCollider = GetCollider();
         if (activeCollider == null)
@@ -542,7 +569,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
                 continue;
 
             normal.Normalize();
-            float upDot = Vector2.Dot(normal, Vector2.up);
+            float upDot = Vector2.Dot(normal, gravityUp);
             if (upDot < bestDot)
                 continue;
 
@@ -696,6 +723,10 @@ public class S_Player : MonoBehaviour, IPlayerActor
     void OnEnable()
     {
         S_Input.Actions.Player.Enable();
+        gravityUp = S_GravityState.GravityUp;
+        if (fluidClimbSkill != null)
+            fluidClimbSkill.SetGravity(gravityUp);
+        S_GameEvent.OnGravityChanged += HandleGravityChanged;
     }
 
 
@@ -705,6 +736,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
         EndCameraControl();
 
         S_Input.Actions.Player.Disable();
+        S_GameEvent.OnGravityChanged -= HandleGravityChanged;
     }
 
     private void BeginSprintCharge() => skillController?.BeginSprintCharge();

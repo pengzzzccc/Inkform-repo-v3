@@ -27,6 +27,10 @@ public class S_CameraMove : MonoBehaviour
     [SerializeField, Min(0.5f)] private float maxZoom = 12f;
     [SerializeField, Min(0.1f)] private float zoomSpeed = 8f;
 
+    [Header("Gravity Rotation")]
+    [SerializeField] private bool rotateWithGravity = true;
+    [SerializeField, Min(0f)] private float cameraRotateSpeed = 180f;
+
     [Header("Gizmos")]
     [SerializeField] private bool drawDeadZoneGizmo = true;
     [SerializeField] private bool drawBoundsGizmo = true;
@@ -56,6 +60,8 @@ public class S_CameraMove : MonoBehaviour
 
     void Update()
     {
+        RotateWithGravity();
+
         if (target == null)
             return;
 
@@ -115,7 +121,8 @@ public class S_CameraMove : MonoBehaviour
 
         if (pan.sqrMagnitude > 0.0001f)
         {
-            Vector3 delta = new Vector3(pan.x, pan.y, 0f);
+            // Camera is rotated to match gravity, so pan along its own (screen) axes.
+            Vector3 delta = transform.right * pan.x + transform.up * pan.y;
             if (delta.sqrMagnitude > 1f)
                 delta.Normalize();
 
@@ -139,6 +146,18 @@ public class S_CameraMove : MonoBehaviour
         manualControlActive = false;
         if (target != null)
             cameraCenterY = transform.position.y;
+    }
+
+    /// <summary>Rotate the camera so screen-up aligns with the current gravity-up (linear).</summary>
+    private void RotateWithGravity()
+    {
+        if (!rotateWithGravity)
+            return;
+
+        Vector2 up = S_GravityState.GravityUp;
+        float targetAngle = Mathf.Atan2(up.y, up.x) * Mathf.Rad2Deg - 90f;
+        Quaternion targetRot = Quaternion.Euler(0f, 0f, targetAngle);
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, cameraRotateSpeed * Time.deltaTime);
     }
 
     private Vector3 ClampToBounds(Vector3 position)

@@ -102,7 +102,7 @@ public class S_Soild_sprint : S_SkillBase
 
         lastUsedTime = Time.time;
 
-        player.GetRigidbody().AddForce(new Vector2(direction * finalSpeed, 0), ForceMode2D.Impulse);
+        player.GetRigidbody().AddForce(player.GravityRight * (direction * finalSpeed), ForceMode2D.Impulse);
         player.SetSprintMomentum(true);
         player.StartCoroutine(SprintLock(player));
 
@@ -117,7 +117,7 @@ public class S_Soild_sprint : S_SkillBase
             if (enemy != null)
             {
                 Debug.Log($"[Sprint Charge] Hit enemy: {enemy.NPCName}");
-                enemy.OnSprintHit(new Vector2(direction, 0f));
+                enemy.OnSprintHit(player.GravityRight * direction);
             }
         }
     }
@@ -134,7 +134,7 @@ public class S_Soild_sprint : S_SkillBase
         lastUsedTime = Time.time;
 
         float dir = player.GetFaceRight() ? 1f : -1f;
-        player.GetRigidbody().AddForce(new Vector2(dir * sprintSpeed, 0), ForceMode2D.Impulse);
+        player.GetRigidbody().AddForce(player.GravityRight * (dir * sprintSpeed), ForceMode2D.Impulse);
         player.SetSprintMomentum(true);
         player.StartCoroutine(SprintLock(player));
 
@@ -150,7 +150,7 @@ public class S_Soild_sprint : S_SkillBase
             if (enemy != null)
             {
                 Debug.Log($"[Sprint] Hit enemy: {enemy.NPCName}");
-                enemy.OnSprintHit(new Vector2(dir, 0f));
+                enemy.OnSprintHit(player.GravityRight * dir);
             }
         }
     }
