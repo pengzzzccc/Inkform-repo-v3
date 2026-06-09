@@ -5,6 +5,9 @@ EditorUserSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 4
   m_ConfigSettings:
+    GraphicsSettingsInspector_UserSettings:
+      value: 18134705175a055722080a3115371d4a0d55006876786860616b0471b8b07a68ffab74f9ee2a3a30300cea1a11320d0beb1a0c25f7060f494b4cc80018eb09361fc211cb1f862d19c51d19dcc413d6ade0d8ddfcddf9f4d9d29195fcfde6ebeae6f0a9c9afa6f8c5b89ff7a1aacececac4eba4d7c9d28bda
+      flags: 0
     RecentlyUsedSceneGuid-0:
       value: 5b05005e50515b5859580f7449765c44444e4a7a2f7c7f3328711835bbb4673b
       flags: 0
@@ -30,10 +33,10 @@ EditorUserSettings:
       value: 06060c0052545a0d5d0d5e2044770f4914131c7b2d71243475704b64bbb8633a
       flags: 0
     RecentlyUsedSceneGuid-8:
-      value: 5b0805565d57085a585e0d2644210f164e441e7f2a7a23337f784462b7b5653e
+      value: 55070104520650020c565b7040740a44424e4f2e7e7f2062752b1f30b1e13561
       flags: 0
     RecentlyUsedSceneGuid-9:
-      value: 55070104520650020c565b7040740a44424e4f2e7e7f2062752b1f30b1e13561
+      value: 5b0805565d57085a585e0d2644210f164e441e7f2a7a23337f784462b7b5653e
       flags: 0
     lightmappingBakingProfile:
       value: 51
