@@ -40,4 +40,19 @@ public class S_Door : MonoBehaviour
     {
         isMoving = true;
     }
+
+    private void HandleOnZoneEntry()
+    {
+        TriggerDoor();
+    }
+
+    void OnEnable()
+    {
+        S_GameEvent.OnZoneEntry += TriggerDoor;
+    }
+
+    void OnDisable()
+    {
+        S_GameEvent.OnZoneEntry -= TriggerDoor;
+    }
 }

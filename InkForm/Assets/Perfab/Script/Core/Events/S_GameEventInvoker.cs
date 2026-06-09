@@ -26,7 +26,8 @@ public class S_GameEventInvoker
         KeyCollected,
         ArrestTriggered,
         SuspicionResetRequested,
-        TutorialPhaseChanged
+        TutorialPhaseChanged,
+        OnZoneEntry
     }
 
     [Tooltip("Which S_GameEvent to fire when Invoke() is called.")]
@@ -88,6 +89,9 @@ public class S_GameEventInvoker
                 break;
             case Kind.TutorialPhaseChanged:
                 S_GameEvent.TutorialPhaseChanged();
+                break;
+            case Kind.OnZoneEntry:
+                S_GameEvent.ZoneEntry();
                 break;
         }
     }
