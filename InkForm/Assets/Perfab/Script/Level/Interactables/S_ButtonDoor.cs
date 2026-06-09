@@ -19,7 +19,7 @@ public class S_ButtonDoor : MonoBehaviour
     {
         if (isActivated) return;
 
-        if (S_PlayerLookup.IsPlayer(other))
+        if (other.CompareTag("block"))
         {
             Activate();
         }

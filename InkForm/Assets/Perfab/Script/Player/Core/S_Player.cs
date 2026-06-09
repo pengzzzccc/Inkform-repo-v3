@@ -46,6 +46,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
     [SerializeField] private S_HookTentacleRenderer hookTentacleRenderer;
 
     private S_PlayerSkillController skillController;
+    private S_PlayerGrab playerGrab;
     private S_PlayerEnergy playerEnergy;
 
     private float moveSpeed;
@@ -187,6 +188,7 @@ public class S_Player : MonoBehaviour, IPlayerActor
 
         SetupEnergy();
         SetupSkillController();
+        playerGrab = GetComponent<S_PlayerGrab>();
 
         inkform = form.fluid;
         SetForm(inkform);
@@ -254,7 +256,8 @@ public class S_Player : MonoBehaviour, IPlayerActor
             gripping = false;
             return;
         }
-        gripping = m_PlayerGrep.IsPressed() && IsFluidClimbSkillAvailable();
+        gripping = m_PlayerGrep.IsPressed() && IsFluidClimbSkillAvailable()
+            && !(playerGrab != null && playerGrab.IsGrabbing);
     }
 
     void Jump()

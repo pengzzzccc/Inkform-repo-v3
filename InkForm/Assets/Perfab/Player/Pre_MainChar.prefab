@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8106540765840282404}
   - component: {fileID: 5791043499970776652}
+  - component: {fileID: 137710055063746985}
   m_Layer: 3
   m_Name: Pre_MainChar
   m_TagString: Player
@@ -59,6 +60,7 @@ MonoBehaviour:
   FluidMat: {fileID: 6200000, guid: cfd77d09831c5fe41881ca6bb3abde31, type: 2}
   fluidClimbSkill: {fileID: 11400000, guid: 5cf4f0abfe21bbb4da609adf4d0d63cf, type: 2}
   solidGravityScale: 3
+  gravityAlignSpeed: 540
   groundLayer:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -75,6 +77,23 @@ MonoBehaviour:
   useDynamicCollider: 1
   dynamicCollider: {fileID: 6147769573892842105}
   cameraController: {fileID: 0}
+  hookTentacleRenderer: {fileID: 0}
+  hookLaunchMomentumTime: 1.2
+--- !u!114 &137710055063746985
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2937701279568720001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7665ec18e38f0414e9024966a67f9535, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  grabRange: 1.2
+  freezeBlockRotationWhileHeld: 1
+  breakForce: Infinity
 --- !u!1 &5018208651326739801
 GameObject:
   m_ObjectHideFlags: 0
