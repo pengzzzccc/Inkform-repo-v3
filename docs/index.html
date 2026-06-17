@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>INKFORM — Escape the Lab</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;700;900&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --black: #0a0a0a;
+      --white: #f0f0e8;
+      --red: #d42b2b;
+      --red-dark: #8b1a1a;
+      --gray: #2a2a2a;
+      --gray-light: #444;
+      --ink: #111;
+      --scan-line: rgba(212, 43, 43, 0.08);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+      overflow-x: hidden;
+      cursor: crosshair;
+    }
+
+    ::selection {
+      background: var(--red);
+      color: var(--black);
+    }
+
+    /* ===== GRID OVERLAY ===== */
+    .grid-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9999;
+      background-image:
+        linear-gradient(rgba(240,240,232,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(240,240,232,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    /* ===== SCANLINE EFFECT ===== */
+    .scanline {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9998;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        var(--scan-line) 2px,
+        var(--scan-line) 4px
+      );
+    }
+
+    /* ===== NAV ===== */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: var(--black);
+      border-bottom: 3px solid var(--white);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 40px;
+      height: 56px;
+    }
+
+    nav .logo {
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      font-size: 20px;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      color: var(--red);
+    }
+
+    nav .logo span {
+      color: var(--white);
+    }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 0;
+    }
+
+    nav ul li a {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--white);
+      text-decoration: none;
+      padding: 18px 24px;
+      border-left: 1px solid var(--gray);
+      transition: background 0.15s, color 0.15s;
+      display: block;
+    }
+
+    nav ul li a:hover {
+      background: var(--white);
+      color: var(--black);
+    }
+
+    /* ===== HERO ===== */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 120px 60px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -10%;
+      right: -5%;
+      width: 55vw;
+      height: 55vw;
+      background: var(--red);
+      opacity: 0.07;
+      clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--red);
+    }
+
+    .hero-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      color: var(--red);
+      border: 2px solid var(--red);
+      padding: 8px 20px;
+      margin-bottom: 40px;
+    }
+
+    .hero h1 {
+      font-size: clamp(72px, 12vw, 180px);
+      font-weight: 900;
+      line-height: 0.85;
+      letter-spacing: -4px;
+      text-transform: uppercase;
+      margin-bottom: 40px;
+    }
+
+    .hero h1 .ink {
+      color: var(--red);
+      display: block;
+    }
+
+    .hero h1 .form {
+      color: var(--white);
+      display: block;
+      -webkit-text-stroke: 3px var(--white);
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-tagline {
+      font-family: 'Space Mono', monospace;
+      font-size: clamp(14px, 1.8vw, 22px);
+      line-height: 1.6;
+      max-width: 680px;
+      color: rgba(240,240,232,0.7);
+      border-left: 4px solid var(--red);
+      padding-left: 24px;
+      margin-bottom: 60px;
+    }
+
+    .hero-cta {
+      display: flex;
+      gap: 0;
+    }
+
+    .hero-cta a {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      text-decoration: none;
+      padding: 18px 40px;
+      border: 3px solid var(--white);
+      color: var(--white);
+      background: transparent;
+      transition: all 0.15s;
+    }
+
+    .hero-cta a:first-child {
+      background: var(--white);
+      color: var(--black);
+    }
+
+    .hero-cta a:first-child:hover {
+      background: var(--red);
+      border-color: var(--red);
+      color: var(--white);
+    }
+
+    .hero-cta a:last-child:hover {
+      background: var(--white);
+      color: var(--black);
+    }
+
+    /* ===== SECTION COMMON ===== */
+    section {
+      padding: 120px 60px;
+      position: relative;
+    }
+
+    .section-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: clamp(36px, 5vw, 64px);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: -1px;
+      line-height: 1;
+      margin-bottom: 48px;
+    }
+
+    /* ===== CONCEPT ===== */
+    #concept {
+      background: var(--gray);
+      border-top: 4px solid var(--white);
+      border-bottom: 4px solid var(--white);
+    }
+
+    .concept-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+
+    .concept-text {
+      padding-right: 60px;
+    }
+
+    .concept-text p {
+      font-size: 18px;
+      line-height: 1.8;
+      color: rgba(240,240,232,0.8);
+      margin-bottom: 24px;
+    }
+
+    .concept-text .highlight {
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .concept-visual {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .ink-block {
+      height: 80px;
+      background: var(--black);
+      border: 2px solid var(--gray-light);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      transition: all 0.2s;
+    }
+
+    .ink-block:hover {
+      background: var(--red);
+      border-color: var(--red);
+      color: var(--black);
+      padding-left: 40px;
+    }
+
+    .ink-block .num {
+      font-size: 32px;
+      font-weight: 900;
+      margin-right: 24px;
+      color: var(--red);
+      font-family: 'Inter', sans-serif;
+    }
+
+    .ink-block:hover .num {
+      color: var(--black);
+    }
+
+    /* ===== PILLARS ===== */
+    #pillars {
+      background: var(--black);
+    }
+
+    .pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+    }
+
+    .pillar {
+      border: 2px solid var(--gray-light);
+      padding: 48px 32px;
+      position: relative;
+      transition: all 0.2s;
+    }
+
+    .pillar:hover {
+      background: var(--white);
+      color: var(--black);
+      border-color: var(--white);
+    }
+
+    .pillar-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--red);
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--black);
+    }
+
+    .pillar:nth-child(1) .pillar-icon { clip-path: polygon(50% 0%, 100% 100%, 0% 100%); }
+    .pillar:nth-child(2) .pillar-icon { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+    .pillar:nth-child(3) .pillar-icon { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+    .pillar:nth-child(4) .pillar-icon { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
+
+    .pillar h3 {
+      font-size: 18px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 16px;
+    }
+
+    .pillar p {
+      font-size: 14px;
+      line-height: 1.7;
+      opacity: 0.7;
+    }
+
+    /* ===== ABILITIES ===== */
+    #abilities {
+      background: var(--gray);
+      border-top: 4px solid var(--white);
+      border-bottom: 4px solid var(--white);
+    }
+
+    .abilities-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+    }
+
+    .ability-card {
+      border: 2px solid var(--gray-light);
+      padding: 48px 32px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+
+    .ability-card:hover {
+      border-color: var(--red);
+    }
+
+    .ability-card::before {
+      content: attr(data-num);
+      position: absolute;
+      top: -20px;
+      right: -10px;
+      font-size: 140px;
+      font-weight: 900;
+      color: var(--white);
+      opacity: 0.04;
+      line-height: 1;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .ability-card .ability-shape {
+      width: 56px;
+      height: 56px;
+      background: var(--red);
+      margin-bottom: 28px;
+    }
+
+    .ability-card:nth-child(1) .ability-shape { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+    .ability-card:nth-child(2) .ability-shape { clip-path: polygon(50% 0%, 100% 100%, 0% 100%); }
+    .ability-card:nth-child(3) .ability-shape { clip-path: circle(50%); }
+    .ability-card:nth-child(4) .ability-shape { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+    .ability-card:nth-child(5) .ability-shape { clip-path: polygon(50% 0%, 80% 100%, 0% 38%, 100% 38%, 20% 100%); }
+    .ability-card:nth-child(6) .ability-shape { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
+
+    .ability-card h3 {
+      font-size: 20px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    .ability-card .ability-obj {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--red);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    .ability-card p {
+      font-size: 14px;
+      line-height: 1.7;
+      opacity: 0.7;
+    }
+
+    .ability-card .ability-tags {
+      margin-top: 20px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .ability-card .ability-tags span {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border: 1px solid var(--gray-light);
+      color: var(--white);
+      opacity: 0.5;
+    }
+
+    .ability-card:hover .ability-tags span {
+      border-color: var(--red);
+      opacity: 1;
+    }
+
+    .ability-card.core {
+      border-color: var(--red-dark);
+    }
+
+    .ability-card.core::after {
+      content: 'CORE';
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 3px;
+      background: var(--red);
+      color: var(--white);
+      padding: 4px 10px;
+    }
+
+    /* ===== LOOP ===== */
+    #loop {
+      background: var(--black);
+    }
+
+    .loop-visual {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin-top: 60px;
+      flex-wrap: wrap;
+    }
+
+    .loop-step {
+      width: 220px;
+      height: 220px;
+      border: 3px solid var(--white);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      position: relative;
+    }
+
+    .loop-step .step-num {
+      font-size: 48px;
+      font-weight: 900;
+      color: var(--red);
+      margin-bottom: 12px;
+      line-height: 1;
+    }
+
+    .loop-step h4 {
+      font-size: 16px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    .loop-step p {
+      font-size: 12px;
+      opacity: 0.6;
+      line-height: 1.5;
+    }
+
+    .loop-arrow {
+      font-size: 48px;
+      color: var(--red);
+      padding: 0 8px;
+      font-weight: 900;
+    }
+
+    /* ===== THREATS ===== */
+    #threats {
+      background: var(--red-dark);
+      border-top: 4px solid var(--red);
+      border-bottom: 4px solid var(--red);
+    }
+
+    .threats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+
+    .threat-block {
+      border: 2px solid rgba(240,240,232,0.2);
+      padding: 48px 40px;
+    }
+
+    .threat-block h3 {
+      font-size: 24px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: 20px;
+    }
+
+    .threat-block p {
+      font-size: 15px;
+      line-height: 1.8;
+      opacity: 0.8;
+    }
+
+    .death-rule {
+      margin-top: 48px;
+      border: 4px solid var(--white);
+      padding: 40px;
+      text-align: center;
+    }
+
+    .death-rule h3 {
+      font-size: 28px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 6px;
+      margin-bottom: 16px;
+    }
+
+    .death-rule p {
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      opacity: 0.7;
+    }
+
+    /* ===== WALKTHROUGH ===== */
+    #walkthrough {
+      background: var(--black);
+    }
+
+    .walk-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+    }
+
+    .walk-segment {
+      border: 2px solid var(--gray-light);
+      padding: 32px 24px;
+      position: relative;
+      transition: all 0.2s;
+    }
+
+    .walk-segment:hover {
+      background: var(--white);
+      color: var(--black);
+      border-color: var(--white);
+    }
+
+    .walk-segment .seg-id {
+      font-family: 'Space Mono', monospace;
+      font-size: 40px;
+      font-weight: 700;
+      color: var(--red);
+      margin-bottom: 16px;
+    }
+
+    .walk-segment:hover .seg-id {
+      color: var(--red-dark);
+    }
+
+    .walk-segment h4 {
+      font-size: 16px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+    }
+
+    .walk-segment p {
+      font-size: 13px;
+      line-height: 1.6;
+      opacity: 0.6;
+    }
+
+    .walk-segment .seg-ability {
+      margin-top: 16px;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--red);
+      border: 1px solid var(--red);
+      display: inline-block;
+      padding: 4px 10px;
+    }
+
+    .walk-segment:hover .seg-ability {
+      color: var(--red-dark);
+      border-color: var(--red-dark);
+    }
+
+    /* ===== ART DIRECTION ===== */
+    #art {
+      background: var(--gray);
+      border-top: 4px solid var(--white);
+      border-bottom: 4px solid var(--white);
+    }
+
+    .art-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+
+    .art-col {
+      padding: 40px;
+      border: 2px solid var(--gray-light);
+    }
+
+    .art-col h3 {
+      font-size: 20px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: 24px;
+      color: var(--red);
+    }
+
+    .art-col ul {
+      list-style: none;
+    }
+
+    .art-col ul li {
+      font-size: 15px;
+      line-height: 1.8;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--gray-light);
+      opacity: 0.8;
+    }
+
+    .art-col ul li:last-child {
+      border-bottom: none;
+    }
+
+    .art-col ul li::before {
+      content: '///';
+      color: var(--red);
+      margin-right: 12px;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+    }
+
+    /* ===== TECH ===== */
+    #tech {
+      background: var(--black);
+    }
+
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+    }
+
+    .tech-block {
+      border: 2px solid var(--gray-light);
+      padding: 40px 32px;
+    }
+
+    .tech-block h3 {
+      font-size: 16px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: 20px;
+      color: var(--red);
+    }
+
+    .tech-block p {
+      font-size: 14px;
+      line-height: 1.7;
+      opacity: 0.7;
+    }
+
+    .tech-block code {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      background: var(--gray);
+      padding: 2px 8px;
+      border: 1px solid var(--gray-light);
+    }
+
+    /* ===== CTA ===== */
+    .final-cta {
+      padding: 120px 60px;
+      text-align: center;
+      background: var(--black);
+      border-top: 4px solid var(--red);
+      position: relative;
+    }
+
+    .final-cta::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 400px;
+      height: 400px;
+      background: var(--red);
+      opacity: 0.05;
+      clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+    }
+
+    .final-cta h2 {
+      font-size: clamp(36px, 6vw, 80px);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: -2px;
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    .final-cta p {
+      font-family: 'Space Mono', monospace;
+      font-size: 16px;
+      opacity: 0.5;
+      margin-bottom: 48px;
+      position: relative;
+    }
+
+    .final-cta .cta-buttons {
+      display: flex;
+      gap: 0;
+      justify-content: center;
+      position: relative;
+    }
+
+    .final-cta .cta-buttons a {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      text-decoration: none;
+      padding: 18px 40px;
+      border: 3px solid var(--white);
+      color: var(--white);
+      background: transparent;
+      transition: all 0.15s;
+    }
+
+    .final-cta .cta-buttons a:hover {
+      background: var(--red);
+      border-color: var(--red);
+    }
+
+    /* ===== FOOTER ===== */
+    footer {
+      padding: 40px 60px;
+      border-top: 3px solid var(--white);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      opacity: 0.4;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 1024px) {
+      .pillars-grid { grid-template-columns: repeat(2, 1fr); }
+      .abilities-grid { grid-template-columns: repeat(2, 1fr); }
+      .walk-grid { grid-template-columns: repeat(2, 1fr); }
+      .tech-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; }
+      nav ul { display: none; }
+      section { padding: 80px 24px; }
+      .hero { padding: 100px 24px 60px; }
+      .concept-grid { grid-template-columns: 1fr; }
+      .concept-text { padding-right: 0; margin-bottom: 40px; }
+      .pillars-grid { grid-template-columns: 1fr; }
+      .abilities-grid { grid-template-columns: 1fr; }
+      .threats-grid { grid-template-columns: 1fr; }
+      .walk-grid { grid-template-columns: 1fr; }
+      .art-grid { grid-template-columns: 1fr; }
+      .loop-visual { flex-direction: column; }
+      .loop-arrow { transform: rotate(90deg); }
+      .hero-cta { flex-direction: column; }
+      .final-cta .cta-buttons { flex-direction: column; align-items: center; }
+      footer { flex-direction: column; gap: 12px; text-align: center; }
+    }
+
+    /* ===== ANIMATIONS ===== */
+    @keyframes pulse-red {
+      0%, 100% { opacity: 0.07; }
+      50% { opacity: 0.12; }
+    }
+
+    .hero::before {
+      animation: pulse-red 4s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-overlay"></div>
+  <div class="scanline"></div>
+
+  <!-- NAV -->
+  <nav>
+    <div class="logo"><span>INK</span>FORM</div>
+    <ul>
+      <li><a href="#concept">Concept</a></li>
+      <li><a href="#pillars">Pillars</a></li>
+      <li><a href="#abilities">Abilities</a></li>
+      <li><a href="#loop">Loop</a></li>
+      <li><a href="#threats">Threats</a></li>
+      <li><a href="#walkthrough">Walkthrough</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-label">3D Stealth-Puzzle Game &mdash; Unity</div>
+    <h1>
+      <span class="ink">INK</span>
+      <span class="form">FORM</span>
+    </h1>
+    <p class="hero-tagline">
+      A body of ink, swallowing objects to become abilities. Sneak and solve puzzles through the gaps in the scan &mdash; escape to freedom.
+    </p>
+    <div class="hero-cta">
+      <a href="#concept">Read the GDD</a>
+      <a href="https://github.com/pengzzzccc/Inkform-repo-v3">View on GitHub</a>
+    </div>
+  </section>
+
+  <!-- CONCEPT -->
+  <section id="concept">
+    <div class="section-label">01 / High Concept</div>
+    <div class="section-title">What is Inkform?</div>
+    <div class="concept-grid">
+      <div class="concept-text">
+        <p>
+          Inkform is a <span class="highlight">3D, cinematic-atmosphere stealth-puzzle game</span>.
+          The player controls a creature made of ink, escaping from the laboratory that cultivated it.
+        </p>
+        <p>
+          It can <span class="highlight">swallow different objects to gain corresponding abilities</span>
+          &mdash; swallow a remote to control giant machinery, swallow an anchor to sink underwater &mdash;
+          using them to evade periodic scanning threats and solve the puzzles blocking its path.
+        </p>
+        <p>
+          Oppressive, lonely, curious all at once. Cold palette, strong light/shadow.
+          No dialogue &mdash; emotion carried by rhythm and sound.
+        </p>
+      </div>
+      <div class="concept-visual">
+        <div class="ink-block"><span class="num">01</span> Swallow Objects</div>
+        <div class="ink-block"><span class="num">02</span> Gain Abilities</div>
+        <div class="ink-block"><span class="num">03</span> Evade Scans</div>
+        <div class="ink-block"><span class="num">04</span> Solve Puzzles</div>
+        <div class="ink-block"><span class="num">05</span> Escape the Lab</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DESIGN PILLARS -->
+  <section id="pillars">
+    <div class="section-label">02 / Design Pillars</div>
+    <div class="section-title">Core Philosophy</div>
+    <div class="pillars-grid">
+      <div class="pillar">
+        <div class="pillar-icon"></div>
+        <h3>Swallow-to-Empower</h3>
+        <p>Every ability is both a stealth tool and a puzzle key &mdash; one object, one solution.</p>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon"></div>
+        <h3>Silent Stealth</h3>
+        <p>Threats are "environmental pressure," not combat &mdash; evasion rhythm creates tension.</p>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon"></div>
+        <h3>Environmental Storytelling</h3>
+        <p>No dialogue; the story is told through scenery, light/shadow, and sound.</p>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon"></div>
+        <h3>One Object, One Thought</h3>
+        <p>Puzzles revolve around "what should I swallow right now," encouraging observation.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABILITIES -->
+  <section id="abilities">
+    <div class="section-label">03 / Swallow-Ability System</div>
+    <div class="section-title">Six Abilities</div>
+    <div class="abilities-grid">
+      <div class="ability-card core" data-num="01">
+        <div class="ability-shape"></div>
+        <h3>Remote Control</h3>
+        <div class="ability-obj">Swallow: Remote</div>
+        <p>Remotely control giant machinery &mdash; cranes, conveyors, gates, searchlight towers. Switch off scan-light towers, move giant cover to block sightlines.</p>
+        <div class="ability-tags">
+          <span>Stealth</span>
+          <span>Puzzle</span>
+          <span>Machinery</span>
+        </div>
+      </div>
+      <div class="ability-card core" data-num="02">
+        <div class="ability-shape"></div>
+        <h3>Anchor</h3>
+        <div class="ability-obj">Swallow: Anchor</div>
+        <p>Body becomes heavy, can sink. Dive into underwater passages to dodge surface scans. Hold down weight switches, resist water currents.</p>
+        <div class="ability-tags">
+          <span>Stealth</span>
+          <span>Puzzle</span>
+          <span>Weight</span>
+        </div>
+      </div>
+      <div class="ability-card core" data-num="03">
+        <div class="ability-shape"></div>
+        <h3>Teleport Beacon</h3>
+        <div class="ability-obj">Swallow: Beacon</div>
+        <p>Place a marker, teleport back at any time. Lure the Sweeper to one side, then vanish. Cross one-way break-points, operate mechanisms in two locations.</p>
+        <div class="ability-tags">
+          <span>Stealth</span>
+          <span>Puzzle</span>
+          <span>Displacement</span>
+        </div>
+      </div>
+      <div class="ability-card" data-num="04">
+        <div class="ability-shape"></div>
+        <h3>Bulb / Battery</h3>
+        <div class="ability-obj">Swallow: Bulb</div>
+        <p>Emit light or discharge into mechanisms. Light up dark segments, power unpowered mechanisms, activate light-sensitive switches.</p>
+        <div class="ability-tags">
+          <span>Risk-Reward</span>
+          <span>Power</span>
+        </div>
+      </div>
+      <div class="ability-card" data-num="05">
+        <div class="ability-shape"></div>
+        <h3>Magnet</h3>
+        <div class="ability-obj">Swallow: Magnet</div>
+        <p>Magnetic, attracts metal. Drag a metal plate as movable cover blocking scan-light. Pull metal doors, grab keys, short circuits.</p>
+        <div class="ability-tags">
+          <span>Cover</span>
+          <span>Circuit</span>
+        </div>
+      </div>
+      <div class="ability-card" data-num="06">
+        <div class="ability-shape"></div>
+        <h3>Balloon</h3>
+        <div class="ability-obj">Swallow: Balloon</div>
+        <p>Become light, float upward briefly. Float over ground pressure-sensor zones, rise to high cover, cross high walls.</p>
+        <div class="ability-tags">
+          <span>Traversal</span>
+          <span>Evasion</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAMEPLAY LOOP -->
+  <section id="loop">
+    <div class="section-label">04 / Core Loop</div>
+    <div class="section-title">Tension &amp; Release</div>
+    <div class="loop-visual">
+      <div class="loop-step">
+        <div class="step-num">01</div>
+        <h4>Find Clues</h4>
+        <p>Observe the environment, identify swallow points and cover</p>
+      </div>
+      <div class="loop-arrow">&rarr;</div>
+      <div class="loop-step">
+        <div class="step-num">02</div>
+        <h4>Evade Threats</h4>
+        <p>Time your movement through scan gaps, hide in cover</p>
+      </div>
+      <div class="loop-arrow">&rarr;</div>
+      <div class="loop-step">
+        <div class="step-num">03</div>
+        <h4>Solve Puzzle</h4>
+        <p>Swallow the right object, use ability to break the obstacle</p>
+      </div>
+      <div class="loop-arrow">&rarr;</div>
+      <div class="loop-step">
+        <div class="step-num">04</div>
+        <h4>Proceed</h4>
+        <p>Move to the next segment, deeper into the lab</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- THREATS -->
+  <section id="threats">
+    <div class="section-label">05 / Threat System</div>
+    <div class="section-title">Binary Survival</div>
+    <div class="threats-grid">
+      <div class="threat-block">
+        <h3>Fixed Scanners</h3>
+        <p>Rotating searchlights, sweeping laser grids, fixed cameras. Predictable scan cycles &mdash; time your passage or evade with an ability.</p>
+      </div>
+      <div class="threat-block">
+        <h3>The Sweeper</h3>
+        <p>A colossus that periodically passes through the area. Behavior loop: approach from afar &rarr; enter and scan &rarr; leave. The signature high-pressure source of the demo.</p>
+      </div>
+    </div>
+    <div class="death-rule">
+      <h3>Touched by Red Light = Death</h3>
+      <p>No health bar. No combat HP. The threat is binary: safe or dead. Immediate return to nearest checkpoint.</p>
+    </div>
+  </section>
+
+  <!-- WALKTHROUGH -->
+  <section id="walkthrough">
+    <div class="section-label">06 / Demo Walkthrough</div>
+    <div class="section-title">Eight Segments</div>
+    <div class="walk-grid">
+      <div class="walk-segment">
+        <div class="seg-id">A</div>
+        <h4>Awakening</h4>
+        <p>Learn movement, swallow/spit, take cover. Establish the tone.</p>
+        <div class="seg-ability">Tutorial</div>
+      </div>
+      <div class="walk-segment">
+        <div class="seg-id">B</div>
+        <h4>Scan Corridor</h4>
+        <p>Time fixed searchlights to pass through. Teach observe-and-advance.</p>
+        <div class="seg-ability">Stealth Intro</div>
+      </div>
+      <div class="walk-segment">
+        <div class="seg-id">C</div>
+        <h4>Water Area</h4>
+        <p>Sluice puzzle. Sink to open the drain valve, lower the water level.</p>
+        <div class="seg-ability">Anchor</div>
+      </div>
+      <div class="walk-segment">
+        <div class="seg-id">D</div>
+        <h4>Machinery Hall</h4>
+        <p>Crane-bridge puzzle. Magnet movable-cover segment. Compound abilities.</p>
+        <div class="seg-ability">Remote + Magnet</div>
+      </div>
+      <div class="walk-segment">
+        <div class="seg-id">E</div>
+        <h4>Dark Power</h4>
+        <p>Power the pre-exit door. Light-sensitive switch. Risk-reward decision.</p>
+        <div class="seg-ability">Bulb / Battery</div>
+      </div>
+      <div class="walk-segment">
+        <div class="seg-id">F</div>
+        <h4>Sweeper Climax</h4>
+        <p>Break-point displacement puzzle. Place marker, dash, teleport back.</p>
+        <div class="seg-ability">Teleport Beacon</div>
+      </div>
+      <div class="walk-segment">
+        <div class="seg-id">G</div>
+        <h4>Exit</h4>
+        <p>Solve the final mechanism. Door opens. Release the tension.</p>
+        <div class="seg-ability">Combined</div>
+      </div>
+      <div class="walk-segment">
+        <div class="seg-id">H</div>
+        <h4>Closing Shot</h4>
+        <p>The ink creature walks out, gazing toward the light beyond the lab.</p>
+        <div class="seg-ability">Emotional Close</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ART DIRECTION -->
+  <section id="art">
+    <div class="section-label">07 / Art &amp; Audio</div>
+    <div class="section-title">Direction</div>
+    <div class="art-grid">
+      <div class="art-col">
+        <h3>Visual</h3>
+        <ul>
+          <li>Low-saturation cold palette</li>
+          <li>Strong light/shadow contrast</li>
+          <li>Silhouette-driven composition</li>
+          <li>Scan-light as natural attention guide</li>
+          <li>Semi-transparent ink texture, malleable body</li>
+          <li>"Bulged out" transformation (Kirby Mouthful Mode reference)</li>
+        </ul>
+      </div>
+      <div class="art-col">
+        <h3>Audio</h3>
+        <ul>
+          <li>Ambient sound dominant, strong spatial sense</li>
+          <li>Minimal or no musical score</li>
+          <li>Sweeper: low-frequency approach sound as "auditory radar"</li>
+          <li>Spotted moment: sharp, piercing feedback + camera impact</li>
+          <li>Reference tone: INSIDE / Somerville</li>
+          <li>Emotion carried by rhythm and sound, not dialogue</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECH -->
+  <section id="tech">
+    <div class="section-label">08 / Technical</div>
+    <div class="section-title">Stack</div>
+    <div class="tech-grid">
+      <div class="tech-block">
+        <h3>Engine</h3>
+        <p>Unity 6 (6000.1.17f1). URP 2D Renderer adapted for 3D pipeline. Rigidbody physics.</p>
+      </div>
+      <div class="tech-block">
+        <h3>Architecture</h3>
+        <p>Event bus <code>S_GameEvent</code> for decoupled broadcasts. <code>ManagerRoot</code> cross-scene persistence. Level Sections with <code>S_LevelConfig</code>. Input-lock pattern.</p>
+      </div>
+      <div class="tech-block">
+        <h3>Milestones</h3>
+        <p><strong>M1</strong>: Movement + swallow + one scan threat + death/checkpoint.<br>
+        <strong>M2</strong>: Core three abilities + puzzles.<br>
+        <strong>M3</strong>: Segment abilities + art/audio + closing shot.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="final-cta">
+    <h2>Escape Begins</h2>
+    <p>A body of ink. A laboratory of cold light. One path out.</p>
+    <div class="cta-buttons">
+      <a href="https://github.com/pengzzzccc/Inkform-repo-v3">GitHub Repository</a>
+      <a href="https://github.com/pengzzzccc/Inkform-repo-v3/tree/main/InkForm/Docs">Read Full GDD</a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <span>Inkform &copy; 2026</span>
+    <span>Unity 6 &mdash; 3D Stealth-Puzzle</span>
+    <span>pengzzzccc</span>
+  </footer>
+</body>
+</html>
