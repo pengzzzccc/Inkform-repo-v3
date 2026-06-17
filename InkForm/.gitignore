@@ -25,6 +25,8 @@
 
 # Visual Studio cache directory
 .vs/
+.claude/
+.mimocode/
 
 # Gradle cache directory
 .gradle/
